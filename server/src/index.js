@@ -13,11 +13,13 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// app.use(express.static('client'));
-app.use(express.static(path.join(__dirname, 'client')));
-app.use('/src', express.static(path.join(__dirname, 'client', 'src')));
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '../../');
+
+// Static serving
+app.use(express.static(path.join(rootDir, 'client')));
+app.use('/src', express.static(path.join(rootDir, 'client', 'src')));
 app.use(express.json());
 
 const clients = new Set();
@@ -77,12 +79,7 @@ app.post('/moderate-message', async (req, res) => {
 });
 
 app.get('/', (_, res) => {
-  res.sendFile(path.join(__dirname, 'client', 'index.html'));
-});
-
-// Serve index.html for all other routes (SPA fallback)
-app.get('/', (_, res) => {
-  res.sendFile(path.resolve('client/index.html'));
+  res.sendFile(path.join(rootDir, 'client', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
