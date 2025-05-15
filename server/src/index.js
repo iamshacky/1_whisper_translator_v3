@@ -15,7 +15,9 @@ const server = createServer(app);
 const wss = new WebSocketServer({ server });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-app.use(express.static('client'));
+// app.use(express.static('client'));
+app.use(express.static(path.join(__dirname, 'client')));
+app.use('/src', express.static(path.join(__dirname, 'client', 'src')));
 app.use(express.json());
 
 const clients = new Set();
