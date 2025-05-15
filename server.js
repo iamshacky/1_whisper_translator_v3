@@ -78,5 +78,10 @@ app.get('/', (_, res) => {
   res.sendFile(path.join(__dirname, 'client', 'index.html'));
 });
 
+// Serve index.html for all other routes (SPA fallback)
+app.get('*', (_, res) => {
+  res.sendFile(path.join(__dirname, 'client', 'index.html'));
+});
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Listening on port ${PORT}`));

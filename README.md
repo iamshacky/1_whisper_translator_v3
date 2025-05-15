@@ -11,7 +11,7 @@ A hands-free, real-time voice-to-voice translator powered by OpenAI's Whisper an
 
 ## 🌐 Live Demo
 
-> [https://1whispertranslator-v3.up.railway.app/?room=warehouse](https://1whispertranslator-v3.up.railway.app/?room=warehouse)
+I don't want to put the url because if a lot of people test it it could cost me money. I'll post a video later to demo it. You can also just deploy this yourself.
 
 ## 🔧 Features
 
