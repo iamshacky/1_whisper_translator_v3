@@ -18,8 +18,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '../../');
 
 // Static serving
+//app.use(express.static(path.join(rootDir, 'client')));
+//app.use('/src', express.static(path.join(rootDir, 'client', 'src')));
 app.use(express.static(path.join(rootDir, 'client')));
-app.use('/src', express.static(path.join(rootDir, 'client', 'src')));
+
+
 app.use(express.json());
 
 const clients = new Set();
