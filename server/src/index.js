@@ -1,59 +1,87 @@
-﻿// server/src/index.js
-import express from 'express';
+﻿import express from 'express';
+import { readFile } from 'fs/promises';
 import { WebSocketServer } from 'ws';
+import { createServer } from 'http';
+import { config } from 'dotenv';
 import path from 'path';
-import dotenv from 'dotenv';
-import { setupWebSocket } from './controllers/wsHandler.js';
-import { translateText, textToSpeech } from './services/openaiService.js';
+import { fileURLToPath } from 'url';
+import OpenAI from 'openai';
 
+config();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-dotenv.config();
-
-// 1) Create your Express app
 const app = express();
+const server = createServer(app);
+const wss = new WebSocketServer({ server });
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// 2) Parse JSON bodies for our translation endpoint
+app.use(express.static('client'));
 app.use(express.json());
 
-// 3) Serve static assets and modules
-app.use(express.static(path.resolve('client/public')));
-app.use('/src',     express.static(path.resolve('client/src')));
-app.use('/config',  express.static(path.resolve('config')));
+const clients = new Set();
 
-// 4) Translation endpoint for edited text
-/*
-app.post('/api/translate-text', async (req, res) => {
-  const { text, lang } = req.body;
+wss.on('connection', (ws) => {
+  clients.add(ws);
+
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      if (data.type === 'retranslate') {
+        // future enhancement
+        return;
+      }
+
+      const outbound = {
+        type: 'final',
+        text: data.text,
+        translation: data.translation,
+        audio: data.audio,
+      };
+
+      for (const client of clients) {
+        if (client !== ws && client.readyState === 1) {
+          client.send(JSON.stringify(outbound));
+        }
+      }
+    } catch (err) {
+      console.error('WebSocket message error:', err);
+    }
+  });
+
+  ws.on('close', () => clients.delete(ws));
+});
+
+app.post('/moderate-message', async (req, res) => {
+  const { text } = req.body;
+
   try {
-    const translation = await translateText(text, lang);
-    res.json({ translation });
+    const prompt = `Check this transcription for likely speech recognition errors. Suggest a correction if needed.\n\nTranscription: "${text}"\n\nIf the transcription is fine, say "ok".`;
+
+    const chat = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const reply = chat.choices[0]?.message?.content || '';
+    if (reply.toLowerCase().startsWith('ok')) {
+      return res.json({ needsCorrection: false });
+    } else {
+      return res.json({ needsCorrection: true, suggestedText: reply });
+    }
   } catch (err) {
-    console.error('❌ /api/translate-text error:', err);
-    res.status(500).json({ error: err.toString() });
+    console.error('GPT moderation error:', err);
+    return res.status(500).json({ needsCorrection: false });
   }
 });
-*/
-app.post('/api/translate-text', async (req, res) => {
-  try {
-    const { text, targetLang } = req.body;
-    const translation = await translateText(text, targetLang);
-    const audio = await textToSpeech(translation);
-    res.json({ translation, audio });
-  } catch (err) {
-    console.error('❌ Error in /api/translate-text:', err);
-    res.status(500).json({ error: 'Translation failed' });
-  }
+
+app.get('/', (_, res) => {
+  res.sendFile(path.join(__dirname, 'client', 'index.html'));
 });
 
-// 5) Start HTTP server
+// Serve index.html for all other routes (SPA fallback)
+app.get('/', (_, res) => {
+  res.sendFile(path.resolve('client/index.html'));
+});
+
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, () => {
-  console.log(`🌐 HTTP server listening on http://localhost:${PORT}`);
-});
-
-// 6) Hook up WebSocket server for Whisper transcription
-server.on('upgrade', (req, socket, head) => {
-  console.log('⏫ HTTP Upgrade for:', req.url);
-});
-const wss = new WebSocketServer({ server, path: '/ws' });
-setupWebSocket(wss);
+server.listen(PORT, () => console.log(`Listening on port ${PORT}`));

@@ -79,8 +79,8 @@ app.get('/', (_, res) => {
 });
 
 // Serve index.html for all other routes (SPA fallback)
-app.get('*', (_, res) => {
-  res.sendFile(path.join(__dirname, 'client', 'index.html'));
+app.get('/', (_, res) => {
+  res.sendFile(path.resolve('client/index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
