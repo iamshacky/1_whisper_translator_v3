@@ -1,4 +1,4 @@
-﻿import './style.css';
+﻿
 const socket = new WebSocket(`wss://${window.location.host}`);
 const messagesContainer = document.getElementById('messages');
 const previewContainer = document.getElementById('preview');
