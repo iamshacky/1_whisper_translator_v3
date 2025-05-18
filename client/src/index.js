@@ -1,4 +1,4 @@
-﻿﻿console.log("✅ index.js loaded");
+﻿﻿﻿console.log("✅ index.js loaded");
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("✅ DOM fully loaded");
