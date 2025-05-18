@@ -14,7 +14,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const retranslateBtn = document.getElementById('retranslate-btn');
   const textInput = document.getElementById('textInput');
   const previewTextBtn = document.getElementById('previewTextBtn');
-  const sendTextBtn = document.getElementById('sendTextBtn');
   const micBtn = document.getElementById('mic-btn');
 
   let latestTranscript = '';
@@ -37,16 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     isRecording = !isRecording;
   };
-
-  const chatBtn = document.getElementById('chat-btn');
-    if (chatBtn) {
-      chatBtn.onclick = () => {
-        previewContainer.style.display = 'block';
-        textInput.focus();
-      };
-    } else {
-      console.warn("⚠️ chatBtn not found in DOM");
-    }
 
   async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
