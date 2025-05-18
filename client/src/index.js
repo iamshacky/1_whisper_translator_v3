@@ -193,8 +193,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const { needsCorrection, suggestedText } = await modRes.json();
       if (needsCorrection) {
-        console.log(`🤖 Moderator suggestion: "${suggestedText}"`);
-        speak(`Did you mean: ${suggestedText}?`);
+        //console.log(`🤖 Moderator suggestion: "${suggestedText}"`);
+        //speak(`Did you mean: ${suggestedText}?`);
+        // Skip moderation for typed input (optional toggle later)
+        console.log("⚠️ Skipping moderation for typed input");
+
       } else {
         console.log('✅ Moderator says: manual input looks good');
       }
