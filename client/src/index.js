@@ -228,13 +228,51 @@ document.addEventListener("DOMContentLoaded", () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: msg.text })
       });
-
+      
+      /*
       const { needsCorrection, suggestedText } = await res.json();
       if (needsCorrection) {
         console.log(`🤖 Moderator suggestion: "${suggestedText}"`);
         speak(`Did you mean: ${suggestedText}?`);
       } else {
         console.log('✅ Moderator says: transcription looks good');
+      }
+      */
+      const { needsCorrection, suggestedText } = await res.json();
+
+      const feedbackBox = document.getElementById('moderation-feedback');
+      const suggestionEl = document.getElementById('moderation-suggestion');
+      const acceptBtn = document.getElementById('accept-suggestion-btn');
+      const ignoreBtn = document.getElementById('ignore-suggestion-btn');
+
+      if (needsCorrection) {
+        console.log(`🤖 Moderator suggestion: "${suggestedText}"`);
+        suggestionEl.textContent = `Did you mean: "${suggestedText}"?`;
+        feedbackBox.style.display = 'block';
+
+        acceptBtn.onclick = async () => {
+          feedbackBox.style.display = 'none';
+
+          const translationRes = await fetch('/manual-translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: suggestedText, targetLang: 'es' })
+          });
+
+          const result = await translationRes.json();
+          setPreview(result.text, result.translation, result.audio);
+        };
+
+        ignoreBtn.onclick = () => {
+          feedbackBox.style.display = 'none';
+          console.log('🙈 User ignored suggestion');
+          setPreview(msg.text, msg.translation, msg.audio);
+        };
+
+      } else {
+        console.log('✅ Moderator says: transcription looks good');
+        feedbackBox.style.display = 'none';
+        setPreview(msg.text, msg.translation, msg.audio);
       }
 
       setPreview(msg.text, msg.translation, msg.audio);
