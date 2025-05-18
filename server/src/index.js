@@ -87,14 +87,16 @@ app.post('/manual-translate', async (req, res) => {
 
   try {
     const { detectLanguage, translateText } = await import('./services/translationService.js');
+    const { textToSpeech } = await import('./services/openaiService.js');
 
     const sourceLang = await detectLanguage(text);
     const translation = await translateText(text, sourceLang, targetLang);
+    const audioBase64 = await textToSpeech(translation, 'nova');
 
     res.json({
       text,
       translation,
-      audio: null  // Optional TTS later
+      audio: audioBase64 || null
     });
   } catch (err) {
     console.error('Manual translate error:', err);
@@ -120,16 +122,23 @@ app.post('/moderate-message', async (req, res) => {
       ]
     });
 
-    const reply = response.choices?.[0]?.message?.content?.trim() || "";
+    let reply = response.choices?.[0]?.message?.content?.trim() || "";
 
     console.log(`🧠 Moderator input: "${text}"`);
     console.log(`🧠 Moderator response: "${reply}"`);
 
+    // If it's OK, return immediately
     if (reply.toLowerCase().startsWith("ok")) {
       return res.json({ needsCorrection: false });
-    } else {
-      return res.json({ needsCorrection: true, suggestedText: reply });
     }
+
+    // 🧼 Clean up GPT verbosity
+    reply = reply
+      .replace(/^The transcription is incorrect\. The correct transcription should be:/i, '')
+      .replace(/^"(.+)"$/, '$1') // remove leading/trailing quotes
+      .trim();
+
+    return res.json({ needsCorrection: true, suggestedText: reply });
 
   } catch (err) {
     console.error('GPT moderation error:', err);

@@ -222,22 +222,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (msg.type === 'preview') {
       console.log('📥 Received preview message:', msg);
+      
+      const originalText = msg.text;
+      const originalTranslation = msg.translation;
+      const originalAudio = msg.audio;
 
       const res = await fetch('/moderate-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: msg.text })
       });
-      
-      /*
-      const { needsCorrection, suggestedText } = await res.json();
-      if (needsCorrection) {
-        console.log(`🤖 Moderator suggestion: "${suggestedText}"`);
-        speak(`Did you mean: ${suggestedText}?`);
-      } else {
-        console.log('✅ Moderator says: transcription looks good');
-      }
-      */
+
       const { needsCorrection, suggestedText } = await res.json();
 
       const feedbackBox = document.getElementById('moderation-feedback');
@@ -266,7 +261,8 @@ document.addEventListener("DOMContentLoaded", () => {
         ignoreBtn.onclick = () => {
           feedbackBox.style.display = 'none';
           console.log('🙈 User ignored suggestion');
-          setPreview(msg.text, msg.translation, msg.audio);
+          //setPreview(msg.text, msg.translation, msg.audio);
+          setPreview(originalText, originalTranslation, originalAudio);
         };
 
       } else {
