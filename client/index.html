@@ -5,27 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Whisper Translator</title>
 
+  <!--<link rel="stylesheet" href="/style.css" />-->
   <link rel="stylesheet" href="src/style.css" />
-</head>
+
 <body>
 
   <div id="messages"></div>
-
   <div id="preview">
     <div id="text-preview"></div>
 
-    <!-- ✅ Only one Send button -->
-    <button id="send-btn" style="display: none;">Send</button>
+    <!-- 🎤 Voice controls -->
+    <button id="send-btn">Send</button>
     <button id="delete-btn">Delete</button>
     <button id="retranslate-btn">Re-Translate</button>
 
     <!-- ⌨️ Typing input -->
     <input id="textInput" type="text" placeholder="Type something..." />
     <button id="previewTextBtn">Preview</button>
+    <button id="sendTextBtn">Send</button>
   </div>
 
-  <button id="mic-btn">🎤</button>
 
+  <button id="mic-btn">🎤</button>
+  
   <script type="module" src="src/index.js"></script>
 </body>
 </html>
