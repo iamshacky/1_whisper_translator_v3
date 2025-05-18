@@ -205,6 +205,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   // ✅ Manual text input (Send)
+  /*
   sendTextBtn.onclick = () => {
     if (!previewActive || !latestTranscript) return;
 
@@ -225,6 +226,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     clearPreview();
   };
+  */
 
   socket.onmessage = async (event) => {
     const msg = JSON.parse(event.data);
