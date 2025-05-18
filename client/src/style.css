@@ -112,3 +112,22 @@ button:hover {
 #mic-btn:hover {
   background: #218838;
 }
+
+#chat-btn {
+  position: fixed;
+  top: 4.5rem;
+  right: 1rem;
+  font-size: 1.5rem;
+  background: #17a2b8;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  padding: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+}
+
+#chat-btn:hover {
+  background: #138496;
+}

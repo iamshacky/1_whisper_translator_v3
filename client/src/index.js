@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const previewTextBtn = document.getElementById('previewTextBtn');
   const sendTextBtn = document.getElementById('sendTextBtn');
   const micBtn = document.getElementById('mic-btn');
+  const chatBtn = document.getElementById('chat-btn');
 
   let latestTranscript = '';
   let latestAudio = '';
@@ -36,6 +37,11 @@ document.addEventListener("DOMContentLoaded", () => {
       micBtn.textContent = '🎤'; // Mic icon
     }
     isRecording = !isRecording;
+  };
+
+  chatBtn.onclick = () => {
+    previewContainer.style.display = 'block';
+    textInput.focus();
   };
 
   async function startRecording() {
@@ -85,6 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <div><strong>You said:</strong> ${text}</div>
       <div><strong>Translation:</strong> ${lang}</div>
     `;
+    sendBtn.style.display = 'inline-block';  // Always show Send after preview
 
     previewContainer.style.display = 'block';
   }
@@ -93,6 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
     previewActive = false;
     textPreview.innerHTML = '';
     previewContainer.style.display = 'none';
+    sendBtn.style.display = 'none';
   }
 
   function addMessage({ text, translation, audio, lang, sender }) {
