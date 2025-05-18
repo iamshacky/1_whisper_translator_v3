@@ -41,18 +41,8 @@ wss.on('connection', (ws, req) => {
       if (isBinary) {
         console.log("🎧 Received binary audio blob from client");
 
-        //const { translateController } = await import('./controllers/translate.js');
-
         const { text, translation, audio } = await translateController(message, targetLang);
 
-        /*
-        const previewPayload = {
-          type: 'preview',
-          text,
-          translation: `en → ${targetLang}`, // TEMP: still hardcoded sourceLang
-          audio
-        };
-        */
         const previewPayload = {
           type: 'preview',
           text,
@@ -64,6 +54,7 @@ wss.on('connection', (ws, req) => {
         ws.send(JSON.stringify(previewPayload));
       } else {
         const data = JSON.parse(message);
+        console.log("📩 Server received text message:", data);
 
         if (data.type === 'retranslate') {
           console.log("🔁 Re-translate requested (not yet implemented)");
