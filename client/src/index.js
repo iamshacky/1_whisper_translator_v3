@@ -37,6 +37,16 @@ document.addEventListener("DOMContentLoaded", () => {
     isRecording = !isRecording;
   };
 
+  const chatBtn = document.getElementById('chat-btn');
+    if (chatBtn) {
+      chatBtn.onclick = () => {
+        previewContainer.style.display = 'block';
+        textInput.focus();
+      };
+    } else {
+      console.warn("⚠️ chatBtn not found in DOM");
+    }
+
   async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder = new MediaRecorder(stream);
