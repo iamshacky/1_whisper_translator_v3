@@ -158,10 +158,17 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       socket.send(JSON.stringify(message));
-
+      /*
       addMessage({
         ...message,
         lang: latestLanguage
+      });
+      */
+      addMessage({
+        text: latestTranscript,
+        translation: latestLanguage,
+        lang: '', // You can fill in language if needed later
+        sender: 'me'
       });
 
       clearPreview();
