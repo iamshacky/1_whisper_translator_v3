@@ -1,4 +1,6 @@
-﻿﻿﻿console.log("✅ index.js loaded");
+﻿﻿import { SPEECH_MODE, PLAY_AUDIO_ON } from './settings.js';
+
+﻿console.log("✅ index.js loaded");
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("✅ DOM fully loaded");
@@ -133,11 +135,44 @@ document.addEventListener("DOMContentLoaded", () => {
     wrapper.append(timestamp, langLabel, label, original, translated);
     messagesContainer.append(wrapper);
 
+    /*
     if (sender === 'they') {
       if (audio) {
         const audioEl = new Audio(`data:audio/mpeg;base64,${audio}`);
         audioEl.play();
       } else {
+        speak(translation, lang.split('→')[1]?.trim() || 'en');
+      }
+    }
+    */
+
+    /*
+    const isReceiver = sender === 'they';
+    const shouldPlay =
+      PLAY_AUDIO_ON === 'both' ||
+      (PLAY_AUDIO_ON === 'receiver' && isReceiver) ||
+      (PLAY_AUDIO_ON === 'sender' && !isReceiver);
+
+    if (shouldPlay) {
+      if (SPEECH_MODE === 'tts' && audio) {
+        const audioEl = new Audio(`data:audio/mpeg;base64,${audio}`);
+        audioEl.play().catch((err) => console.warn('🔇 Autoplay blocked:', err));
+      } else if (SPEECH_MODE === 'synthesis') {
+        speak(translation, lang.split('→')[1]?.trim() || 'en');
+      }
+    }
+    */
+    const isReceiver = sender === 'they';
+    const shouldPlay =
+      PLAY_AUDIO_ON === 'both' ||
+      (PLAY_AUDIO_ON === 'receiver' && isReceiver) ||
+      (PLAY_AUDIO_ON === 'sender' && !isReceiver);
+
+    if (shouldPlay) {
+      if (SPEECH_MODE === 'tts' && audio) {
+        const audioEl = new Audio(`data:audio/mpeg;base64,${audio}`);
+        audioEl.play().catch((err) => console.warn('🔇 Autoplay blocked:', err));
+      } else if (SPEECH_MODE === 'synthesis') {
         speak(translation, lang.split('→')[1]?.trim() || 'en');
       }
     }

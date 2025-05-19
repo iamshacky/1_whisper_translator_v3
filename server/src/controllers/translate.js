@@ -1,5 +1,7 @@
-﻿import { transcribeAudio, textToSpeech } from '../services/openaiService.js';
+﻿
+import { transcribeAudio, textToSpeech } from '../services/openaiService.js';
 import { detectLanguage, translateText } from '../services/translationService.js';
+import { SELECT_LANGUAGE_MODE, DEFAULT_INPUT_LANG } from '../config/settings.js';
 
 /**
  * Given an audio buffer and desired language, return both original text and translation
@@ -20,8 +22,12 @@ export async function translateController(audioBuffer, targetLang) {
 
     console.log("✅ Cleaned transcript text:", transcriptText);
 
-    const detectedLang = await detectLanguage(transcriptText); // 🧠 Detect language
-    const translated = await translateText(transcriptText, detectedLang, targetLang); // 🧠 Translate
+    
+    //const detectedLang = await detectLanguage(transcriptText); // 🧠 Detect language
+    //const translated = await translateText(transcriptText, detectedLang, targetLang); // 🧠 Translate
+    const sourceLang = SELECT_LANGUAGE_MODE ? DEFAULT_INPUT_LANG : await detectLanguage(transcriptText);
+    const translated = await translateText(transcriptText, sourceLang, targetLang);
+
 
     const audioBase64 = await textToSpeech(translated, 'nova'); // 🔊 Generate TTS audio
 
