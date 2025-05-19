@@ -5,11 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Whisper Translator</title>
   <link rel="stylesheet" href="src/style.css" />
-</head>
+
 <body>
 
   <div id="messages"></div>
-
   <div id="preview">
     <div id="text-preview"></div>
 
@@ -21,19 +20,17 @@
     <!-- ⌨️ Typing input -->
     <input id="textInput" type="text" placeholder="Type something..." />
     <button id="previewTextBtn">Preview</button>
+    <!--<button id="sendTextBtn">Send</button>-->
 
-    <!-- 🧠 GPT moderation response (voice only) -->
     <div id="moderation-feedback" style="display: none; margin-top: 10px;">
       <span id="moderation-suggestion" style="margin-right: 10px;"></span>
       <button id="accept-suggestion-btn">Accept</button>
       <button id="ignore-suggestion-btn">Ignore</button>
     </div>
-  </div>
 
-  <!-- 📢 Input triggers (outside preview) -->
   <button id="mic-btn">🎤</button>
   <button id="chat-btn">💬</button>
-
+  
   <script type="module" src="src/index.js"></script>
 </body>
 </html>

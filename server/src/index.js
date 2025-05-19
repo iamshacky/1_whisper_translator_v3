@@ -6,7 +6,6 @@ import { config } from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
-import { appConfig } from './config/daveConfig.js';
 
 config();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -87,22 +86,15 @@ app.post('/manual-translate', async (req, res) => {
   const { text, targetLang } = req.body;
 
   try {
-    const { translateText, detectLanguage } = await import('./services/translationService.js');
-    const { textToSpeech } = await import('./services/openaiService.js');
+    const { detectLanguage, translateText } = await import('./services/translationService.js');
 
-    const sourceLang = appConfig.USE_LANGUAGE_DETECTION
-      ? await detectLanguage(text)
-      : 'en';
-
+    const sourceLang = await detectLanguage(text);
     const translation = await translateText(text, sourceLang, targetLang);
-    const audioBase64 = appConfig.ENABLE_TTS
-      ? await textToSpeech(translation, 'nova')
-      : null;
 
     res.json({
       text,
       translation,
-      audio: audioBase64
+      audio: null  // Optional TTS later
     });
   } catch (err) {
     console.error('Manual translate error:', err);
@@ -128,23 +120,16 @@ app.post('/moderate-message', async (req, res) => {
       ]
     });
 
-    let reply = response.choices?.[0]?.message?.content?.trim() || "";
+    const reply = response.choices?.[0]?.message?.content?.trim() || "";
 
     console.log(`🧠 Moderator input: "${text}"`);
     console.log(`🧠 Moderator response: "${reply}"`);
 
-    // If it's OK, return immediately
     if (reply.toLowerCase().startsWith("ok")) {
       return res.json({ needsCorrection: false });
+    } else {
+      return res.json({ needsCorrection: true, suggestedText: reply });
     }
-
-    // 🧼 Clean up GPT verbosity
-    reply = reply
-      .replace(/^The transcription is incorrect\. The correct transcription should be:/i, '')
-      .replace(/^"(.+)"$/, '$1') // remove leading/trailing quotes
-      .trim();
-
-    return res.json({ needsCorrection: true, suggestedText: reply });
 
   } catch (err) {
     console.error('GPT moderation error:', err);

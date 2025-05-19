@@ -133,36 +133,15 @@ document.addEventListener("DOMContentLoaded", () => {
     wrapper.append(timestamp, langLabel, label, original, translated);
     messagesContainer.append(wrapper);
 
-    // 🔊 Playback for received messages
     if (sender === 'they') {
-      const targetLang = lang.split('→')[1]?.trim() || 'en';
-
-      if (appConfig.useBrowserSpeechSynthesis) {
-        speak(`New message: ${translation}`, targetLang);
-      } else if (audio) {
+      if (audio) {
         const audioEl = new Audio(`data:audio/mpeg;base64,${audio}`);
-        audioEl.play().catch(err => {
-          console.warn("🔇 Audio play failed, falling back to speech synthesis.");
-          speak(`New message: ${translation}`, targetLang);
-        });
+        audioEl.play();
+      } else {
+        speak(translation, lang.split('→')[1]?.trim() || 'en');
       }
     }
   }
-  /*
-  window.addEventListener('click', () => {
-    speechSynthesis.speak(new SpeechSynthesisUtterance(''));
-  }, { once: true });
-  */
-  // 🔓 Unlock speech synthesis on first user interaction
-  window.addEventListener('click', () => {
-    try {
-      const utterance = new SpeechSynthesisUtterance('');
-      speechSynthesis.speak(utterance);
-      console.log("🔓 Speech synthesis unlocked on first click");
-    } catch (err) {
-      console.warn("⚠️ Could not unlock speech synthesis:", err);
-    }
-  }, { once: true });
 
   // ✅ Send button (for previewed content)
   if (sendBtn) {
@@ -243,10 +222,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (msg.type === 'preview') {
       console.log('📥 Received preview message:', msg);
-      
-      const originalText = msg.text;
-      const originalTranslation = msg.translation;
-      const originalAudio = msg.audio;
 
       const res = await fetch('/moderate-message', {
         method: 'POST',
@@ -255,41 +230,11 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const { needsCorrection, suggestedText } = await res.json();
-
-      const feedbackBox = document.getElementById('moderation-feedback');
-      const suggestionEl = document.getElementById('moderation-suggestion');
-      const acceptBtn = document.getElementById('accept-suggestion-btn');
-      const ignoreBtn = document.getElementById('ignore-suggestion-btn');
-
       if (needsCorrection) {
         console.log(`🤖 Moderator suggestion: "${suggestedText}"`);
-        suggestionEl.textContent = `Did you mean: "${suggestedText}"?`;
-        feedbackBox.style.display = 'block';
-
-        acceptBtn.onclick = async () => {
-          feedbackBox.style.display = 'none';
-
-          const translationRes = await fetch('/manual-translate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: suggestedText, targetLang: 'es' })
-          });
-
-          const result = await translationRes.json();
-          setPreview(result.text, result.translation, result.audio);
-        };
-
-        ignoreBtn.onclick = () => {
-          feedbackBox.style.display = 'none';
-          console.log('🙈 User ignored suggestion');
-          //setPreview(msg.text, msg.translation, msg.audio);
-          setPreview(originalText, originalTranslation, originalAudio);
-        };
-
+        speak(`Did you mean: ${suggestedText}?`);
       } else {
         console.log('✅ Moderator says: transcription looks good');
-        feedbackBox.style.display = 'none';
-        setPreview(msg.text, msg.translation, msg.audio);
       }
 
       setPreview(msg.text, msg.translation, msg.audio);
