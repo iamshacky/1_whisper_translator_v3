@@ -6,6 +6,7 @@ import { config } from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
+import { appConfig } from './config/daveConfig.js';
 
 config();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -86,17 +87,22 @@ app.post('/manual-translate', async (req, res) => {
   const { text, targetLang } = req.body;
 
   try {
-    const { detectLanguage, translateText } = await import('./services/translationService.js');
+    const { translateText, detectLanguage } = await import('./services/translationService.js');
     const { textToSpeech } = await import('./services/openaiService.js');
 
-    const sourceLang = await detectLanguage(text);
+    const sourceLang = appConfig.USE_LANGUAGE_DETECTION
+      ? await detectLanguage(text)
+      : 'en';
+
     const translation = await translateText(text, sourceLang, targetLang);
-    const audioBase64 = await textToSpeech(translation, 'nova');
+    const audioBase64 = appConfig.ENABLE_TTS
+      ? await textToSpeech(translation, 'nova')
+      : null;
 
     res.json({
       text,
       translation,
-      audio: audioBase64 || null
+      audio: audioBase64
     });
   } catch (err) {
     console.error('Manual translate error:', err);

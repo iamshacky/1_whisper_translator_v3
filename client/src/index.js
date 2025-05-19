@@ -134,12 +134,11 @@ document.addEventListener("DOMContentLoaded", () => {
     messagesContainer.append(wrapper);
 
     if (sender === 'they') {
-      if (audio) {
-        const audioEl = new Audio(`data:audio/mpeg;base64,${audio}`);
-        audioEl.play();
-      } else {
-        speak(translation, lang.split('→')[1]?.trim() || 'en');
-      }
+      const targetLang = lang.split('→')[1]?.trim() || 'en';
+
+      // ✅ Fallback voice announcement
+      console.log("🔈 Synthesizing 'New message received'");
+      speak("New message received", targetLang);
     }
   }
 
