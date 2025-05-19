@@ -133,14 +133,36 @@ document.addEventListener("DOMContentLoaded", () => {
     wrapper.append(timestamp, langLabel, label, original, translated);
     messagesContainer.append(wrapper);
 
+    // 🔊 Playback for received messages
     if (sender === 'they') {
       const targetLang = lang.split('→')[1]?.trim() || 'en';
 
-      // ✅ Fallback voice announcement
-      console.log("🔈 Synthesizing 'New message received'");
-      speak("New message received", targetLang);
+      if (appConfig.useBrowserSpeechSynthesis) {
+        speak(`New message: ${translation}`, targetLang);
+      } else if (audio) {
+        const audioEl = new Audio(`data:audio/mpeg;base64,${audio}`);
+        audioEl.play().catch(err => {
+          console.warn("🔇 Audio play failed, falling back to speech synthesis.");
+          speak(`New message: ${translation}`, targetLang);
+        });
+      }
     }
   }
+  /*
+  window.addEventListener('click', () => {
+    speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+  }, { once: true });
+  */
+  // 🔓 Unlock speech synthesis on first user interaction
+  window.addEventListener('click', () => {
+    try {
+      const utterance = new SpeechSynthesisUtterance('');
+      speechSynthesis.speak(utterance);
+      console.log("🔓 Speech synthesis unlocked on first click");
+    } catch (err) {
+      console.warn("⚠️ Could not unlock speech synthesis:", err);
+    }
+  }, { once: true });
 
   // ✅ Send button (for previewed content)
   if (sendBtn) {
