@@ -240,11 +240,24 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   */
   const acceptBtn = document.getElementById('accept-btn');
+  /*
   acceptBtn.onclick = () => {
     if (!moderatorSuggestion) return;
     textInput.value = moderatorSuggestion;
     moderatorSuggestion = '';
     acceptBtn.style.display = 'none'; // re-enable this if you want it to hide again
+  };
+  */
+  acceptBtn.onclick = () => {
+    if (!moderatorSuggestion) return;
+
+    // Try to extract quoted part (e.g., "...")
+    const match = moderatorSuggestion.match(/"([^"]+)"/);
+    const cleanText = match ? match[1] : moderatorSuggestion;
+
+    textInput.value = cleanText;
+    moderatorSuggestion = '';
+    acceptBtn.style.display = 'none';
   };
 
   // ✅ Manual text input (Preview)
