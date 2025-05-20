@@ -243,13 +243,6 @@ document.addEventListener("DOMContentLoaded", () => {
   /*
   acceptBtn.onclick = () => {
     if (!moderatorSuggestion) return;
-    textInput.value = moderatorSuggestion;
-    moderatorSuggestion = '';
-    acceptBtn.style.display = 'none'; // re-enable this if you want it to hide again
-  };
-  */
-  acceptBtn.onclick = () => {
-    if (!moderatorSuggestion) return;
 
     // Try to extract quoted part (e.g., "...")
     const match = moderatorSuggestion.match(/"([^"]+)"/);
@@ -296,6 +289,42 @@ document.addEventListener("DOMContentLoaded", () => {
       setPreview(result.text, result.translation, result.audio);
     } catch (err) {
       console.error('❌ Manual preview error:', err);
+    }
+  };
+  */
+  acceptBtn.onclick = async () => {
+    if (!moderatorSuggestion) return;
+
+    const match = moderatorSuggestion.match(/"([^"]+)"/);
+    const cleanText = match ? match[1] : moderatorSuggestion;
+
+    textInput.value = cleanText;
+    moderatorSuggestion = '';
+    acceptBtn.style.display = 'none';
+
+    // 🔁 Auto-run Preview logic
+    try {
+      const modRes = await fetch('/moderate-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanText })
+      });
+
+      const { needsCorrection, suggestedText } = await modRes.json();
+      if (needsCorrection) {
+        console.log("✅ Already moderated once — skipping again for simplicity.");
+      }
+
+      const res = await fetch('/manual-translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanText, targetLang: 'es' })
+      });
+
+      const result = await res.json();
+      setPreview(result.text, result.translation, result.audio);
+    } catch (err) {
+      console.error('❌ Auto-preview on Accept failed:', err);
     }
   };
 
