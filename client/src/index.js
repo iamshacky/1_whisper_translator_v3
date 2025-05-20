@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let mediaRecorder;
   let audioChunks = [];
   let isRecording = false;
+  let moderatorSuggestion = '';
 
   // 🎤 Mic recording toggle
   micBtn.onclick = () => {
@@ -229,12 +230,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   deleteBtn.onclick = () => clearPreview();
 
+  /*
   retranslateBtn.onclick = () => {
     socket.send(JSON.stringify({
       type: 'retranslate',
       text: latestTranscript,
       lang: latestLanguage
     }));
+  };
+  */
+  const acceptBtn = document.getElementById('accept-btn');
+  acceptBtn.onclick = () => {
+    if (!moderatorSuggestion) return;
+    textInput.value = moderatorSuggestion;
+    moderatorSuggestion = '';
+    acceptBtn.style.display = 'none';
   };
 
   // ✅ Manual text input (Preview)
@@ -252,13 +262,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const { needsCorrection, suggestedText } = await modRes.json();
       if (needsCorrection) {
-        //console.log(`🤖 Moderator suggestion: "${suggestedText}"`);
-        //speak(`Did you mean: ${suggestedText}?`);
-        // Skip moderation for typed input (optional toggle later)
-        console.log("⚠️ Skipping moderation for typed input");
-
+        moderatorSuggestion = suggestedText;
+        speak(`Did you mean: ${suggestedText}?`);
+        document.getElementById('accept-btn').style.display = 'inline-block'; // show Accept button
       } else {
-        console.log('✅ Moderator says: manual input looks good');
+        moderatorSuggestion = '';
+        document.getElementById('accept-btn').style.display = 'none';
+        console.log('✅ Moderator says: transcription looks good');
       }
 
       // Translate text manually
