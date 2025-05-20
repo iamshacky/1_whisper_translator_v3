@@ -230,68 +230,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   deleteBtn.onclick = () => clearPreview();
 
-  /*
-  retranslateBtn.onclick = () => {
-    socket.send(JSON.stringify({
-      type: 'retranslate',
-      text: latestTranscript,
-      lang: latestLanguage
-    }));
-  };
-  */
   const acceptBtn = document.getElementById('accept-btn');
   /*
-  acceptBtn.onclick = () => {
-    if (!moderatorSuggestion) return;
-
-    // Try to extract quoted part (e.g., "...")
-    const match = moderatorSuggestion.match(/"([^"]+)"/);
-    const cleanText = match ? match[1] : moderatorSuggestion;
-
-    textInput.value = cleanText;
-    moderatorSuggestion = '';
-    acceptBtn.style.display = 'none';
-  };
-
-  // ✅ Manual text input (Preview)
-  previewTextBtn.onclick = async () => {
-    const manualInput = textInput.value.trim();
-    if (!manualInput) return;
-
-    try {
-      // Moderate text first
-      const modRes = await fetch('/moderate-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: manualInput })
-      });
-
-      const { needsCorrection, suggestedText } = await modRes.json();
-      if (needsCorrection) {
-        moderatorSuggestion = suggestedText;
-        speak(`Did you mean: ${suggestedText}?`);
-        document.getElementById('accept-btn').style.display = 'inline-block'; // show Accept button
-      } else {
-        moderatorSuggestion = '';
-        document.getElementById('accept-btn').style.display = 'none';
-        console.log('✅ Moderator says: transcription looks good');
-      }
-
-      // Translate text manually
-      const res = await fetch('/manual-translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: manualInput, targetLang: 'es' })
-      });
-
-      const result = await res.json();
-
-      setPreview(result.text, result.translation, result.audio);
-    } catch (err) {
-      console.error('❌ Manual preview error:', err);
-    }
-  };
-  */
   acceptBtn.onclick = async () => {
     if (!moderatorSuggestion) return;
 
@@ -325,6 +265,53 @@ document.addEventListener("DOMContentLoaded", () => {
       setPreview(result.text, result.translation, result.audio);
     } catch (err) {
       console.error('❌ Auto-preview on Accept failed:', err);
+    }
+  };
+  */
+  acceptBtn.onclick = async () => {
+    if (!moderatorSuggestion) return;
+
+    const match = moderatorSuggestion.match(/"([^"]+)"/);
+    const cleanText = match ? match[1] : moderatorSuggestion;
+
+    textInput.value = cleanText;
+    moderatorSuggestion = '';
+    acceptBtn.style.display = 'none';
+
+    // 🔒 Temporarily disable Send button to prevent premature send
+    sendBtn.disabled = true;
+    sendBtn.style.opacity = 0.5;
+    sendBtn.style.pointerEvents = 'none';
+
+    try {
+      // Optional: remoderate, or skip if already done
+      const modRes = await fetch('/moderate-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanText })
+      });
+
+      const { needsCorrection, suggestedText } = await modRes.json();
+      if (needsCorrection) {
+        console.log("✅ Already moderated once — skipping reapply for now");
+      }
+
+      // 🔁 Re-translate after Accept
+      const res = await fetch('/manual-translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanText, targetLang: 'es' })
+      });
+
+      const result = await res.json();
+      setPreview(result.text, result.translation, result.audio);
+    } catch (err) {
+      console.error('❌ Auto-preview on Accept failed:', err);
+    } finally {
+      // ✅ Re-enable Send button no matter what
+      sendBtn.disabled = false;
+      sendBtn.style.opacity = 1;
+      sendBtn.style.pointerEvents = 'auto';
     }
   };
 
