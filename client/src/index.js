@@ -21,12 +21,12 @@ document.addEventListener("DOMContentLoaded", () => {
   let latestTranscript = '';
   let latestAudio = '';
   let latestLanguage = '';
+  let moderatorSuggestion = '';
   let previewActive = false;
 
   let mediaRecorder;
   let audioChunks = [];
   let isRecording = false;
-  let moderatorSuggestion = '';
 
   // 🎤 Mic recording toggle
   micBtn.onclick = () => {
@@ -244,7 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!moderatorSuggestion) return;
     textInput.value = moderatorSuggestion;
     moderatorSuggestion = '';
-    //acceptBtn.style.display = 'none';
+    acceptBtn.style.display = 'none'; // re-enable this if you want it to hide again
   };
 
   // ✅ Manual text input (Preview)
@@ -298,12 +298,24 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ text: msg.text })
       });
 
+      /*
       const { needsCorrection, suggestedText } = await res.json();
       if (needsCorrection) {
         console.log(`🤖 Moderator suggestion: "${suggestedText}"`);
         speak(`Did you mean: ${suggestedText}?`);
       } else {
         console.log('✅ Moderator says: transcription looks good');
+      }
+      */
+      const modResult = await res.json();
+      moderatorSuggestion = '';
+
+      if (modResult.needsCorrection && modResult.suggestedText) {
+        moderatorSuggestion = modResult.suggestedText;
+        speak(`Did you mean: ${moderatorSuggestion}?`);
+        document.getElementById('accept-btn').style.display = 'inline-block';
+      } else {
+        document.getElementById('accept-btn').style.display = 'none';
       }
 
       setPreview(msg.text, msg.translation, msg.audio);
