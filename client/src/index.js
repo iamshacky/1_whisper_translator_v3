@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("✅ DOM fully loaded");
 
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  const socket = new WebSocket(`${protocol}://${location.host}/ws?lang=${outputLang}`);
+  //const socket = new WebSocket(`${protocol}://${location.host}/ws?lang=${outputLang}`);
 
 
   const messagesContainer = document.getElementById('messages');
@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let audioChunks = [];
   let isRecording = false;
 
-  const langSelect = document.getElementById('output-lang-select');
+  //const langSelect = document.getElementById('output-lang-select');
   let outputLang = langSelect.value;
 
   if (outputLang === 'auto') {
@@ -43,6 +43,9 @@ document.addEventListener("DOMContentLoaded", () => {
       ? navigator.language.split('-')[0] || 'en'
       : langSelect.value;
   });
+
+  const roomId = new URLSearchParams(location.search).get('room') || 'default';
+  const socket = new WebSocket(`${protocol}://${location.host}/ws?lang=${outputLang}&room=${roomId}`);
 
 
   // 🎤 Mic recording toggle
