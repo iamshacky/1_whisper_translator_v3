@@ -244,7 +244,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!moderatorSuggestion) return;
     textInput.value = moderatorSuggestion;
     moderatorSuggestion = '';
-    acceptBtn.style.display = 'none';
+    //acceptBtn.style.display = 'none';
   };
 
   // ✅ Manual text input (Preview)
