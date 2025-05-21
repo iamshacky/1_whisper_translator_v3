@@ -29,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let audioChunks = [];
   let isRecording = false;
 
+  const langSelect = document.getElementById('output-lang-select'); // ✅ FIRST
   let outputLang = langSelect.value;
 
   if (outputLang === 'auto') {
