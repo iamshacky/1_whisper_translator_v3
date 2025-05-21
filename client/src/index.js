@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (outputLang === 'auto') {
     const browserLang = navigator.language.split('-')[0]; // e.g., 'en-US' → 'en'
     outputLang = browserLang || 'en';
-  }
+  } 
 
   // Save language when changed
   langSelect.addEventListener('change', () => {
