@@ -6,8 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("✅ DOM fully loaded");
 
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-
-
+  const socket = new WebSocket(`${protocol}://${location.host}/ws`);
 
   const messagesContainer = document.getElementById('messages');
   const previewContainer = document.getElementById('preview');
@@ -28,25 +27,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let mediaRecorder;
   let audioChunks = [];
   let isRecording = false;
-
-  const langSelect = document.getElementById('output-lang-select'); // ✅ FIRST
-  let outputLang = langSelect.value;
-
-  if (outputLang === 'auto') {
-    const browserLang = navigator.language.split('-')[0]; // e.g., 'en-US' → 'en'
-    outputLang = browserLang || 'en';
-  } 
-
-  // Save language when changed
-  langSelect.addEventListener('change', () => {
-    outputLang = langSelect.value === 'auto'
-      ? navigator.language.split('-')[0] || 'en'
-      : langSelect.value;
-  });
-
-  const roomId = new URLSearchParams(location.search).get('room') || 'default';
-  const socket = new WebSocket(`${protocol}://${location.host}/ws?lang=${outputLang}&room=${roomId}`);
-
 
   // 🎤 Mic recording toggle
   micBtn.onclick = () => {
@@ -251,7 +231,43 @@ document.addEventListener("DOMContentLoaded", () => {
   deleteBtn.onclick = () => clearPreview();
 
   const acceptBtn = document.getElementById('accept-btn');
+  /*
+  acceptBtn.onclick = async () => {
+    if (!moderatorSuggestion) return;
 
+    const match = moderatorSuggestion.match(/"([^"]+)"/);
+    const cleanText = match ? match[1] : moderatorSuggestion;
+
+    textInput.value = cleanText;
+    moderatorSuggestion = '';
+    acceptBtn.style.display = 'none';
+
+    // 🔁 Auto-run Preview logic
+    try {
+      const modRes = await fetch('/moderate-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanText })
+      });
+
+      const { needsCorrection, suggestedText } = await modRes.json();
+      if (needsCorrection) {
+        console.log("✅ Already moderated once — skipping again for simplicity.");
+      }
+
+      const res = await fetch('/manual-translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanText, targetLang: 'es' })
+      });
+
+      const result = await res.json();
+      setPreview(result.text, result.translation, result.audio);
+    } catch (err) {
+      console.error('❌ Auto-preview on Accept failed:', err);
+    }
+  };
+  */
   acceptBtn.onclick = async () => {
     if (!moderatorSuggestion) return;
 
@@ -280,10 +296,11 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log("✅ Already moderated once — skipping reapply for now");
       }
 
+      // 🔁 Re-translate after Accept
       const res = await fetch('/manual-translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: manualInput, targetLang: outputLang })
+        body: JSON.stringify({ text: cleanText, targetLang: 'es' })
       });
 
       const result = await res.json();

@@ -3,7 +3,7 @@ export const DEFAULT_INPUT_LANG = 'en';    // Used when SELECT_LANGUAGE_MODE is 
 export const DEFAULT_TARGET_LANG = 'es';   // Spanish as output
 
 // === Speech Output Settings ===
-export const SPEECH_MODE = 'tts'; // Options: 'tts', 'synthesis'
+export const SPEECH_MODE = 'synthesis'; // Options: 'tts', 'synthesis'
 
 // Who should hear the audio? sender | receiver | both | none
-export const PLAY_AUDIO_ON = 'receiver';
+export const PLAY_AUDIO_ON = 'sender';
