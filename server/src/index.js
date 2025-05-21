@@ -19,10 +19,13 @@ const wss = new WebSocketServer({ server });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '../../');
 
-// Static serving
-//app.use(express.static(path.join(rootDir, 'client')));
-//app.use('/src', express.static(path.join(rootDir, 'client', 'src')));
 app.use(express.static(path.join(rootDir, 'client')));
+
+/** Module: settings_panel **/
+import settingsPanel from '../modules/settings_panel/index.js'; // 
+app.use('/api/settings', settingsPanel); // ✅ Mount plugin endpoint
+
+
 
 
 app.use(express.json());

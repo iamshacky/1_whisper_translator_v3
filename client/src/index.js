@@ -327,15 +327,6 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ text: msg.text })
       });
 
-      /*
-      const { needsCorrection, suggestedText } = await res.json();
-      if (needsCorrection) {
-        console.log(`🤖 Moderator suggestion: "${suggestedText}"`);
-        speak(`Did you mean: ${suggestedText}?`);
-      } else {
-        console.log('✅ Moderator says: transcription looks good');
-      }
-      */
       const modResult = await res.json();
       moderatorSuggestion = '';
 
@@ -360,4 +351,40 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
   };
+
+  
+  // plugin - settings panel
+  const debugToggle = document.getElementById('debug-toggle');
+  const debugPanel = document.getElementById('debug-panel');
+
+  debugToggle.onclick = () => {
+    debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+  };
+
+  async function loadSettings() {
+    const res = await fetch('/api/settings');
+    const cfg = await res.json();
+    document.getElementById('cfg-targetLang').value = cfg.targetLang;
+    document.getElementById('cfg-speechMode').value = cfg.speechMode;
+    document.getElementById('cfg-playAudioOn').value = cfg.playAudioOn;
+  }
+
+  document.getElementById('cfg-save').onclick = async () => {
+    const newCfg = {
+      targetLang: document.getElementById('cfg-targetLang').value,
+      speechMode: document.getElementById('cfg-speechMode').value,
+      playAudioOn: document.getElementById('cfg-playAudioOn').value
+    };
+    const res = await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCfg)
+    });
+    alert('✅ Settings saved.');
+  };
+
+  loadSettings();
+
+
+
 });
