@@ -131,3 +131,37 @@ button:hover {
 #chat-btn:hover {
   background: #138496;
 }
+
+
+
+
+
+
+/* Debug panel */
+
+#debug-toggle {
+  position: fixed;
+  bottom: 120px; /* 👈 move it up from the very bottom */
+  left: 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+#debug-panel {
+  position: fixed;
+  bottom: 20px; /* 👈 lift the panel a bit */
+  left: 20px;
+  background: white;
+  border: 2px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 999;
+  max-width: 280px;
+}
+

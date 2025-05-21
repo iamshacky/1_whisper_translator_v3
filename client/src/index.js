@@ -361,30 +361,64 @@ document.addEventListener("DOMContentLoaded", () => {
     debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
   };
 
+  // Load settings from localStorage (fallback to server if missing)
   async function loadSettings() {
-    const res = await fetch('/api/settings');
-    const cfg = await res.json();
+    let cfg;
+    const saved = localStorage.getItem('whisper-settings');
+    if (saved) {
+      console.log("📦 Loaded settings from localStorage");
+      cfg = JSON.parse(saved);
+    } else {
+      try {
+        const res = await fetch('/api/settings');
+        cfg = await res.json();
+        console.log("🌐 Loaded settings from server");
+      } catch (err) {
+        console.warn("⚠️ Failed to load settings from server:", err);
+        cfg = {
+          targetLang: 'es',
+          speechMode: 'synthesis',
+          playAudioOn: 'both'
+        };
+      }
+    }
+
+    // Populate form
     document.getElementById('cfg-targetLang').value = cfg.targetLang;
     document.getElementById('cfg-speechMode').value = cfg.speechMode;
     document.getElementById('cfg-playAudioOn').value = cfg.playAudioOn;
   }
 
+  // Save settings to server + localStorage, then reload
   document.getElementById('cfg-save').onclick = async () => {
     const newCfg = {
       targetLang: document.getElementById('cfg-targetLang').value,
       speechMode: document.getElementById('cfg-speechMode').value,
       playAudioOn: document.getElementById('cfg-playAudioOn').value
     };
-    const res = await fetch('/api/settings', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCfg)
-    });
-    alert('✅ Settings saved.');
+
+    // Save to localStorage immediately
+    localStorage.setItem('whisper-settings', JSON.stringify(newCfg));
+
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCfg)
+      });
+
+      if (res.ok) {
+        alert('✅ Settings saved. Reloading...');
+        window.location.reload(); // Apply new settings immediately
+      } else {
+        alert('⚠️ Server rejected settings update.');
+      }
+    } catch (err) {
+      console.error("❌ Failed to save settings:", err);
+      alert('❌ Failed to save settings.');
+    }
   };
 
   loadSettings();
-
-
 
 });
