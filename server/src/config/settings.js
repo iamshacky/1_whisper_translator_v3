@@ -6,4 +6,4 @@ export const DEFAULT_TARGET_LANG = 'es';   // Spanish as output
 export const SPEECH_MODE = 'synthesis'; // Options: 'tts', 'synthesis'
 
 // Who should hear the audio? sender | receiver | both | none
-export const PLAY_AUDIO_ON = 'sender';
+export const PLAY_AUDIO_ON = 'both';
