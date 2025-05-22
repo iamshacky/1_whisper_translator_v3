@@ -32,4 +32,9 @@ router.patch('/', (req, res) => {
   res.json({ success: true, config: newSettings });
 });
 
+// Serve settings panel HTML for injection
+router.get('/ui', (req, res) => {
+  res.sendFile(path.join(__dirname, 'panel.html'));
+});
+
 export default router;

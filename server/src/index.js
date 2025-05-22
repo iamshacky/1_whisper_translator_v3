@@ -21,14 +21,29 @@ const rootDir = path.resolve(__dirname, '../../');
 
 app.use(express.static(path.join(rootDir, 'client')));
 
-/** Module: settings_panel **/
-import settingsPanel from '../modules/settings_panel/index.js'; // 
-app.use('/api/settings', settingsPanel); // ✅ Mount plugin endpoint
 
-
-
-
+/** 🔧 Core Middleware **/
 app.use(express.json());
+app.use(express.static(path.join(rootDir, 'client')));
+
+/** 🔌 Modules & Plugins **/
+
+// settings_panel module
+import settingsPanel from '../../modules/settings_panel/server/index.js';
+app.use('/api/settings', settingsPanel);
+app.use('/plugin/settings-panel', express.static(
+  path.join(rootDir, 'modules', 'settings_panel', 'client')
+));
+
+// webRTC module (or other future modules)
+/*
+import webRTC from '../../modules/webRTC/server/index.js';
+app.use('/api/webrtc', webRTC);
+app.use('/plugin/webrtc', express.static(
+  path.join(rootDir, 'modules', 'webRTC', 'client')
+));
+*/
+/** 🔌 End of Modules & Plugins Section **/
 
 const clients = new Set();
 

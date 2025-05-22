@@ -1,7 +1,7 @@
 {
   "targetLang": "es",
   "speechMode": "synthesis",
-  "playAudioOn": "both",
+  "playAudioOn": "sender",
   "moderatorVoiceSpeed": 1,
   "profanityMode": "none"
 }

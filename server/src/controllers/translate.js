@@ -22,12 +22,8 @@ export async function translateController(audioBuffer, targetLang) {
 
     console.log("✅ Cleaned transcript text:", transcriptText);
 
-    
-    //const detectedLang = await detectLanguage(transcriptText); // 🧠 Detect language
-    //const translated = await translateText(transcriptText, detectedLang, targetLang); // 🧠 Translate
     const sourceLang = SELECT_LANGUAGE_MODE ? DEFAULT_INPUT_LANG : await detectLanguage(transcriptText);
     const translated = await translateText(transcriptText, sourceLang, targetLang);
-
 
     const audioBase64 = await textToSpeech(translated, 'nova'); // 🔊 Generate TTS audio
 

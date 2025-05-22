@@ -1,0 +1,21 @@
+<!-- settings_panel/panel.html -->
+<button id="debug-toggle">⚙️</button>
+<div id="debug-panel" style="display:none;">
+  <h3>🛠️ Settings</h3>
+  <label>Target Lang: <input id="cfg-targetLang" /></label><br />
+  <label>Speech Mode:
+    <select id="cfg-speechMode">
+      <option value="tts">TTS</option>
+      <option value="synthesis">Synthesis</option>
+    </select>
+  </label><br />
+  <label>Play Audio On:
+    <select id="cfg-playAudioOn">
+      <option value="both">Both</option>
+      <option value="sender">Sender</option>
+      <option value="receiver">Receiver</option>
+      <option value="none">None</option>
+    </select>
+  </label><br />
+  <button id="cfg-save">Save</button>
+</div>

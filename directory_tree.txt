@@ -1,7 +1,7 @@
 
-file: C:\xampp\htdocs\project1\1_whisper_translator_v3\directory_tree.txt
-davepass@Dave MINGW64 /c/xampp/htdocs/project1/1_whisper_translator_v3 (main)
-$ find . \( -name node_modules -o -name notes -o -name .git \) -prune -o -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'
+#directory_tree 
+
+/c/xampp/htdocs/project1/1_whisper_translator_v3 (main)
 .
 |____.env
 |____.env.example
@@ -13,13 +13,25 @@ $ find . \( -name node_modules -o -name notes -o -name .git \) -prune -o -print 
 | | |____favicon.ico
 | |____src
 | | |____index.js
+| | |____settings.js
 | | |____style.css
 |____config
 | |____languages.json
+|____directory_tree.txt
 |____docker
 | |____Dockerfile.client
 | |____Dockerfile.server
 |____LICENSE
+|____modules
+| |____settings_panel
+| | |____client
+| | | |____audio.js
+| | | |____ui.js
+| | |____server
+| | | |____config.json
+| | | |____defaults.js
+| | | |____index.js
+| | | |____panel.html
 |____package-lock.json
 |____package.json
 |____README.md
@@ -28,6 +40,8 @@ $ find . \( -name node_modules -o -name notes -o -name .git \) -prune -o -print 
 | |____scaffold.ps1
 |____server
 | |____src
+| | |____config
+| | | |____settings.js
 | | |____controllers
 | | | |____translate.js
 | | | |____wsHandler.js
@@ -36,6 +50,6 @@ $ find . \( -name node_modules -o -name notes -o -name .git \) -prune -o -print 
 | | | |____auth.js
 | | |____services
 | | | |____openaiService.js
+| | | |____translationService.js
 | | |____utils
 | | | |____bufferQueue.js
-/#file

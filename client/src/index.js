@@ -1,4 +1,4 @@
-﻿﻿import { SPEECH_MODE, PLAY_AUDIO_ON } from './settings.js';
+﻿﻿import { SP_maybePlayAudio } from '/plugin/settings-panel/audio.js';
 
 ﻿console.log("✅ index.js loaded");
 
@@ -86,22 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const now = new Date();
     return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
-  /*
-  function setPreview(text, lang, audio) {
-    previewActive = true;
-    latestTranscript = text;
-    latestLanguage = lang;
-    latestAudio = audio;
-
-    textPreview.innerHTML = `
-      <div><strong>You said:</strong> ${text}</div>
-      <div><strong>Translation:</strong> ${lang}</div>
-    `;
-    sendBtn.style.display = 'inline-block';  // Always show Send after preview
-
-    previewContainer.style.display = 'block';
-  }
-  */
+  
   function setPreview(text, lang, audio) {
     previewActive = true;
     latestTranscript = text;
@@ -119,11 +104,20 @@ document.addEventListener("DOMContentLoaded", () => {
     previewContainer.style.display = 'block';
   }
 
+  /*
   function clearPreview() {
     previewActive = false;
     textPreview.innerHTML = '';
     previewContainer.style.display = 'none';
     sendBtn.style.display = 'none';
+  }
+  */
+  function clearPreview() {
+    previewActive = false;
+    textPreview.innerHTML = '';
+    previewContainer.style.display = 'none';
+    sendBtn.style.display = 'none';
+    textInput.value = ''; 
   }
 
   function addMessage({ text, translation, audio, lang, sender }) {
@@ -153,47 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
     wrapper.append(timestamp, langLabel, label, original, translated);
     messagesContainer.append(wrapper);
 
-    /*
-    if (sender === 'they') {
-      if (audio) {
-        const audioEl = new Audio(`data:audio/mpeg;base64,${audio}`);
-        audioEl.play();
-      } else {
-        speak(translation, lang.split('→')[1]?.trim() || 'en');
-      }
-    }
-    */
-
-    /*
-    const isReceiver = sender === 'they';
-    const shouldPlay =
-      PLAY_AUDIO_ON === 'both' ||
-      (PLAY_AUDIO_ON === 'receiver' && isReceiver) ||
-      (PLAY_AUDIO_ON === 'sender' && !isReceiver);
-
-    if (shouldPlay) {
-      if (SPEECH_MODE === 'tts' && audio) {
-        const audioEl = new Audio(`data:audio/mpeg;base64,${audio}`);
-        audioEl.play().catch((err) => console.warn('🔇 Autoplay blocked:', err));
-      } else if (SPEECH_MODE === 'synthesis') {
-        speak(translation, lang.split('→')[1]?.trim() || 'en');
-      }
-    }
-    */
-    const isReceiver = sender === 'they';
-    const shouldPlay =
-      PLAY_AUDIO_ON === 'both' ||
-      (PLAY_AUDIO_ON === 'receiver' && isReceiver) ||
-      (PLAY_AUDIO_ON === 'sender' && !isReceiver);
-
-    if (shouldPlay) {
-      if (SPEECH_MODE === 'tts' && audio) {
-        const audioEl = new Audio(`data:audio/mpeg;base64,${audio}`);
-        audioEl.play().catch((err) => console.warn('🔇 Autoplay blocked:', err));
-      } else if (SPEECH_MODE === 'synthesis') {
-        speak(translation, lang.split('→')[1]?.trim() || 'en');
-      }
-    }
+    SP_maybePlayAudio({ audio, translation, sender, lang });
   }
 
   // ✅ Send button (for previewed content)
@@ -211,12 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
 
       socket.send(JSON.stringify(message));
-      /*
-      addMessage({
-        ...message,
-        lang: latestLanguage
-      });
-      */
+
       addMessage({
         text: latestTranscript,
         translation: latestLanguage,
@@ -231,43 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
   deleteBtn.onclick = () => clearPreview();
 
   const acceptBtn = document.getElementById('accept-btn');
-  /*
-  acceptBtn.onclick = async () => {
-    if (!moderatorSuggestion) return;
 
-    const match = moderatorSuggestion.match(/"([^"]+)"/);
-    const cleanText = match ? match[1] : moderatorSuggestion;
-
-    textInput.value = cleanText;
-    moderatorSuggestion = '';
-    acceptBtn.style.display = 'none';
-
-    // 🔁 Auto-run Preview logic
-    try {
-      const modRes = await fetch('/moderate-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText })
-      });
-
-      const { needsCorrection, suggestedText } = await modRes.json();
-      if (needsCorrection) {
-        console.log("✅ Already moderated once — skipping again for simplicity.");
-      }
-
-      const res = await fetch('/manual-translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText, targetLang: 'es' })
-      });
-
-      const result = await res.json();
-      setPreview(result.text, result.translation, result.audio);
-    } catch (err) {
-      console.error('❌ Auto-preview on Accept failed:', err);
-    }
-  };
-  */
   acceptBtn.onclick = async () => {
     if (!moderatorSuggestion) return;
 
@@ -315,6 +228,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
 
+  previewTextBtn.onclick = async () => {
+    const typedText = textInput.value.trim();
+    if (!typedText) return;
+
+    // Optional: you can show a loading indicator here
+
+    try {
+      const res = await fetch('/manual-translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: typedText, targetLang: 'es' }) // Optional: dynamic lang?
+      });
+
+      const result = await res.json();
+      setPreview(result.text, result.translation, result.audio);
+    } catch (err) {
+      console.error('❌ Preview (manual re-translate) failed:', err);
+      alert('❌ Failed to preview translation.');
+    }
+  };
+
   socket.onmessage = async (event) => {
     const msg = JSON.parse(event.data);
 
@@ -351,74 +285,4 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
   };
-
-  
-  // plugin - settings panel
-  const debugToggle = document.getElementById('debug-toggle');
-  const debugPanel = document.getElementById('debug-panel');
-
-  debugToggle.onclick = () => {
-    debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
-  };
-
-  // Load settings from localStorage (fallback to server if missing)
-  async function loadSettings() {
-    let cfg;
-    const saved = localStorage.getItem('whisper-settings');
-    if (saved) {
-      console.log("📦 Loaded settings from localStorage");
-      cfg = JSON.parse(saved);
-    } else {
-      try {
-        const res = await fetch('/api/settings');
-        cfg = await res.json();
-        console.log("🌐 Loaded settings from server");
-      } catch (err) {
-        console.warn("⚠️ Failed to load settings from server:", err);
-        cfg = {
-          targetLang: 'es',
-          speechMode: 'synthesis',
-          playAudioOn: 'both'
-        };
-      }
-    }
-
-    // Populate form
-    document.getElementById('cfg-targetLang').value = cfg.targetLang;
-    document.getElementById('cfg-speechMode').value = cfg.speechMode;
-    document.getElementById('cfg-playAudioOn').value = cfg.playAudioOn;
-  }
-
-  // Save settings to server + localStorage, then reload
-  document.getElementById('cfg-save').onclick = async () => {
-    const newCfg = {
-      targetLang: document.getElementById('cfg-targetLang').value,
-      speechMode: document.getElementById('cfg-speechMode').value,
-      playAudioOn: document.getElementById('cfg-playAudioOn').value
-    };
-
-    // Save to localStorage immediately
-    localStorage.setItem('whisper-settings', JSON.stringify(newCfg));
-
-    try {
-      const res = await fetch('/api/settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newCfg)
-      });
-
-      if (res.ok) {
-        alert('✅ Settings saved. Reloading...');
-        window.location.reload(); // Apply new settings immediately
-      } else {
-        alert('⚠️ Server rejected settings update.');
-      }
-    } catch (err) {
-      console.error("❌ Failed to save settings:", err);
-      alert('❌ Failed to save settings.');
-    }
-  };
-
-  loadSettings();
-
 });

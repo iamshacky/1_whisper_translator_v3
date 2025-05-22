@@ -27,28 +27,25 @@
   <button id="chat-btn">💬</button>
 
   <!-- plugin - settings panel -->
-  <button id="debug-toggle">⚙️</button>
-  <div id="debug-panel" style="display:none;">
-    <h3>🛠️ Settings</h3>
-    <label>Target Lang: <input id="cfg-targetLang" /></label><br />
-    <label>Speech Mode:
-      <select id="cfg-speechMode">
-        <option value="tts">TTS</option>
-        <option value="synthesis">Synthesis</option>
-      </select>
-    </label><br />
-    <label>Play Audio On:
-      <select id="cfg-playAudioOn">
-        <option value="both">Both</option>
-        <option value="sender">Sender</option>
-        <option value="receiver">Receiver</option>
-        <option value="none">None</option>
-      </select>
-    </label><br />
-    <button id="cfg-save">Save</button>
-  </div>
+  <script type="module">
+    /*
+    import { SP_bindSettingsPanelEvents, SP_loadSettingsToForm } from '/plugin/settings-panel/ui.js';
 
-  
+    fetch('/api/settings/ui')
+      .then(res => res.text())
+      .then(html => {
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        document.body.appendChild(container);
+        SP_bindSettingsPanelEvents();
+        SP_loadSettingsToForm(); // ✅ Load values into form after injection
+      });
+      */
+  </script>
+
+  <!-- plugin - settings panel -->
+  <script type="module" src="/plugin/settings-panel/init.js"></script>
+
   <script type="module" src="src/index.js"></script>
 </body>
 </html>
