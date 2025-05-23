@@ -1,68 +1,31 @@
-﻿Perfect — here are both files ready to drop into your project:
+﻿
+## 🧠 Whisper Translator – v4.05 (Backup @ 05-23, 3:41am)
+
+### ✅ Recently Added Features
+
+- **Manual Input Language Override**  
+  Users can now select a specific language they are speaking, instead of relying on auto-detect.  
+  Great for short utterances or ambiguous phrases where language detection might fail.
+
+- **Settings Panel Updates**  
+  UI now reflects the manual vs auto language selection clearly, with new dropdowns:
+  - Input Language Mode: `Auto` or `Manual`
+  - Manual Input Language: (only shown when Manual mode is selected)
+
+- **Code Cleanup + Modularization**  
+  Replaced old inline WebSocket handler in `index.js` with modular `setupWebSocket()` from `wsHandler.js`, allowing future scalability (e.g., rooms, per-client settings).
 
 ---
 
-### ✅ `README.md`
+### 🧪 About to Be Added (After This Backup)
 
-````markdown
-# Whisper Translator v3
+- **Language Code Labels (e.g. `en → de`)**  
+  Each message will display a code indicating what language it was translated from and to.  
+  Useful for debugging and verifying assumptions in multilingual conversations.
 
-A hands-free, real-time voice-to-voice translator powered by OpenAI's Whisper and GPT-4o. Designed for multilingual environments like warehouses and workplaces.
+- **Future Label Visibility Toggle (Planned)**  
+  Once per-device output language is added, these labels may become misleading or redundant.  
+  Will add an option in the upcoming Main Settings section to hide/show these labels.
 
-## 🌐 Live Demo
-
-I don't want to put the url because if a lot of people test it it could cost me money. I'll post a video later to demo it. You can also just deploy this yourself.
-
-## 🔧 Features
-
-- 🎙️ Voice input with Whisper transcription
-- 🌍 Instant translation via GPT-4o
-- 🔈 Auto-generated speech with OpenAI TTS
-- 🤖 GPT moderation for speech errors (e.g., "Did you mean...")
-- 📱 Real-time sync across devices using WebSockets
-- ⏱️ Timestamps + language labels
-- 👂 Auto-play audio on receive — no clicking needed
-- 🔄 Re-translate or delete preview before sending
-
-## 📦 Setup
-
-```bash
-# clone the repo
-git clone https://github.com/YOUR_USERNAME/1whispertranslator-v3.git
-cd 1whispertranslator-v3
-
-# install dependencies
-npm install
-
-# start server (adjust for Railway or local needs)
-node server.js
-````
-
-## 🚀 Deployment
-
-Deployed on [Railway](https://railway.app/) using Node.js.
-
-## 🔐 Environment Variables
-
-Create a `.env` file in the root with the following:
-
-```env
-OPENAI_API_KEY=your-openai-api-key
-```
-
-## 🛠 Project Structure
-
-```
-client/         # Frontend files (HTML/CSS/JS)
-server/         # WebSocket and transcription backend
-server.js       # Alt version of the backend (standalone variant)
-config/         # Language settings
-```
-
-## 📄 License
-
-MIT
-
-````
-
----
+- **Per-Device Output Language Support (Next Feature)**  
+  Each client will be able to receive messages in their own preferred language, regardless of the speaker’s selected target language.

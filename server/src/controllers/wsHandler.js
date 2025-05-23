@@ -1,5 +1,4 @@
-﻿// server/src/controllers/wsHandler.js
-import WebSocket from 'ws';
+﻿import WebSocket from 'ws';
 import { translateController } from './translate.js';
 import { randomUUID } from 'crypto';
 
@@ -13,7 +12,6 @@ export function setupWebSocket(wss) {
     const clientId   = url.searchParams.get('clientId') || randomUUID();
     ws.clientId      = clientId;
 
-    // join the room
     if (!rooms.has(roomId)) rooms.set(roomId, new Set());
     rooms.get(roomId).add(ws);
 
@@ -22,36 +20,46 @@ export function setupWebSocket(wss) {
 
       try {
         if (isBinary) {
-          // preview step: transcribe, translate, TTS
+          /*
           const { text, translation, audio } = await translateController(
             Buffer.from(message),
             targetLang
           );
 
           const payload = {
-            speaker:    'you',
-            original:   text,
-            translation,
-            ...(audio ? { audio } : {})     // only include audio if non-empty
-          };
-
-          console.log("[WS] sending preview back:", {
+            type: 'preview',
             text,
             translation,
-            audio: audio ? `${audio.slice(0,20)}…` : "(none)"
-          });
-          ws.send(JSON.stringify(payload));
+            audio
+          };
+          */
+          const { text, translation, audio, sourceLang } = await translateController(
+            Buffer.from(message),
+            targetLang
+          );
 
+          const payload = {
+            type: 'preview',
+            text,
+            translation,
+            audio,
+            langCode: `${sourceLang} → ${targetLang}`
+          };
+
+
+          ws.send(JSON.stringify(payload));
         } else {
-          // final chat broadcast
-          const { original, translation, clientId: senderId } = JSON.parse(message);
+          const { text, translation, audio } = JSON.parse(message);
+
           for (const client of rooms.get(roomId)) {
             if (client.readyState !== WebSocket.OPEN) continue;
             client.send(JSON.stringify({
-              speaker:    client === ws ? 'you' : 'them',
-              original,
+              type: 'final',
+              text,
               translation,
-              clientId: senderId
+              audio,
+              sender: client === ws ? 'me' : 'they',
+              langCode: `${sourceLang} → ${targetLang}`
             }));
           }
         }
