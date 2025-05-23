@@ -48,7 +48,7 @@ export function setupWebSocket(wss) {
 
 
           ws.send(JSON.stringify(payload));
-        } else {
+        } else { /**/ 
           const { text, translation, audio } = JSON.parse(message);
 
           for (const client of rooms.get(roomId)) {
