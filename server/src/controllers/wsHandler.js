@@ -17,19 +17,16 @@ export function setupWebSocket(wss) {
     const clientId   = url.searchParams.get('clientId') || randomUUID();
     ws.clientId      = clientId;
 
-    // join the room
+    // Join the room
     if (!rooms.has(roomId)) rooms.set(roomId, new Set());
     rooms.get(roomId).add(ws);
-    ws.roomId = roomId; // ✅ Needed for broadcasting
+    ws.roomId = roomId;
 
     ws.on('message', async (message, isBinary) => {
       console.log(`[WS] got ${isBinary ? 'binary' : 'text'} from ${clientId}`);
 
       try {
         if (isBinary) {
-          //import fs from 'fs/promises';
-          //import path from 'path';
-          //import { fileURLToPath } from 'url';
           const __dirname = path.dirname(fileURLToPath(import.meta.url));
           const rootDir = path.resolve(__dirname, '../../../');
           const configPath = path.join(rootDir, 'modules', 'settings_panel', 'server', 'config.json');
@@ -45,7 +42,7 @@ export function setupWebSocket(wss) {
           } catch (err) {
             console.warn("⚠️ Could not read language config. Falling back.");
           }
-          // preview step: transcribe, translate, TTS
+
           const { text, translation, audio, detectedLang } = await translateController(
             Buffer.from(message),
             targetLang,
@@ -55,54 +52,44 @@ export function setupWebSocket(wss) {
 
           const payload = {
             type: 'preview',
-            text: text,
-            translation: translation,
+            text,
+            translation,
             audio: audio || null,
-            detectedLang: detectedLang // ✅ ← Add this line explicitly
+            detectedLang
           };
 
           console.log("[WS] sending preview back:", {
             text,
             translation,
-            audio: audio ? `${audio.slice(0,20)}…` : "(none)"
+            audio: audio ? `${audio.slice(0, 20)}…` : "(none)"
           });
+
           ws.send(JSON.stringify(payload));
 
-        /*
         } else {
-          // final chat broadcast
-          const { original, translation, clientId: senderId } = JSON.parse(message);
-          for (const client of rooms.get(roomId)) {
-            if (client.readyState !== WebSocket.OPEN) continue;
-            client.send(JSON.stringify({
-              speaker:    client === ws ? 'you' : 'them',
-              original,
-              translation,
-              clientId: senderId
-            }));
-          }
-        }
-        */
-        } else {
-          const { original, translation, clientId: senderId, warning = '' } = JSON.parse(message);
-
-          const broadcastMessage = JSON.stringify({
-            speaker: 'them',
-            original,
-            translation,
-            warning
-          });
+          // final message (broadcast)
+          const { text, translation, warning = '', clientId: senderId } = JSON.parse(message);
 
           const ownMessage = JSON.stringify({
+            type: 'final',
             speaker: 'you',
-            original,
+            text,
             translation,
-            warning
+            warning,
+            clientId: senderId
+          });
+
+          const broadcastMessage = JSON.stringify({
+            type: 'final',
+            speaker: 'them',
+            text,
+            translation,
+            warning,
+            clientId: senderId
           });
 
           for (const client of rooms.get(ws.roomId || 'default') || []) {
             if (client.readyState !== WebSocket.OPEN) continue;
-
             client.send(client === ws ? ownMessage : broadcastMessage);
           }
         }

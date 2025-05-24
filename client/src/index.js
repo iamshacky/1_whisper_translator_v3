@@ -111,7 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
     latestTranscript = text;
     latestLanguage = lang;
     latestAudio = audio;
-    latestWarning = warning; // ✅ Store for use in final message
+    latestWarning = warning; 
 
     const warningHTML = warning
       ? `<div class="lang-warning">⚠️ ${warning}</div>`
@@ -136,44 +136,6 @@ document.addEventListener("DOMContentLoaded", () => {
     textInput.value = ''; 
   }
 
-  /*
-  function addMessage({ text, translation, audio, lang, sender, warning }) {
-    const wrapper = document.createElement('div');
-    wrapper.className = `msg ${sender}`;
-
-    const timestamp = document.createElement('div');
-    timestamp.className = 'timestamp';
-    timestamp.textContent = formatTimestamp();
-
-    const langLabel = document.createElement('div');
-    langLabel.className = 'lang-label';
-    langLabel.textContent = lang;
-
-    const label = document.createElement('div');
-    label.className = 'label';
-    label.textContent = sender === 'me' ? 'You said:' : 'They said:';
-
-    const original = document.createElement('div');
-    original.className = 'original';
-    original.textContent = text;
-
-    const translated = document.createElement('div');
-    translated.className = 'translated';
-    translated.textContent = translation;
-
-    if (warning) {
-      const warnEl = document.createElement('div');
-      warnEl.className = 'lang-warning';
-      warnEl.textContent = warning;
-      wrapper.append(warnEl);
-    }
-
-    wrapper.append(timestamp, langLabel, label, original, translated);
-    messagesContainer.append(wrapper);
-
-    SP_maybePlayAudio({ audio, translation, sender, lang });
-  }
-  */
   function addMessage({ text, translation, audio, lang, sender, warning = '' }) {
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${sender}`;
@@ -217,15 +179,6 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("📤 Send button clicked");
       if (!previewActive) return;
 
-      /*
-      const message = {
-        type: 'final',
-        text: latestTranscript,
-        translation: latestLanguage,
-        audio: latestAudio,
-        sender: 'me'
-      };
-      */
       const message = {
         type: 'final',
         original: latestTranscript,
@@ -360,22 +313,26 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /*
-    if (msg.type === 'final') {
-      addMessage({
-        text: msg.text,
-        translation: msg.translation,
-        audio: msg.audio,
-        lang: msg.translation,
-        sender: 'they'
-      });
-    }
-    */ 
     if (msg.original && msg.translation) {
       addMessage({
         text: msg.original,
         translation: msg.translation,
         audio: msg.audio || null,
         lang: msg.detectedLang || '',
+        sender: msg.speaker === 'you' ? 'me' : 'they'
+      });
+    }
+    */
+    if (msg.original && msg.translation) {
+      const lang = msg.detectedLang || '';
+      const warning = msg.warning || '';
+
+      addMessage({
+        text: msg.original,
+        translation: msg.translation,
+        audio: msg.audio || null,
+        lang,
+        warning,
         sender: msg.speaker === 'you' ? 'me' : 'they'
       });
     }
