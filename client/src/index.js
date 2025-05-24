@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let moderatorSuggestion = '';
   let previewActive = false;
   let latestWarning = '';
+  let latestDetectedLang = '';
 
   let mediaRecorder;
   let audioChunks = [];
