@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
     textInput.value = ''; 
   }
 
-  function addMessage({ text, translation, audio, lang, sender }) {
+  function addMessage({ text, translation, audio, lang, sender, warning }) {
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${sender}`;
 
@@ -162,6 +162,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const translated = document.createElement('div');
     translated.className = 'translated';
     translated.textContent = translation;
+
+    if (warning) {
+      const warnEl = document.createElement('div');
+      warnEl.className = 'lang-warning';
+      warnEl.textContent = warning;
+      wrapper.append(warnEl);
+    }
 
     wrapper.append(timestamp, langLabel, label, original, translated);
     messagesContainer.append(wrapper);
@@ -189,7 +196,8 @@ document.addEventListener("DOMContentLoaded", () => {
         text: latestTranscript,
         translation: latestLanguage,
         lang: '', // You can fill in language if needed later
-        sender: 'me'
+        sender: 'me',
+        warning: latestWarning || ''
       });
 
       clearPreview();
@@ -327,6 +335,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setPreview(msg.text, msg.translation, msg.audio, langWarning);
     }
 
+    /*
     if (msg.type === 'final') {
       addMessage({
         text: msg.text,
@@ -334,6 +343,16 @@ document.addEventListener("DOMContentLoaded", () => {
         audio: msg.audio,
         lang: msg.translation,
         sender: 'they'
+      });
+    }
+    */ 
+    if (msg.original && msg.translation) {
+      addMessage({
+        text: msg.original,
+        translation: msg.translation,
+        audio: msg.audio || null,
+        lang: msg.detectedLang || '',
+        sender: msg.speaker === 'you' ? 'me' : 'they'
       });
     }
   };
