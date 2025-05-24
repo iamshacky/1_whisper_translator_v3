@@ -315,6 +315,8 @@ document.addEventListener("DOMContentLoaded", () => {
         langWarning = `⚠️ Expected "${expectedLang}", but detected "${msg.detectedLang}"`;
       }
 
+      latestDetectedLang = msg.detectedLang;  // ✅ Save detected language globally
+
       const res = await fetch('/moderate-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
