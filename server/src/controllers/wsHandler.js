@@ -20,6 +20,7 @@ export function setupWebSocket(wss) {
     // join the room
     if (!rooms.has(roomId)) rooms.set(roomId, new Set());
     rooms.get(roomId).add(ws);
+    ws.roomId = roomId; // ✅ Needed for broadcasting
 
     ws.on('message', async (message, isBinary) => {
       console.log(`[WS] got ${isBinary ? 'binary' : 'text'} from ${clientId}`);
@@ -67,6 +68,7 @@ export function setupWebSocket(wss) {
           });
           ws.send(JSON.stringify(payload));
 
+        /*
         } else {
           // final chat broadcast
           const { original, translation, clientId: senderId } = JSON.parse(message);
@@ -78,6 +80,30 @@ export function setupWebSocket(wss) {
               translation,
               clientId: senderId
             }));
+          }
+        }
+        */
+        } else {
+          const { original, translation, clientId: senderId, warning = '' } = JSON.parse(message);
+
+          const broadcastMessage = JSON.stringify({
+            speaker: 'them',
+            original,
+            translation,
+            warning
+          });
+
+          const ownMessage = JSON.stringify({
+            speaker: 'you',
+            original,
+            translation,
+            warning
+          });
+
+          for (const client of rooms.get(ws.roomId || 'default') || []) {
+            if (client.readyState !== WebSocket.OPEN) continue;
+
+            client.send(client === ws ? ownMessage : broadcastMessage);
           }
         }
       } catch (err) {

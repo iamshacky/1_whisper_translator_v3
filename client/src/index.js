@@ -136,6 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
     textInput.value = ''; 
   }
 
+  /*
   function addMessage({ text, translation, audio, lang, sender, warning }) {
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${sender}`;
@@ -172,6 +173,43 @@ document.addEventListener("DOMContentLoaded", () => {
 
     SP_maybePlayAudio({ audio, translation, sender, lang });
   }
+  */
+  function addMessage({ text, translation, audio, lang, sender, warning = '' }) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `msg ${sender}`;
+
+    if (warning) {
+      const warn = document.createElement('div');
+      warn.className = 'lang-warning';
+      warn.textContent = `⚠️ ${warning}`;
+      wrapper.appendChild(warn);
+    }
+
+    const timestamp = document.createElement('div');
+    timestamp.className = 'timestamp';
+    timestamp.textContent = formatTimestamp();
+
+    const langLabel = document.createElement('div');
+    langLabel.className = 'lang-label';
+    langLabel.textContent = lang;
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = sender === 'me' || sender === 'you' ? 'You said:' : 'They said:';
+
+    const original = document.createElement('div');
+    original.className = 'original';
+    original.textContent = text;
+
+    const translated = document.createElement('div');
+    translated.className = 'translated';
+    translated.textContent = translation;
+
+    wrapper.append(timestamp, langLabel, label, original, translated);
+    messagesContainer.append(wrapper);
+
+    SP_maybePlayAudio({ audio, translation, sender, lang });
+  }
 
   // ✅ Send button (for previewed content)
   if (sendBtn) {
@@ -179,6 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("📤 Send button clicked");
       if (!previewActive) return;
 
+      /*
       const message = {
         type: 'final',
         text: latestTranscript,
@@ -186,13 +225,22 @@ document.addEventListener("DOMContentLoaded", () => {
         audio: latestAudio,
         sender: 'me'
       };
+      */
+      const message = {
+        type: 'final',
+        original: latestTranscript,
+        translation: latestLanguage,
+        audio: latestAudio,
+        clientId: socket.clientId || '', // optional fallback
+        warning: latestWarning || ''
+      };
 
       socket.send(JSON.stringify(message));
 
       addMessage({
         text: latestTranscript,
         translation: latestLanguage,
-        lang: '', // You can fill in language if needed later
+        lang: '',
         sender: 'me',
         warning: latestWarning || ''
       });
