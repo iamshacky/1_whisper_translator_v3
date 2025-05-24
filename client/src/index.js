@@ -175,6 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ✅ Send button (for previewed content)
   if (sendBtn) {
+    /*
     sendBtn.onclick = () => {
       console.log("📤 Send button clicked");
       if (!previewActive) return;
@@ -199,6 +200,29 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       clearPreview();
+    };
+    */
+    sendBtn.onclick = () => {
+      const text = moderatorSuggestion || latestTranscript;
+      const translation = latestLanguage;
+      const audio = latestAudio;
+
+      const settings = JSON.parse(localStorage.getItem('whisper-settings') || '{}');
+      const expectedLang = settings.inputLangMode === 'manual' ? settings.manualInputLang : null;
+      const warning = (expectedLang && latestDetectedLang && latestDetectedLang !== expectedLang)
+        ? `Expected "${expectedLang}", but detected "${latestDetectedLang}"`
+        : '';
+
+      socket.send(JSON.stringify({
+        original: text,
+        translation,
+        audio,
+        warning,
+        clientId
+      }));
+
+      sendBtn.style.display = 'none';
+      previewContainer.style.display = 'none';
     };
   }
 
