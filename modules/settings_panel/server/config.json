@@ -1,9 +1,9 @@
 {
   "targetLang": "de",
   "speechMode": "synthesis",
-  "playAudioOn": "sender",
+  "playAudioOn": "receiver",
   "moderatorVoiceSpeed": 1,
   "profanityMode": "none",
   "selectInputLang": true,
-  "inputLang": "es"
+  "inputLang": "fr"
 }

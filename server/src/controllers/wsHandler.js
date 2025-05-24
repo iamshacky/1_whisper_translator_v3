@@ -20,7 +20,6 @@ export function setupWebSocket(wss) {
 
       try {
         if (isBinary) {
-          /*
           const { text, translation, audio } = await translateController(
             Buffer.from(message),
             targetLang
@@ -32,20 +31,6 @@ export function setupWebSocket(wss) {
             translation,
             audio
           };
-          */
-          const { text, translation, audio, sourceLang } = await translateController(
-            Buffer.from(message),
-            targetLang
-          );
-
-          const payload = {
-            type: 'preview',
-            text,
-            translation,
-            audio,
-            langCode: `${sourceLang} → ${targetLang}`
-          };
-
 
           ws.send(JSON.stringify(payload));
         } else {
@@ -58,8 +43,7 @@ export function setupWebSocket(wss) {
               text,
               translation,
               audio,
-              sender: client === ws ? 'me' : 'they',
-              langCode: `${sourceLang} → ${targetLang}`
+              sender: client === ws ? 'me' : 'they'
             }));
           }
         }

@@ -43,19 +43,11 @@ export async function translateController(audioBuffer, targetLang) {
 
     const translated = await translateText(transcriptText, sourceLang, targetLang);
     const audioBase64 = await textToSpeech(translated, 'nova'); // 🔊 Generate TTS audio
-    
-    /*
+
     return {
       text: transcriptText,
       translation: translated,
       audio: audioBase64 || null
-    };
-    */
-    return {
-      text: transcriptText,
-      translation: translated,
-      audio: audioBase64 || null,
-      sourceLang
     };
   } catch (err) {
     console.error("Translation error:", err);

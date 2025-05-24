@@ -6,12 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("✅ DOM fully loaded");
 
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  //const socket = new WebSocket(`${protocol}://${location.host}/ws`);
-  const saved = localStorage.getItem('whisper-settings');
-  const cfg = saved ? JSON.parse(saved) : {};
-  const targetLang = cfg.targetLang || 'es';
-
-  const socket = new WebSocket(`${protocol}://${location.host}/ws?lang=${targetLang}`);
+  const socket = new WebSocket(`${protocol}://${location.host}/ws`);
 
   const messagesContainer = document.getElementById('messages');
   const previewContainer = document.getElementById('preview');
@@ -125,7 +120,6 @@ document.addEventListener("DOMContentLoaded", () => {
     textInput.value = ''; 
   }
 
-  /*
   function addMessage({ text, translation, audio, lang, sender }) {
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${sender}`;
@@ -155,40 +149,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     SP_maybePlayAudio({ audio, translation, sender, lang });
   }
-  */
-  function addMessage({ text, translation, audio, lang, sender, langCode = '' }) {
-    const wrapper = document.createElement('div');
-    wrapper.className = `msg ${sender}`;
-
-    const timestamp = document.createElement('div');
-    timestamp.className = 'timestamp';
-    timestamp.textContent = formatTimestamp();
-
-    const langLabel = document.createElement('div');
-    langLabel.className = 'lang-label';
-    langLabel.textContent = langCode || lang || '';  // updated to prefer langCode
-
-    const label = document.createElement('div');
-    label.className = 'label';
-    label.textContent = sender === 'me' ? 'You said:' : 'They said:';
-
-    const original = document.createElement('div');
-    original.className = 'original';
-    original.textContent = text;
-
-    const translated = document.createElement('div');
-    translated.className = 'translated';
-    translated.textContent = translation;
-
-    wrapper.append(timestamp, langLabel, label, original, translated);
-    messagesContainer.append(wrapper);
-
-    SP_maybePlayAudio({ audio, translation, sender, lang });
-  }
-
 
   // ✅ Send button (for previewed content)
-  /*
   if (sendBtn) {
     sendBtn.onclick = () => {
       console.log("📤 Send button clicked");
@@ -207,42 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
       addMessage({
         text: latestTranscript,
         translation: latestLanguage,
-        lang: '', // can be dropped if unused
-        //langCode: `${manualInputLang || 'auto'} → ${targetLang}`,
-        langCode: `${cfg.inputLang || 'auto'} → ${cfg.targetLang || 'es'}`,
-        sender: 'me'
-      });
-
-      clearPreview();
-    };
-  }
-  */
-  if (sendBtn) {
-    sendBtn.onclick = () => {
-      console.log("📤 Send button clicked");
-      if (!previewActive) return;
-
-      const saved = localStorage.getItem('whisper-settings');
-      const cfg = saved ? JSON.parse(saved) : {};
-      const inputLang = cfg.inputLang || 'auto';
-      const targetLang = cfg.targetLang || 'es';
-
-      const message = {
-        type: 'final',
-        text: latestTranscript,
-        translation: latestLanguage,
-        audio: latestAudio,
-        sender: 'me',
-        langCode: `${inputLang} → ${targetLang}`
-      };
-
-      socket.send(JSON.stringify(message));
-
-      addMessage({
-        text: latestTranscript,
-        translation: latestLanguage,
-        lang: '', // optional
-        langCode: `${inputLang} → ${targetLang}`,
+        lang: '', // You can fill in language if needed later
         sender: 'me'
       });
 
@@ -283,21 +210,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       // 🔁 Re-translate after Accept
-      /*
       const res = await fetch('/manual-translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: cleanText, targetLang: 'es' })
-      });
-      */
-      const saved = localStorage.getItem('whisper-settings');
-      const cfg = saved ? JSON.parse(saved) : {};
-      const targetLang = cfg.targetLang || 'es';
-
-      const res = await fetch('/manual-translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText, targetLang })
       });
 
       const result = await res.json();
@@ -381,7 +297,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       setPreview(msg.text, msg.translation, msg.audio);
     }
-    /*
+
     if (msg.type === 'final') {
       addMessage({
         text: msg.text,
@@ -389,16 +305,6 @@ document.addEventListener("DOMContentLoaded", () => {
         audio: msg.audio,
         lang: msg.translation,
         sender: 'they'
-      });
-    }
-    */
-    if (msg.type === 'final') {
-      addMessage({
-        text: msg.text,
-        translation: msg.translation,
-        audio: msg.audio,
-        sender: 'they',
-        langCode: msg.langCode || '' // pass through from server
       });
     }
   };
