@@ -20,6 +20,19 @@ export function setupWebSocket(wss) {
 
       try {
         if (isBinary) {
+          /*
+          const { text, translation, audio } = await translateController(
+            Buffer.from(message),
+            targetLang
+          );
+
+          const payload = {
+            type: 'preview',
+            text,
+            translation,
+            audio
+          };
+          */
           const { text, translation, audio, sourceLang } = await translateController(
             Buffer.from(message),
             targetLang
@@ -33,9 +46,10 @@ export function setupWebSocket(wss) {
             langCode: `${sourceLang} → ${targetLang}`
           };
 
+
           ws.send(JSON.stringify(payload));
         } else {
-          const { text, translation, audio, langCode } = JSON.parse(message);
+          const { text, translation, audio } = JSON.parse(message);
 
           for (const client of rooms.get(roomId)) {
             if (client.readyState !== WebSocket.OPEN) continue;
@@ -45,7 +59,7 @@ export function setupWebSocket(wss) {
               translation,
               audio,
               sender: client === ws ? 'me' : 'they',
-              langCode
+              langCode: `${sourceLang} → ${targetLang}`
             }));
           }
         }

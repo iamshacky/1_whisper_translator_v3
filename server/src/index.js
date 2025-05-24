@@ -11,9 +11,7 @@ import { setupWebSocket } from './controllers/wsHandler.js';
 config();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-//import { translateController } from './controllers/translate.js';
-//import { setupWebSocket } from './controllers/wsHandler.js';
-
+import { translateController } from './controllers/translate.js';
 
 const app = express();
 const server = createServer(app);
