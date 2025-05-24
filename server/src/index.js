@@ -6,7 +6,6 @@ import { config } from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
-import { setupWebSocket } from './controllers/wsHandler.js';
 
 config();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -48,7 +47,68 @@ app.use('/plugin/webrtc', express.static(
 
 const clients = new Set();
 
-setupWebSocket(wss);
+wss.on('connection', async (ws, req) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  let targetLang = url.searchParams.get('lang');
+
+  if (!targetLang) {
+    try {
+      const configRaw = await readFile(
+        path.join(rootDir, 'modules', 'settings_panel', 'server', 'config.json'),
+        'utf-8'
+      );
+      const config = JSON.parse(configRaw);
+      targetLang = config.targetLang || 'es';
+    } catch {
+      targetLang = 'es';
+    }
+  }
+
+  ws.on('message', async (message, isBinary) => {
+    try {
+      if (isBinary) {
+        console.log("🎧 Received binary audio blob from client");
+
+        const { text, translation, audio } = await translateController(message, targetLang);
+
+        const previewPayload = {
+          type: 'preview',
+          text,
+          translation,
+          audio
+        };
+
+        console.log("📤 Sending preview payload to client:", previewPayload);
+        ws.send(JSON.stringify(previewPayload));
+      } else {
+        const data = JSON.parse(message);
+        console.log("📩 Server received text message:", data);
+
+        if (data.type === 'retranslate') {
+          console.log("🔁 Re-translate requested (not yet implemented)");
+          return;
+        }
+
+        const outbound = {
+          type: 'final',
+          text: data.text,
+          translation: data.translation,
+          audio: data.audio,
+        };
+
+        for (const client of clients) {
+          if (client !== ws && client.readyState === 1) {
+            client.send(JSON.stringify(outbound));
+          }
+        }
+      }
+    } catch (err) {
+      console.error('WebSocket message error:', err);
+    }
+  });
+
+  ws.on('close', () => clients.delete(ws));
+});
 
 /*
 app.post('/manual-translate', async (req, res) => {

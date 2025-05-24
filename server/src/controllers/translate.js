@@ -1,7 +1,7 @@
-﻿﻿import { transcribeAudio, textToSpeech } from '../services/openaiService.js';
+﻿
+import { transcribeAudio, textToSpeech } from '../services/openaiService.js';
 import { detectLanguage, translateText } from '../services/translationService.js';
-import { readFile } from 'fs/promises';
-import path from 'path';
+import { SELECT_LANGUAGE_MODE, DEFAULT_INPUT_LANG } from '../config/settings.js';
 
 /**
  * Given an audio buffer and desired language, return both original text and translation
@@ -22,26 +22,9 @@ export async function translateController(audioBuffer, targetLang) {
 
     console.log("✅ Cleaned transcript text:", transcriptText);
 
-    let sourceLang;
-    try {
-      const configPath = path.join(process.cwd(), 'modules', 'settings_panel', 'server', 'config.json');
-      const configRaw = await readFile(configPath, 'utf-8');
-      const config = JSON.parse(configRaw);
-
-      if (config.selectInputLang && config.inputLang) {
-        sourceLang = config.inputLang;
-        console.log(`🌍 Using manually selected input language: ${sourceLang}`);
-      } else {
-        sourceLang = await detectLanguage(transcriptText);
-        console.log(`🧠 Detected input language: ${sourceLang}`);
-      }
-      console.log(`🎯 Final sourceLang used: ${sourceLang}`);
-    } catch (err) {
-      console.warn("⚠️ Could not read input language config, falling back to auto detect");
-      sourceLang = await detectLanguage(transcriptText);
-    }
-
+    const sourceLang = SELECT_LANGUAGE_MODE ? DEFAULT_INPUT_LANG : await detectLanguage(transcriptText);
     const translated = await translateText(transcriptText, sourceLang, targetLang);
+
     const audioBase64 = await textToSpeech(translated, 'nova'); // 🔊 Generate TTS audio
 
     return {

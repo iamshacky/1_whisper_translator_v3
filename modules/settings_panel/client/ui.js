@@ -15,19 +15,10 @@ export function SP_bindSettingsPanelEvents() {
   };
 
   saveBtn.onclick = async () => {
-    /*
     const newCfg = {
       targetLang: document.getElementById('cfg-targetLang').value,
       speechMode: document.getElementById('cfg-speechMode').value,
       playAudioOn: document.getElementById('cfg-playAudioOn').value
-    };
-    */
-    const newCfg = {
-      targetLang: document.getElementById('cfg-targetLang').value,
-      speechMode: document.getElementById('cfg-speechMode').value,
-      playAudioOn: document.getElementById('cfg-playAudioOn').value,
-      selectInputLang: document.getElementById('cfg-selectInputLang').value === 'true',
-      inputLang: document.getElementById('cfg-inputLang').value
     };
 
     localStorage.setItem('whisper-settings', JSON.stringify(newCfg));
@@ -77,6 +68,4 @@ export async function SP_loadSettingsToForm() {
   document.getElementById('cfg-targetLang').value = cfg.targetLang;
   document.getElementById('cfg-speechMode').value = cfg.speechMode;
   document.getElementById('cfg-playAudioOn').value = cfg.playAudioOn;
-  document.getElementById('cfg-selectInputLang').value = cfg.selectInputLang;
-  document.getElementById('cfg-inputLang').value = cfg.inputLang;
 }

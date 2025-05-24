@@ -1,4 +1,5 @@
-﻿import WebSocket from 'ws';
+﻿// server/src/controllers/wsHandler.js
+import WebSocket from 'ws';
 import { translateController } from './translate.js';
 import { randomUUID } from 'crypto';
 
@@ -12,6 +13,7 @@ export function setupWebSocket(wss) {
     const clientId   = url.searchParams.get('clientId') || randomUUID();
     ws.clientId      = clientId;
 
+    // join the room
     if (!rooms.has(roomId)) rooms.set(roomId, new Set());
     rooms.get(roomId).add(ws);
 
@@ -20,30 +22,36 @@ export function setupWebSocket(wss) {
 
       try {
         if (isBinary) {
+          // preview step: transcribe, translate, TTS
           const { text, translation, audio } = await translateController(
             Buffer.from(message),
             targetLang
           );
 
           const payload = {
-            type: 'preview',
-            text,
+            speaker:    'you',
+            original:   text,
             translation,
-            audio
+            ...(audio ? { audio } : {})     // only include audio if non-empty
           };
 
+          console.log("[WS] sending preview back:", {
+            text,
+            translation,
+            audio: audio ? `${audio.slice(0,20)}…` : "(none)"
+          });
           ws.send(JSON.stringify(payload));
-        } else {
-          const { text, translation, audio } = JSON.parse(message);
 
+        } else {
+          // final chat broadcast
+          const { original, translation, clientId: senderId } = JSON.parse(message);
           for (const client of rooms.get(roomId)) {
             if (client.readyState !== WebSocket.OPEN) continue;
             client.send(JSON.stringify({
-              type: 'final',
-              text,
+              speaker:    client === ws ? 'you' : 'them',
+              original,
               translation,
-              audio,
-              sender: client === ws ? 'me' : 'they'
+              clientId: senderId
             }));
           }
         }
