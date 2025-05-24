@@ -67,22 +67,21 @@ export function setupWebSocket(wss) {
           ws.send(JSON.stringify(payload));
 
         } else {
-          // final message (broadcast)
-          const { text, translation, warning = '', clientId: senderId } = JSON.parse(message);
+          const { original, translation, warning = '', clientId: senderId } = JSON.parse(message);
 
-          const ownMessage = JSON.stringify({
-            type: 'final',
-            speaker: 'you',
-            text,
+          const broadcastMessage = JSON.stringify({
+            type: 'final',                    // ✅ Add this
+            speaker: 'them',
+            original,
             translation,
             warning,
             clientId: senderId
           });
 
-          const broadcastMessage = JSON.stringify({
-            type: 'final',
-            speaker: 'them',
-            text,
+          const ownMessage = JSON.stringify({
+            type: 'final',                    // ✅ Add this
+            speaker: 'you',
+            original,
             translation,
             warning,
             clientId: senderId

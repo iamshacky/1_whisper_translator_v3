@@ -312,18 +312,8 @@ document.addEventListener("DOMContentLoaded", () => {
       setPreview(msg.text, msg.translation, msg.audio, langWarning);
     }
 
-    /*
-    if (msg.original && msg.translation) {
-      addMessage({
-        text: msg.original,
-        translation: msg.translation,
-        audio: msg.audio || null,
-        lang: msg.detectedLang || '',
-        sender: msg.speaker === 'you' ? 'me' : 'they'
-      });
-    }
-    */
-    if (msg.original && msg.translation) {
+    //if (msg.original && msg.translation) {
+    if (msg.type === 'final' && msg.original && msg.translation) {
       const lang = msg.detectedLang || '';
       const warning = msg.warning || '';
 
