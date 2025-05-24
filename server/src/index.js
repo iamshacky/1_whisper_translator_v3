@@ -35,18 +35,12 @@ app.use('/plugin/settings-panel', express.static(
   path.join(rootDir, 'modules', 'settings_panel', 'client')
 ));
 
-// webRTC module (or other future modules)
+//const clients = new Set();
+import { setupWebSocket } from './controllers/wsHandler.js';
+
+setupWebSocket(wss);
+
 /*
-import webRTC from '../../modules/webRTC/server/index.js';
-app.use('/api/webrtc', webRTC);
-app.use('/plugin/webrtc', express.static(
-  path.join(rootDir, 'modules', 'webRTC', 'client')
-));
-*/
-/** 🔌 End of Modules & Plugins Section **/
-
-const clients = new Set();
-
 wss.on('connection', async (ws, req) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   let targetLang = url.searchParams.get('lang');
@@ -109,6 +103,7 @@ wss.on('connection', async (ws, req) => {
 
   ws.on('close', () => clients.delete(ws));
 });
+*/
 
 /*
 app.post('/manual-translate', async (req, res) => {

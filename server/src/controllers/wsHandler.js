@@ -3,6 +3,10 @@ import WebSocket from 'ws';
 import { translateController } from './translate.js';
 import { randomUUID } from 'crypto';
 
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 const rooms = new Map(); // roomId → Set<WebSocket>
 
 export function setupWebSocket(wss) {
@@ -22,17 +26,38 @@ export function setupWebSocket(wss) {
 
       try {
         if (isBinary) {
+          //import fs from 'fs/promises';
+          //import path from 'path';
+          //import { fileURLToPath } from 'url';
+          const __dirname = path.dirname(fileURLToPath(import.meta.url));
+          const rootDir = path.resolve(__dirname, '../../../');
+          const configPath = path.join(rootDir, 'modules', 'settings_panel', 'server', 'config.json');
+
+          let inputLangMode = 'auto';
+          let manualInputLang = 'en';
+
+          try {
+            const raw = await fs.readFile(configPath, 'utf-8');
+            const cfg = JSON.parse(raw);
+            inputLangMode = cfg.inputLangMode;
+            manualInputLang = cfg.manualInputLang;
+          } catch (err) {
+            console.warn("⚠️ Could not read language config. Falling back.");
+          }
           // preview step: transcribe, translate, TTS
-          const { text, translation, audio } = await translateController(
+          const { text, translation, audio, detectedLang } = await translateController(
             Buffer.from(message),
-            targetLang
+            targetLang,
+            inputLangMode,
+            manualInputLang
           );
 
           const payload = {
-            speaker:    'you',
-            original:   text,
-            translation,
-            ...(audio ? { audio } : {})     // only include audio if non-empty
+            type: 'preview',
+            text: text,
+            translation: translation,
+            audio: audio || null,
+            detectedLang: detectedLang // ✅ ← Add this line explicitly
           };
 
           console.log("[WS] sending preview back:", {

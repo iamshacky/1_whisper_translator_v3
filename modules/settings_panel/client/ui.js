@@ -14,9 +14,20 @@ export function SP_bindSettingsPanelEvents() {
     debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
   };
 
+  const inputLangModeDropdown = document.getElementById('cfg-inputLangMode');
+  const manualLangLabel = document.getElementById('manualInputLangLabel');
+
+  if (inputLangModeDropdown && manualLangLabel) {
+    inputLangModeDropdown.onchange = () => {
+      manualLangLabel.style.display = inputLangModeDropdown.value === 'manual' ? 'block' : 'none';
+    };
+  }
+
   saveBtn.onclick = async () => {
     const newCfg = {
       targetLang: document.getElementById('cfg-targetLang').value,
+      inputLangMode: document.getElementById('cfg-inputLangMode').value,
+      manualInputLang: document.getElementById('cfg-manualInputLang').value,
       speechMode: document.getElementById('cfg-speechMode').value,
       playAudioOn: document.getElementById('cfg-playAudioOn').value
     };
@@ -66,6 +77,11 @@ export async function SP_loadSettingsToForm() {
 
   // Populate form
   document.getElementById('cfg-targetLang').value = cfg.targetLang;
+  document.getElementById('cfg-inputLangMode').value = cfg.inputLangMode;
+  document.getElementById('cfg-manualInputLang').value = cfg.manualInputLang;
   document.getElementById('cfg-speechMode').value = cfg.speechMode;
   document.getElementById('cfg-playAudioOn').value = cfg.playAudioOn;
+
+  document.getElementById('manualInputLangLabel').style.display =
+    cfg.inputLangMode === 'manual' ? 'block' : 'none';
 }

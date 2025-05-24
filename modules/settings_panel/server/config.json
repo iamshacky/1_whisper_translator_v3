@@ -1,5 +1,7 @@
 {
-  "targetLang": "ne",
+  "targetLang": "de",
+  "inputLangMode": "manual",
+  "manualInputLang": "fr",
   "speechMode": "synthesis",
   "playAudioOn": "sender",
   "moderatorVoiceSpeed": 1,
