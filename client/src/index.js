@@ -17,6 +17,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const textInput = document.getElementById('textInput');
   const previewTextBtn = document.getElementById('previewTextBtn');
   const micBtn = document.getElementById('mic-btn');
+  const urlParams = new URLSearchParams(window.location.search);
+  const clientId = urlParams.get('clientId') || Math.random().toString(36).substring(2);
+
 
   let latestTranscript = '';
   let latestAudio = '';
