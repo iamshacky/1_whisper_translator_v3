@@ -23,6 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let latestLanguage = '';
   let moderatorSuggestion = '';
   let previewActive = false;
+  let latestWarning = '';
 
   let mediaRecorder;
   let audioChunks = [];
@@ -86,25 +87,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const now = new Date();
     return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
-  
+
   /*
-  function setPreview(text, lang, audio) {
-    previewActive = true;
-    latestTranscript = text;
-    latestLanguage = lang;
-    latestAudio = audio;
-
-    textPreview.innerHTML = `
-      <div><strong>You said:</strong> ${text}</div>
-      <div><strong>Translation:</strong> ${lang}</div>
-    `;
-
-    textInput.value = text; // ✅ ← ADD THIS LINE
-
-    sendBtn.style.display = 'inline-block';
-    previewContainer.style.display = 'block';
-  }
-  */
   function setPreview(text, lang, audio, warning = '') {
     previewActive = true;
     latestTranscript = text;
@@ -121,16 +105,29 @@ document.addEventListener("DOMContentLoaded", () => {
     sendBtn.style.display = 'inline-block';
     previewContainer.style.display = 'block';
   }
-
-
-  /*
-  function clearPreview() {
-    previewActive = false;
-    textPreview.innerHTML = '';
-    previewContainer.style.display = 'none';
-    sendBtn.style.display = 'none';
-  }
   */
+  function setPreview(text, lang, audio, warning = '') {
+    previewActive = true;
+    latestTranscript = text;
+    latestLanguage = lang;
+    latestAudio = audio;
+    latestWarning = warning; // ✅ Store for use in final message
+
+    const warningHTML = warning
+      ? `<div class="lang-warning">⚠️ ${warning}</div>`
+      : '';
+
+    textPreview.innerHTML = `
+      <div><strong>You said:</strong> ${text}</div>
+      <div><strong>Translation:</strong> ${lang}</div>
+      ${warningHTML}
+    `;
+
+    textInput.value = text;
+    sendBtn.style.display = 'inline-block';
+    previewContainer.style.display = 'block';
+  }
+
   function clearPreview() {
     previewActive = false;
     textPreview.innerHTML = '';
@@ -254,28 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
       sendBtn.style.pointerEvents = 'auto';
     }
   };
-  /*
-  previewTextBtn.onclick = async () => {
-    const typedText = textInput.value.trim();
-    if (!typedText) return;
 
-    // Optional: you can show a loading indicator here
-
-    try {
-      const res = await fetch('/manual-translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: typedText, targetLang: 'es' }) // Optional: dynamic lang?
-      });
-
-      const result = await res.json();
-      setPreview(result.text, result.translation, result.audio);
-    } catch (err) {
-      console.error('❌ Preview (manual re-translate) failed:', err);
-      alert('❌ Failed to preview translation.');
-    }
-  };
-  */
   previewTextBtn.onclick = async () => {
     const text = textInput.value.trim();
     if (!text) return;
