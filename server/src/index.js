@@ -35,32 +35,92 @@ app.use('/plugin/settings-panel', express.static(
   path.join(rootDir, 'modules', 'settings_panel', 'client')
 ));
 
+// advanced_settings_panel module
+import advancedSettingsPanel from '../../modules/advanced_settings_panel/server/index.js';
+app.use('/api/advanced-settings', advancedSettingsPanel);
+app.use('/plugin/advanced-settings-panel', express.static(
+  path.join(rootDir, 'modules', 'advanced_settings_panel', 'client')
+));
+
+import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';
+
 //const clients = new Set();
 import { setupWebSocket } from './controllers/wsHandler.js';
 
 setupWebSocket(wss);
 
+/*
 app.post('/manual-translate', async (req, res) => {
   const { text, targetLang } = req.body;
 
   let finalLang = targetLang;
-  if (!finalLang) {
-    // Fallback to config
-    try {
-      const configRaw = await readFile(path.join(rootDir, 'modules', 'settings_panel', 'server', 'config.json'), 'utf-8');
-      const config = JSON.parse(configRaw);
-      finalLang = config.targetLang || 'es';
-    } catch {
-      finalLang = 'es';
-    }
+  let inputLangMode = 'auto';
+  let manualInputLang = 'en';
+
+  try {
+    const configRaw = await readFile(path.join(rootDir, 'modules', 'settings_panel', 'server', 'config.json'), 'utf-8');
+    const config = JSON.parse(configRaw);
+    finalLang = finalLang || config.targetLang || 'es';
+    inputLangMode = config.inputLangMode || 'auto';
+    manualInputLang = config.manualInputLang || 'en';
+  } catch {
+    finalLang = finalLang || 'es';
   }
 
   try {
     const { detectLanguage, translateText } = await import('./services/translationService.js');
-    const sourceLang = await detectLanguage(text);
-    const translation = await translateText(text, sourceLang, finalLang);
+    const detectedLang = await detectLanguage(text);
+    const translation = await translateText(text, detectedLang, finalLang);
 
-    res.json({ text, translation, audio: null });
+    let warning = '';
+    if (inputLangMode === 'manual' && detectedLang !== manualInputLang) {
+      warning = `Expected "${manualInputLang}", but detected "${detectedLang}"`;
+    }
+
+    res.json({ text, translation, audio: null, warning });
+  } catch (err) {
+    console.error('Manual translate error:', err);
+    res.status(500).json({ error: 'Translation failed' });
+  }
+});
+*/
+app.post('/manual-translate', async (req, res) => {
+  const { text, targetLang } = req.body;
+
+  let finalLang = targetLang;
+  let inputLangMode = 'auto';
+  let manualInputLang = 'en';
+  let showWarnings = true;
+
+  try {
+    const configRaw = await readFile(path.join(rootDir, 'modules', 'settings_panel', 'server', 'config.json'), 'utf-8');
+    const config = JSON.parse(configRaw);
+    finalLang = finalLang || config.targetLang || 'es';
+    inputLangMode = config.inputLangMode || 'auto';
+    manualInputLang = config.manualInputLang || 'en';
+
+    // Try reading advanced settings
+    try {
+      const advRaw = await readFile(path.join(rootDir, 'modules', 'advanced_settings_panel', 'server', 'config.json'), 'utf-8');
+      const advConfig = JSON.parse(advRaw);
+      showWarnings = advConfig.showWarnings;
+    } catch {
+      showWarnings = true;
+    }
+  } catch {
+    finalLang = finalLang || 'es';
+  }
+
+  try {
+    const { detectLanguage, translateText } = await import('./services/translationService.js');
+    const detectedLang = await detectLanguage(text);
+    const translation = await translateText(text, detectedLang, finalLang);
+
+    const warning = showWarnings && shouldWarn(inputLangMode, detectedLang, manualInputLang)
+      ? `Expected "${manualInputLang}", but detected "${detectedLang}"`
+      : '';
+
+    res.json({ text, translation, audio: null, warning });
   } catch (err) {
     console.error('Manual translate error:', err);
     res.status(500).json({ error: 'Translation failed' });

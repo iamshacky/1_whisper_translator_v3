@@ -67,8 +67,9 @@ export function setupWebSocket(wss) {
           ws.send(JSON.stringify(payload));
 
         } else {
-          const { original, translation, warning = '', clientId: senderId } = JSON.parse(message);
-
+          //const { original, translation, warning = '', clientId: senderId } = JSON.parse(message);
+          const { original, cleaned, translation, warning = '', clientId: senderId } = JSON.parse(message);
+          /*
           const broadcastMessage = JSON.stringify({
             type: 'final',                    // ✅ Add this
             speaker: 'them',
@@ -77,11 +78,32 @@ export function setupWebSocket(wss) {
             warning,
             clientId: senderId
           });
-
+          */
+          const broadcastMessage = JSON.stringify({
+            type: 'final',
+            speaker: 'them',
+            original,
+            text: cleaned || original,
+            translation,
+            warning,
+            clientId: senderId
+          });
+          
+          /*
           const ownMessage = JSON.stringify({
             type: 'final',                    // ✅ Add this
             speaker: 'you',
             original,
+            translation,
+            warning,
+            clientId: senderId
+          });
+          */
+          const ownMessage = JSON.stringify({
+            type: 'final',
+            speaker: 'you',
+            original,
+            text: cleaned || original,
             translation,
             warning,
             clientId: senderId

@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const micBtn = document.getElementById('mic-btn');
   const urlParams = new URLSearchParams(window.location.search);
   const clientId = urlParams.get('clientId') || Math.random().toString(36).substring(2);
+  const advancedSettings = JSON.parse(localStorage.getItem('whisper-advanced-settings') || '{}');
 
 
   let latestTranscript = '';
@@ -92,24 +93,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
-  /*
-  function setPreview(text, lang, audio, warning = '') {
-    previewActive = true;
-    latestTranscript = text;
-    latestLanguage = lang;
-    latestAudio = audio;
-
-    textPreview.innerHTML = `
-      <div><strong>You said:</strong> ${text}</div>
-      <div><strong>Translation:</strong> ${lang}</div>
-      ${warning ? `<div style="color: darkorange;">${warning}</div>` : ''}
-    `;
-
-    textInput.value = text;
-    sendBtn.style.display = 'inline-block';
-    previewContainer.style.display = 'block';
-  }
-  */
   function setPreview(text, lang, audio, warning = '') {
     previewActive = true;
     latestTranscript = text;
@@ -138,8 +121,10 @@ document.addEventListener("DOMContentLoaded", () => {
     previewContainer.style.display = 'none';
     sendBtn.style.display = 'none';
     textInput.value = ''; 
+    latestWarning = '';
   }
 
+  /*
   function addMessage({ text, translation, audio, lang, sender, warning = '' }) {
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${sender}`;
@@ -176,36 +161,53 @@ document.addEventListener("DOMContentLoaded", () => {
 
     SP_maybePlayAudio({ audio, translation, sender, lang });
   }
+  */
+  function addMessage({ text, original, translation, audio, lang, sender, warning = '' }) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `msg ${sender}`;
+
+    if (warning) {
+      const warn = document.createElement('div');
+      warn.className = 'lang-warning';
+      warn.textContent = `⚠️ ${warning}`;
+      wrapper.appendChild(warn);
+    }
+
+    const timestamp = document.createElement('div');
+    timestamp.className = 'timestamp';
+    timestamp.textContent = formatTimestamp();
+
+    const langLabel = document.createElement('div');
+    langLabel.className = 'lang-label';
+    langLabel.textContent = lang;
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = sender === 'me' || sender === 'you' ? 'You said:' : 'They said:';
+
+    const originalWrapper = document.createElement('div');
+    originalWrapper.className = 'original';
+    if (original && original !== text) {
+      originalWrapper.innerHTML = `
+        <em>Corrected:</em> "${text}"<br>
+        Original: "${original}"
+      `;
+    } else {
+      originalWrapper.textContent = text;
+    }
+
+    const translated = document.createElement('div');
+    translated.className = 'translated';
+    translated.textContent = translation;
+
+    wrapper.append(timestamp, langLabel, label, originalWrapper, translated);
+    messagesContainer.append(wrapper);
+
+    SP_maybePlayAudio({ audio, translation, sender, lang });
+  }
 
   // ✅ Send button (for previewed content)
   if (sendBtn) {
-    /*
-    sendBtn.onclick = () => {
-      console.log("📤 Send button clicked");
-      if (!previewActive) return;
-
-      const message = {
-        type: 'final',
-        original: latestTranscript,
-        translation: latestLanguage,
-        audio: latestAudio,
-        clientId: socket.clientId || '', // optional fallback
-        warning: latestWarning || ''
-      };
-
-      socket.send(JSON.stringify(message));
-
-      addMessage({
-        text: latestTranscript,
-        translation: latestLanguage,
-        lang: '',
-        sender: 'me',
-        warning: latestWarning || ''
-      });
-
-      clearPreview();
-    };
-    */
     sendBtn.onclick = () => {
       const text = moderatorSuggestion || latestTranscript;
       const translation = latestLanguage;
@@ -213,12 +215,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const settings = JSON.parse(localStorage.getItem('whisper-settings') || '{}');
       const expectedLang = settings.inputLangMode === 'manual' ? settings.manualInputLang : null;
+      /*
       const warning = (expectedLang && latestDetectedLang && latestDetectedLang !== expectedLang)
         ? `Expected "${expectedLang}", but detected "${latestDetectedLang}"`
         : '';
-
+      */
+      const warning = latestWarning || '';
+      
+      /*
       socket.send(JSON.stringify({
         original: text,
+        translation,
+        audio,
+        warning,
+        clientId
+      }));
+      */
+      socket.send(JSON.stringify({
+        original: text,
+        cleaned: latestTranscript,
         translation,
         audio,
         warning,
@@ -269,8 +284,10 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ text: cleanText, targetLang: 'es' })
       });
 
+      //const result = await res.json();
+      //setPreview(result.text, result.translation, result.audio);
       const result = await res.json();
-      setPreview(result.text, result.translation, result.audio);
+      setPreview(result.text, result.translation, result.audio, result.warning || '');
     } catch (err) {
       console.error('❌ Auto-preview on Accept failed:', err);
     } finally {
@@ -297,7 +314,35 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const result = await res.json();
-      setPreview(result.text, result.translation, result.audio);
+      // Add right after: const result = await res.json();
+      const modRes = await fetch('/moderate-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: result.text })
+      });
+
+      const { needsCorrection, suggestedText } = await modRes.json();
+
+      if (needsCorrection && suggestedText) {
+        moderatorSuggestion = suggestedText;
+        if (advancedSettings.playWarningAudio) {
+          speak(`Did you mean: ${moderatorSuggestion}?`);
+        }
+        document.getElementById('accept-btn').style.display = 'inline-block';
+      } else {
+        document.getElementById('accept-btn').style.display = 'none';
+      }
+      //setPreview(result.text, result.translation, result.audio);
+      /*
+      const warning = advancedSettings.showWarnings ? (result.warning || '') : '';
+      setPreview(result.text, result.translation, result.audio, warning);
+      */
+      const warning = advancedSettings.showWarnings ? (result.warning || '') : '';
+      // 🟡 Save these globally for use when sending the message
+      latestDetectedLang = result.detectedLang || '';
+      latestWarning = warning;
+
+      setPreview(result.text, result.translation, result.audio, warning);
     } catch (err) {
       console.error('❌ Failed to preview typed input:', err);
     }
@@ -329,10 +374,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const modResult = await res.json();
       moderatorSuggestion = '';
-
+      
+      /*
       if (modResult.needsCorrection && modResult.suggestedText) {
         moderatorSuggestion = modResult.suggestedText;
         speak(`Did you mean: ${moderatorSuggestion}?`);
+        document.getElementById('accept-btn').style.display = 'inline-block';
+      */
+      if (modResult.needsCorrection && modResult.suggestedText) {
+        moderatorSuggestion = modResult.suggestedText;
+
+        if (advancedSettings.playWarningAudio) {
+          speak(`Did you mean: ${moderatorSuggestion}?`);
+        }
+
         document.getElementById('accept-btn').style.display = 'inline-block';
       } else {
         document.getElementById('accept-btn').style.display = 'none';

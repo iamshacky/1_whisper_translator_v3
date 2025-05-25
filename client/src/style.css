@@ -171,3 +171,41 @@ button:hover {
   font-size: 0.9rem;
   margin-top: 0.5rem;
 }
+
+
+
+/* 🛠️ Adjust Settings Panel Positions */
+
+/* Original (basic) settings panel toggle */
+#debug-toggle {
+  bottom: 180px; /* ⬆️ moved up slightly */
+  left: 20px;
+}
+
+/* Advanced settings toggle */
+#adv-settings-toggle {
+  position: fixed;
+  bottom: 120px;
+  left: 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  z-index: 1000;
+}
+
+/* Advanced settings panel */
+#adv-settings-panel {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  background: white;
+  border: 2px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 999;
+  max-width: 300px;
+}
