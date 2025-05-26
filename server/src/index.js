@@ -49,41 +49,6 @@ import { setupWebSocket } from './controllers/wsHandler.js';
 
 setupWebSocket(wss);
 
-/*
-app.post('/manual-translate', async (req, res) => {
-  const { text, targetLang } = req.body;
-
-  let finalLang = targetLang;
-  let inputLangMode = 'auto';
-  let manualInputLang = 'en';
-
-  try {
-    const configRaw = await readFile(path.join(rootDir, 'modules', 'settings_panel', 'server', 'config.json'), 'utf-8');
-    const config = JSON.parse(configRaw);
-    finalLang = finalLang || config.targetLang || 'es';
-    inputLangMode = config.inputLangMode || 'auto';
-    manualInputLang = config.manualInputLang || 'en';
-  } catch {
-    finalLang = finalLang || 'es';
-  }
-
-  try {
-    const { detectLanguage, translateText } = await import('./services/translationService.js');
-    const detectedLang = await detectLanguage(text);
-    const translation = await translateText(text, detectedLang, finalLang);
-
-    let warning = '';
-    if (inputLangMode === 'manual' && detectedLang !== manualInputLang) {
-      warning = `Expected "${manualInputLang}", but detected "${detectedLang}"`;
-    }
-
-    res.json({ text, translation, audio: null, warning });
-  } catch (err) {
-    console.error('Manual translate error:', err);
-    res.status(500).json({ error: 'Translation failed' });
-  }
-});
-*/
 app.post('/manual-translate', async (req, res) => {
   const { text, targetLang } = req.body;
 

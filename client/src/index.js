@@ -198,7 +198,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const translated = document.createElement('div');
     translated.className = 'translated';
-    translated.textContent = translation;
+    //translated.textContent = translation;
+    // Filter out fuzzy GPT messages that sound like clarifications instead of translations
+    const fuzzyIndicators = [
+      "could you clarify",
+      "it seems like",
+      "i think you meant",
+      "make sure your",
+      "the text appears to be",
+      "a possible correction is"
+    ];
+
+    const isFuzzy = fuzzyIndicators.some(indicator =>
+      translation.toLowerCase().includes(indicator)
+    );
+
+    translated.textContent = isFuzzy
+      ? "[Unclear translation. Please rephrase or correct the message.]"
+      : translation;
 
     wrapper.append(timestamp, langLabel, label, originalWrapper, translated);
     messagesContainer.append(wrapper);
@@ -208,40 +225,60 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ✅ Send button (for previewed content)
   if (sendBtn) {
+    /*
     sendBtn.onclick = () => {
-      const text = moderatorSuggestion || latestTranscript;
+      const text = textInput.value.trim();
       const translation = latestLanguage;
       const audio = latestAudio;
 
       const settings = JSON.parse(localStorage.getItem('whisper-settings') || '{}');
       const expectedLang = settings.inputLangMode === 'manual' ? settings.manualInputLang : null;
-      /*
-      const warning = (expectedLang && latestDetectedLang && latestDetectedLang !== expectedLang)
-        ? `Expected "${expectedLang}", but detected "${latestDetectedLang}"`
-        : '';
-      */
+
       const warning = latestWarning || '';
       
-      /*
-      socket.send(JSON.stringify({
-        original: text,
-        translation,
-        audio,
-        warning,
-        clientId
-      }));
-      */
       socket.send(JSON.stringify({
         original: text,
         cleaned: latestTranscript,
         translation,
         audio,
         warning,
-        clientId
+        clientId,
+        moderatorSuggestion,
+        inputMethod: 'text'
       }));
 
       sendBtn.style.display = 'none';
       previewContainer.style.display = 'none';
+    };
+    */
+     sendBtn.onclick = () => {
+      if (!previewActive) {
+        alert("Please preview the message before sending.");
+        return;
+      }
+
+      const text = textInput.value.trim();
+      const translation = latestLanguage;
+      const audio = latestAudio;
+
+      const settings = JSON.parse(localStorage.getItem('whisper-settings') || '{}');
+      const expectedLang = settings.inputLangMode === 'manual' ? settings.manualInputLang : null;
+      const warning = latestWarning || '';
+
+      socket.send(JSON.stringify({
+        original: text,
+        cleaned: latestTranscript,
+        translation,
+        audio,
+        warning,
+        clientId,
+        moderatorSuggestion,
+        inputMethod: 'text'
+      }));
+
+      sendBtn.style.display = 'none';
+      previewContainer.style.display = 'none';
+      previewActive = false;
     };
   }
 
@@ -302,6 +339,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const text = textInput.value.trim();
     if (!text) return;
 
+    console.log('📤 Previewing text input:', text);
+
     const saved = localStorage.getItem('whisper-settings');
     const cfg = saved ? JSON.parse(saved) : {};
     const targetLang = cfg.targetLang || 'es';
@@ -344,7 +383,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
       setPreview(result.text, result.translation, result.audio, warning);
     } catch (err) {
+      //console.error('❌ Failed to preview typed input:', err);
       console.error('❌ Failed to preview typed input:', err);
+      alert('⚠️ Could not contact the server. Please check if it crashed.');
     }
   };
 

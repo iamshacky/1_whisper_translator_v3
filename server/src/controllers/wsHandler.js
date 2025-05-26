@@ -64,21 +64,40 @@ export function setupWebSocket(wss) {
             audio: audio ? `${audio.slice(0, 20)}…` : "(none)"
           });
 
+          console.log('🟨 Preview payload being sent:');
+          console.log('   📝 text        :', text);
+          console.log('   🌐 translation :', translation);
+          console.log('   🎧 audio       :', audio ? audio.slice(0, 20) + '...' : '(none)');
+          console.log('   🧭 detectedLang:', detectedLang);
+          console.log('   📩 to clientId :', clientId);
+
           ws.send(JSON.stringify(payload));
 
+          console.log('🟨 End of preview log\n');
+
         } else {
-          //const { original, translation, warning = '', clientId: senderId } = JSON.parse(message);
-          const { original, cleaned, translation, warning = '', clientId: senderId } = JSON.parse(message);
-          /*
-          const broadcastMessage = JSON.stringify({
-            type: 'final',                    // ✅ Add this
-            speaker: 'them',
+
+          //const { original, cleaned, translation, warning = '', clientId: senderId } = JSON.parse(message);
+          //const { original, cleaned, translation, warning = '', clientId: senderId } = JSON.parse(message);
+          const {
             original,
+            cleaned = '',
             translation,
-            warning,
-            clientId: senderId
-          });
-          */
+            warning = '',
+            clientId: senderId,
+            moderatorSuggestion = '',
+            inputMethod = 'text'
+          } = JSON.parse(message);
+
+          console.log('🟦 Final message received:');
+          console.log('   📝 original    :', original);
+          console.log('   🧹 cleaned     :', cleaned || '(none)');
+          console.log('   💬 suggestion  :', moderatorSuggestion || '(none)');
+          console.log('   🌐 translation :', translation);
+          console.log('   ⚠️ warning     :', warning || '(none)');
+          console.log('   📥 inputMethod :', inputMethod);
+          console.log('   📩 from clientId:', senderId);
+
           const broadcastMessage = JSON.stringify({
             type: 'final',
             speaker: 'them',
@@ -89,16 +108,6 @@ export function setupWebSocket(wss) {
             clientId: senderId
           });
           
-          /*
-          const ownMessage = JSON.stringify({
-            type: 'final',                    // ✅ Add this
-            speaker: 'you',
-            original,
-            translation,
-            warning,
-            clientId: senderId
-          });
-          */
           const ownMessage = JSON.stringify({
             type: 'final',
             speaker: 'you',
@@ -112,6 +121,9 @@ export function setupWebSocket(wss) {
           for (const client of rooms.get(ws.roomId || 'default') || []) {
             if (client.readyState !== WebSocket.OPEN) continue;
             client.send(client === ws ? ownMessage : broadcastMessage);
+
+            console.log('📤 Broadcast complete for message above.\n');
+
           }
         }
       } catch (err) {
