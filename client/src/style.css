@@ -219,3 +219,12 @@ button:hover {
   padding: 6px;
   border-left: 4px solid #ffcc00;
 }
+
+.moderator-ok {
+  margin-top: 6px;
+  padding: 6px;
+  background-color: #e9fbe9;
+  border-left: 3px solid green;
+  font-style: italic;
+}
+
