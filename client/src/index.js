@@ -199,7 +199,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const translated = document.createElement('div');
     translated.className = 'translated';
     //translated.textContent = translation;
-    // Filter out fuzzy GPT messages that sound like clarifications instead of translations
+    // Filter out fuzzy GPT messages that sound like clarifications instead of translations 
     const fuzzyIndicators = [
       "could you clarify",
       "it seems like",
