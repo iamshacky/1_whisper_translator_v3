@@ -124,44 +124,6 @@ document.addEventListener("DOMContentLoaded", () => {
     latestWarning = '';
   }
 
-  /*
-  function addMessage({ text, translation, audio, lang, sender, warning = '' }) {
-    const wrapper = document.createElement('div');
-    wrapper.className = `msg ${sender}`;
-
-    if (warning) {
-      const warn = document.createElement('div');
-      warn.className = 'lang-warning';
-      warn.textContent = `⚠️ ${warning}`;
-      wrapper.appendChild(warn);
-    }
-
-    const timestamp = document.createElement('div');
-    timestamp.className = 'timestamp';
-    timestamp.textContent = formatTimestamp();
-
-    const langLabel = document.createElement('div');
-    langLabel.className = 'lang-label';
-    langLabel.textContent = lang;
-
-    const label = document.createElement('div');
-    label.className = 'label';
-    label.textContent = sender === 'me' || sender === 'you' ? 'You said:' : 'They said:';
-
-    const original = document.createElement('div');
-    original.className = 'original';
-    original.textContent = text;
-
-    const translated = document.createElement('div');
-    translated.className = 'translated';
-    translated.textContent = translation;
-
-    wrapper.append(timestamp, langLabel, label, original, translated);
-    messagesContainer.append(wrapper);
-
-    SP_maybePlayAudio({ audio, translation, sender, lang });
-  }
-  */
   function addMessage({ text, original, translation, audio, lang, sender, warning = '' }) {
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${sender}`;
@@ -198,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const translated = document.createElement('div');
     translated.className = 'translated';
-    translated.textContent = translation;
+    //translated.textContent = translation;
     // Filter out fuzzy GPT messages that sound like clarifications instead of translations 
     const fuzzyIndicators = [
       "could you clarify",
@@ -224,33 +186,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ✅ Send button (for previewed content)
+  /*
   if (sendBtn) {
-    /*
-    sendBtn.onclick = () => {
-      const text = textInput.value.trim();
-      const translation = latestLanguage;
-      const audio = latestAudio;
 
-      const settings = JSON.parse(localStorage.getItem('whisper-settings') || '{}');
-      const expectedLang = settings.inputLangMode === 'manual' ? settings.manualInputLang : null;
-
-      const warning = latestWarning || '';
-      
-      socket.send(JSON.stringify({
-        original: text,
-        cleaned: latestTranscript,
-        translation,
-        audio,
-        warning,
-        clientId,
-        moderatorSuggestion,
-        inputMethod: 'text'
-      }));
-
-      sendBtn.style.display = 'none';
-      previewContainer.style.display = 'none';
-    };
-    */
      sendBtn.onclick = () => {
       if (!previewActive) {
         alert("Please preview the message before sending.");
@@ -274,6 +212,56 @@ document.addEventListener("DOMContentLoaded", () => {
         clientId,
         moderatorSuggestion,
         inputMethod: 'text'
+      }));
+
+      sendBtn.style.display = 'none';
+      previewContainer.style.display = 'none';
+      previewActive = false;
+    };
+  }
+  */
+  // ✅ Send button (for previewed content)
+  if (sendBtn) {
+    sendBtn.onclick = () => {
+      if (!previewActive) {
+        alert("Please preview the message before sending.");
+        return;
+      }
+
+      const text = textInput.value.trim();
+      const translation = latestLanguage;
+      const audio = latestAudio;
+
+      const settings = JSON.parse(localStorage.getItem('whisper-settings') || '{}');
+      const expectedLang = settings.inputLangMode === 'manual' ? settings.manualInputLang : null;
+
+      // 🟨 Always update warning before sending (from latestDetectedLang)
+      let warning = '';
+      if (expectedLang && latestDetectedLang && expectedLang !== latestDetectedLang) {
+        warning = `⚠️ Expected "${expectedLang}", but detected "${latestDetectedLang}"`;
+      } else {
+        warning = latestWarning || '';
+      }
+
+      console.log("📤 Sending message:");
+      console.log("   📝 original       :", text);
+      console.log("   🧹 cleaned        :", latestTranscript);
+      console.log("   🌐 translation    :", translation);
+      console.log("   ⚠️ warning         :", warning);
+      console.log("   🧠 modSuggestion  :", moderatorSuggestion);
+      console.log("   🎧 audio present? :", !!audio);
+      console.log("   📥 inputMethod    : text");
+
+      socket.send(JSON.stringify({
+        original: text,
+        cleaned: latestTranscript,
+        translation,
+        audio,
+        warning,
+        clientId,
+        moderatorSuggestion,
+        inputMethod: 'text',
+        detectedLang: latestDetectedLang
       }));
 
       sendBtn.style.display = 'none';
@@ -321,8 +309,6 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ text: cleanText, targetLang: 'es' })
       });
 
-      //const result = await res.json();
-      //setPreview(result.text, result.translation, result.audio);
       const result = await res.json();
       setPreview(result.text, result.translation, result.audio, result.warning || '');
     } catch (err) {
@@ -371,17 +357,29 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         document.getElementById('accept-btn').style.display = 'none';
       }
-      //setPreview(result.text, result.translation, result.audio);
-      /*
-      const warning = advancedSettings.showWarnings ? (result.warning || '') : '';
-      setPreview(result.text, result.translation, result.audio, warning);
-      */
+
       const warning = advancedSettings.showWarnings ? (result.warning || '') : '';
       // 🟡 Save these globally for use when sending the message
       latestDetectedLang = result.detectedLang || '';
       latestWarning = warning;
 
       setPreview(result.text, result.translation, result.audio, warning);
+      if (moderatorSuggestion) {
+        console.log("🧠 Moderator suggested correction:", moderatorSuggestion);
+      } else {
+        console.log("✅ No moderator correction needed.");
+      }
+      console.log("⚠️ Detected vs Expected Language Warning:", warning || "(none)");
+      console.log("📝 Final preview text shown:", result.text);
+      console.log("🌐 Final preview translation:", result.translation);
+
+      console.log("🟨 Preview display updated:");
+      console.log("   📝 text        :", result.text);
+      console.log("   🌐 translation :", result.translation);
+      console.log("   ⚠️ warning     :", warning || "(none)");
+      console.log("   🧭 detectedLang:", latestDetectedLang || "(none)");
+      console.log("   🎧 audio       :", result.audio ? "[yes]" : "[none]");
+      console.log("   💬 modSuggest  :", moderatorSuggestion || "(none)");
     } catch (err) {
       //console.error('❌ Failed to preview typed input:', err);
       console.error('❌ Failed to preview typed input:', err);
@@ -415,13 +413,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const modResult = await res.json();
       moderatorSuggestion = '';
-      
+
+      console.log("🧠 Moderation results (voice input):");
+      console.log("   ✏️ needsCorrection :", modResult.needsCorrection);
+      console.log("   💬 suggestedText   :", modResult.suggestedText || "(none)");
       /*
-      if (modResult.needsCorrection && modResult.suggestedText) {
-        moderatorSuggestion = modResult.suggestedText;
-        speak(`Did you mean: ${moderatorSuggestion}?`);
-        document.getElementById('accept-btn').style.display = 'inline-block';
-      */
       if (modResult.needsCorrection && modResult.suggestedText) {
         moderatorSuggestion = modResult.suggestedText;
 
@@ -433,9 +429,59 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         document.getElementById('accept-btn').style.display = 'none';
       }
+      */
+      if (modResult.needsCorrection && modResult.suggestedText) {
+  moderatorSuggestion = modResult.suggestedText;
+
+        if (advancedSettings.playWarningAudio) {
+          speak(`Did you mean: ${moderatorSuggestion}?`);
+        }
+
+        document.getElementById('accept-btn').style.display = 'inline-block';
+
+        console.log(`💡 Moderator suggestion: "${moderatorSuggestion}"`);
+
+        // Append the moderator suggestion to the preview box
+        const suggestionDiv = document.createElement('div');
+        suggestionDiv.className = 'moderator-suggestion';
+        suggestionDiv.innerHTML = `<em>Did you mean:</em> "${moderatorSuggestion}"`;
+        textPreview.appendChild(suggestionDiv);
+
+      } else {
+        document.getElementById('accept-btn').style.display = 'none';
+      }
 
       // 🟠 Pass langWarning to setPreview
       setPreview(msg.text, msg.translation, msg.audio, langWarning);
+      
+      /*
+      if (moderatorSuggestion) {
+        const suggestionDiv = document.createElement('div');
+        suggestionDiv.className = 'moderator-suggestion';
+        suggestionDiv.innerHTML = `<em>Did you mean:</em> "${moderatorSuggestion}"`;
+        textPreview.appendChild(suggestionDiv);
+      }
+      */
+      if (moderatorSuggestion) {
+        const suggestionDiv = document.createElement('div');
+        suggestionDiv.className = 'moderator-suggestion';
+        suggestionDiv.innerHTML = `<em>Did you mean:</em> "${moderatorSuggestion}"`;
+        textPreview.appendChild(suggestionDiv);
+      } else {
+        // No correction needed — show light reassurance
+        const okDiv = document.createElement('div');
+        okDiv.className = 'moderator-ok';
+        okDiv.innerHTML = `✔️ <em>Moderator approved. No corrections needed.</em>`;
+        textPreview.appendChild(okDiv);
+      }
+
+      console.log("🟨 Preview display updated:");
+      console.log("   📝 text        :", msg.text);
+      console.log("   🌐 translation :", msg.translation);
+      console.log("   ⚠️ warning     :", langWarning || "(none)");
+      console.log("   🧭 detectedLang:", msg.detectedLang || "(none)");
+      console.log("   🎧 audio       :", msg.audio ? "[yes]" : "[none]");
+      console.log("   💬 modSuggest  :", moderatorSuggestion || "(none)");
     }
 
     //if (msg.original && msg.translation) {

@@ -209,3 +209,13 @@ button:hover {
   z-index: 999;
   max-width: 300px;
 }
+
+
+.moderator-suggestion {
+  margin-top: 8px;
+  font-style: italic;
+  color: #333;
+  background: #ffffe0;
+  padding: 6px;
+  border-left: 4px solid #ffcc00;
+}
