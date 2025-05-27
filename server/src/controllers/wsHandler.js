@@ -10,11 +10,29 @@ import { fileURLToPath } from 'url';
 const rooms = new Map(); // roomId → Set<WebSocket>
 
 export function setupWebSocket(wss) {
-  wss.on('connection', (ws, req) => {
+  wss.on('connection', async (ws, req) => {
     const url        = new URL(req.url, `http://${req.headers.host}`);
+    /*
     const roomId     = url.searchParams.get('room') || 'default';
     const targetLang = url.searchParams.get('lang') || 'es';
     const clientId   = url.searchParams.get('clientId') || randomUUID();
+    */
+    const roomId   = url.searchParams.get('room') || 'default';
+      const clientId = url.searchParams.get('clientId') || randomUUID();
+
+      // 🛠 Dynamically load targetLang from settings config
+      let targetLang = 'es'; // fallback
+      try {
+        const __dirname = path.dirname(fileURLToPath(import.meta.url));
+        const rootDir = path.resolve(__dirname, '../../../');
+        const configPath = path.join(rootDir, 'modules', 'settings_panel', 'server', 'config.json');
+        const raw = await fs.readFile(configPath, 'utf-8');
+        const cfg = JSON.parse(raw);
+        targetLang = cfg.targetLang || 'es';
+      } catch (err) {
+        console.warn("⚠️ Could not read targetLang from settings. Defaulting to 'es'");
+      }
+
     ws.clientId      = clientId;
 
     // Join the room

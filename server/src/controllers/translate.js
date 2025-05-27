@@ -37,22 +37,20 @@ export async function translateController(audioBuffer, targetLang, inputLangMode
     } else {
       console.log("🔍 Auto-detecting input language...");
     }
-
+    
+    /*
     const sourceLang = inputLangMode === 'manual'
       ? manualInputLang
+      : await detectLanguage(transcriptText);
+    */
+    const sourceLang = inputLangMode === 'manual'
+      ? (transcript.detectedLang || manualInputLang)
       : await detectLanguage(transcriptText);
 
     const translated = await translateText(transcriptText, sourceLang, targetLang);
 
     const audioBase64 = await textToSpeech(translated, 'nova'); // 🔊 Generate TTS audio
 
-    /*
-    return {
-      text: transcriptText,
-      translation: translated,
-      audio: audioBase64 || null
-    };
-    */
     return {
       text: transcriptText,
       translation: translated,

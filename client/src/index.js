@@ -56,6 +56,38 @@ document.addEventListener("DOMContentLoaded", () => {
       console.warn("⚠️ chatBtn not found in DOM");
     }
 
+  function handleModeratorResponse(result, context = 'text') {
+    moderatorSuggestion = ''; // Always reset first
+
+    if (result.needsCorrection && result.suggestedText) {
+      moderatorSuggestion = result.suggestedText;
+
+      if (advancedSettings.playWarningAudio) {
+        speak(`Did you mean: ${moderatorSuggestion}?`);
+      }
+
+      document.getElementById('accept-btn').style.display = 'inline-block';
+
+      const suggestionDiv = document.createElement('div');
+      suggestionDiv.className = 'moderator-suggestion';
+      suggestionDiv.innerHTML = `<em>Did you mean:</em> "${moderatorSuggestion}"`;
+      textPreview.appendChild(suggestionDiv);
+
+      console.log(`💡 Moderator (${context}) suggestion: "${moderatorSuggestion}"`);
+      console.log("🟩 Suggestion div inserted into preview:", suggestionDiv);
+    } else {
+      document.getElementById('accept-btn').style.display = 'none';
+
+      const okDiv = document.createElement('div');
+      okDiv.className = 'moderator-ok';
+      okDiv.innerHTML = `✔️ <em>Moderator approved. No corrections needed.</em>`;
+      textPreview.appendChild(okDiv);
+
+      console.log(`✅ Moderator (${context}) approved with no corrections.`);
+      console.log("🟩 Moderator approval div inserted into preview:", okDiv);
+    }
+  }
+
   async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     mediaRecorder = new MediaRecorder(stream);
@@ -284,13 +316,13 @@ document.addEventListener("DOMContentLoaded", () => {
     moderatorSuggestion = '';
     acceptBtn.style.display = 'none';
 
-    // 🔒 Temporarily disable Send button to prevent premature send
+    // 🔒 Disable Send during async flow
     sendBtn.disabled = true;
     sendBtn.style.opacity = 0.5;
     sendBtn.style.pointerEvents = 'none';
 
     try {
-      // Optional: remoderate, or skip if already done
+      // 🧠 Re-check moderation (usually fast, often skipped)
       const modRes = await fetch('/moderate-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -299,28 +331,53 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const { needsCorrection, suggestedText } = await modRes.json();
       if (needsCorrection) {
-        console.log("✅ Already moderated once — skipping reapply for now");
+        console.log("🧠 Moderator still flagged the correction, skipping reapply");
       }
 
-      // 🔁 Re-translate after Accept
-      const res = await fetch('/manual-translate', {
+      // ✅ Get target language from saved settings
+      const saved = localStorage.getItem('whisper-settings');
+      const cfg = saved ? JSON.parse(saved) : {};
+      const targetLang = cfg.targetLang || 'es';
+
+      console.log("🌐 Accept flow: translating corrected text...");
+      console.log("   📝 Cleaned text:", cleanText);
+      console.log("   🎯 Target language:", targetLang);
+
+      const translateRes = await fetch('/manual-translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText, targetLang: 'es' })
+        body: JSON.stringify({ text: cleanText, targetLang })
       });
 
-      const result = await res.json();
-      setPreview(result.text, result.translation, result.audio, result.warning || '');
+      const result = await translateRes.json();
+
+      const warning = advancedSettings.showWarnings ? (result.warning || '') : '';
+
+      // Save global state for Send
+      latestTranscript = cleanText;
+      latestLanguage = targetLang;
+      latestAudio = result.audio;
+      latestWarning = warning;
+
+      setPreview(result.text, result.translation, result.audio, warning);
+
+      console.log("✅ Accept re-translation complete:");
+      console.log("   📝 Final text       :", result.text);
+      console.log("   🌐 Final translation:", result.translation);
+      console.log("   ⚠️ Warning           :", warning);
+      console.log("   🎧 Audio available? :", !!result.audio);
     } catch (err) {
       console.error('❌ Auto-preview on Accept failed:', err);
     } finally {
-      // ✅ Re-enable Send button no matter what
       sendBtn.disabled = false;
       sendBtn.style.opacity = 1;
       sendBtn.style.pointerEvents = 'auto';
     }
   };
 
+  acceptBtn.style.display = 'none'; // 🧼 hide by default on page load
+  
+  /*
   previewTextBtn.onclick = async () => {
     const text = textInput.value.trim();
     if (!text) return;
@@ -348,22 +405,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const { needsCorrection, suggestedText } = await modRes.json();
 
-      if (needsCorrection && suggestedText) {
-        moderatorSuggestion = suggestedText;
-        if (advancedSettings.playWarningAudio) {
-          speak(`Did you mean: ${moderatorSuggestion}?`);
-        }
-        document.getElementById('accept-btn').style.display = 'inline-block';
-      } else {
-        document.getElementById('accept-btn').style.display = 'none';
-      }
+      setPreview(result.text, result.translation, result.audio, warning);
+      handleModeratorResponse({ needsCorrection, suggestedText }, 'text');
 
       const warning = advancedSettings.showWarnings ? (result.warning || '') : '';
       // 🟡 Save these globally for use when sending the message
       latestDetectedLang = result.detectedLang || '';
       latestWarning = warning;
 
-      setPreview(result.text, result.translation, result.audio, warning);
+      //setPreview(result.text, result.translation, result.audio, warning);
       if (moderatorSuggestion) {
         console.log("🧠 Moderator suggested correction:", moderatorSuggestion);
       } else {
@@ -386,30 +436,88 @@ document.addEventListener("DOMContentLoaded", () => {
       alert('⚠️ Could not contact the server. Please check if it crashed.');
     }
   };
+  */
+  previewTextBtn.onclick = async () => {
+    const text = textInput.value.trim();
+    if (!text) return;
 
+    console.log('📤 Previewing text input:', text);
 
-  socket.onmessage = async (event) => {
-    const msg = JSON.parse(event.data);
+    try {
+      const saved = localStorage.getItem('whisper-settings');
+      const cfg = saved ? JSON.parse(saved) : {};
+      const targetLang = cfg?.targetLang || 'es';
 
-    if (msg.type === 'preview') {
-      console.log('📥 Received preview message:', msg);
-
-      // Load expected input language from localStorage settings
-      const settings = JSON.parse(localStorage.getItem('whisper-settings') || '{}');
-      const expectedLang = settings.inputLangMode === 'manual' ? settings.manualInputLang : null;
-
-      let langWarning = '';
-      if (expectedLang && msg.detectedLang && msg.detectedLang !== expectedLang) {
-        langWarning = `⚠️ Expected "${expectedLang}", but detected "${msg.detectedLang}"`;
-      }
-
-      latestDetectedLang = msg.detectedLang;  // ✅ Save detected language globally
-
-      const res = await fetch('/moderate-message', {
+      const res = await fetch('/manual-translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: msg.text })
+        body: JSON.stringify({ text, targetLang })
       });
+
+      const result = await res.json();
+
+      latestDetectedLang = result.detectedLang || '';
+
+      // Now set the preview first
+      const warning = advancedSettings.showWarnings ? (result.warning || '') : '';
+      latestWarning = warning;
+      setPreview(result.text, result.translation, result.audio, warning);
+
+      // Then handle moderator suggestion
+      const modRes = await fetch('/moderate-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: result.text })
+      });
+
+      const { needsCorrection, suggestedText } = await modRes.json();
+      await handleModeratorResponse({ needsCorrection, suggestedText, context: 'text' });
+
+      console.log("📝 Final preview text shown:", result.text);
+      console.log("🌐 Final preview translation:", result.translation);
+      console.log("⚠️ Detected vs Expected Language Warning:", warning || "(none)");
+      console.log("🧭 detectedLang:", latestDetectedLang || "(none)");
+      console.log("🎧 audio:", result.audio ? "[yes]" : "[none]");
+      console.log("💬 modSuggest:", moderatorSuggestion || "(none)");
+
+    } catch (err) {
+      console.error('❌ Failed to preview typed input:', err);
+      alert('⚠️ Could not contact the server. Please check if it crashed.');
+    }
+  };
+
+  socket.onmessage = async (event) => {
+    console.log('🟣 WebSocket message received:', event.data);
+    const msg = JSON.parse(event.data);
+
+      if (msg.type === 'preview') {
+        console.log('📥 Received preview message:', msg);
+
+        const settings = JSON.parse(localStorage.getItem('whisper-settings') || '{}');
+        const expectedLang = settings.inputLangMode === 'manual' ? settings.manualInputLang : null;
+
+        let langWarning = '';
+        if (expectedLang && msg.detectedLang && msg.detectedLang !== expectedLang) {
+          langWarning = `⚠️ Expected "${expectedLang}", but detected "${msg.detectedLang}"`;
+        }
+
+        latestDetectedLang = msg.detectedLang;
+
+        try {
+          const modRes = await fetch('/moderate-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: msg.text })
+          });
+
+          const modResult = await modRes.json();
+          moderatorSuggestion = '';
+
+          setPreview(msg.text, msg.translation, msg.audio, langWarning);
+          handleModeratorResponse(modResult, 'voice');
+        } catch (err) {
+          console.error('❌ Auto-preview on Accept failed:', err);
+        }
 
       const modResult = await res.json();
       moderatorSuggestion = '';
@@ -417,19 +525,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("🧠 Moderation results (voice input):");
       console.log("   ✏️ needsCorrection :", modResult.needsCorrection);
       console.log("   💬 suggestedText   :", modResult.suggestedText || "(none)");
-      /*
-      if (modResult.needsCorrection && modResult.suggestedText) {
-        moderatorSuggestion = modResult.suggestedText;
-
-        if (advancedSettings.playWarningAudio) {
-          speak(`Did you mean: ${moderatorSuggestion}?`);
-        }
-
-        document.getElementById('accept-btn').style.display = 'inline-block';
-      } else {
-        document.getElementById('accept-btn').style.display = 'none';
-      }
-      */
+      
       if (modResult.needsCorrection && modResult.suggestedText) {
   moderatorSuggestion = modResult.suggestedText;
 
@@ -454,14 +550,6 @@ document.addEventListener("DOMContentLoaded", () => {
       // 🟠 Pass langWarning to setPreview
       setPreview(msg.text, msg.translation, msg.audio, langWarning);
       
-      /*
-      if (moderatorSuggestion) {
-        const suggestionDiv = document.createElement('div');
-        suggestionDiv.className = 'moderator-suggestion';
-        suggestionDiv.innerHTML = `<em>Did you mean:</em> "${moderatorSuggestion}"`;
-        textPreview.appendChild(suggestionDiv);
-      }
-      */
       if (moderatorSuggestion) {
         const suggestionDiv = document.createElement('div');
         suggestionDiv.className = 'moderator-suggestion';
@@ -475,6 +563,15 @@ document.addEventListener("DOMContentLoaded", () => {
         textPreview.appendChild(okDiv);
       }
 
+      /*
+      console.log("🟨 Preview display updated:");
+      console.log("   📝 text        :", msg.text);
+      console.log("   🌐 translation :", msg.translation);
+      console.log("   ⚠️ warning     :", langWarning || "(none)");
+      console.log("   🧭 detectedLang:", msg.detectedLang || "(none)");
+      console.log("   🎧 audio       :", msg.audio ? "[yes]" : "[none]");
+      console.log("   💬 modSuggest  :", moderatorSuggestion || "(none)");
+      */
       console.log("🟨 Preview display updated:");
       console.log("   📝 text        :", msg.text);
       console.log("   🌐 translation :", msg.translation);
