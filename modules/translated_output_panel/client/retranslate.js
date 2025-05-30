@@ -1,0 +1,47 @@
+export function setupReTranslationHook() {
+  const originalAddMessage = window.addMessage;
+
+  if (!originalAddMessage) {
+    console.warn("⚠️ addMessage is not defined. Cannot hook retranslation.");
+    return;
+  }
+
+  window.addMessage = async function (msg) {
+    const settings = JSON.parse(localStorage.getItem('translated-output-settings') || '{}');
+
+    const shouldOverride =
+      settings.enabled &&
+      settings.lang &&
+      msg.sender === 'they' &&
+      msg.text;
+
+    if (shouldOverride) {
+      try {
+        const response = await fetch('/api/translated-output', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: msg.text,
+            targetLang: settings.lang
+          })
+        });
+
+        const { translation, audio } = await response.json();
+        if (translation) {
+          msg.translation = translation;
+          msg.lang = `${msg.sourceLang || 'auto'} → ${settings.lang}`;
+        }
+
+        if (audio) {
+          msg.audio = audio;
+        }
+
+        console.log('🔁 Re-translated message:', translation);
+      } catch (err) {
+        console.warn('⚠️ Failed to retranslate:', err);
+      }
+    }
+
+    originalAddMessage(msg);
+  };
+}

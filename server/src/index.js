@@ -44,6 +44,14 @@ app.use('/plugin/advanced-settings-panel', express.static(
 
 import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';
 
+// Translated Output Panel plugin
+import translatedOutputPanel from '../../modules/translated_output_panel/server/index.js';
+
+app.use('/api/translated-output', translatedOutputPanel);
+app.use('/modules/translated-output-panel', express.static(
+  path.join(rootDir, 'modules', 'translated_output_panel', 'client')
+));
+
 //const clients = new Set();
 import { setupWebSocket } from './controllers/wsHandler.js';
 

@@ -10,6 +10,7 @@
 - Advanced Settings Panel works (voice prompts, warning toggles).
 - Mobile (Android) and desktop cross-device tested via WebSocket.
 - Preview UI properly updates with feedback from moderator and language detection.
+- Language labels added 05/29/2025. Example: `en → de`. 
 
 ## 🔧 Tech Details
 
