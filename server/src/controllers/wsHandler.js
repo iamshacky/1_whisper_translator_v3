@@ -12,11 +12,7 @@ const rooms = new Map(); // roomId → Set<WebSocket>
 export function setupWebSocket(wss) {
   wss.on('connection', async (ws, req) => {
     const url        = new URL(req.url, `http://${req.headers.host}`);
-    /*
-    const roomId     = url.searchParams.get('room') || 'default';
-    const targetLang = url.searchParams.get('lang') || 'es';
-    const clientId   = url.searchParams.get('clientId') || randomUUID();
-    */
+
     const roomId   = url.searchParams.get('room') || 'default';
       const clientId = url.searchParams.get('clientId') || randomUUID();
 
@@ -33,7 +29,7 @@ export function setupWebSocket(wss) {
         console.warn("⚠️ Could not read targetLang from settings. Defaulting to 'es'");
       }
 
-    ws.clientId      = clientId;
+    ws.clientId = clientId;
 
     // Join the room
     if (!rooms.has(roomId)) rooms.set(roomId, new Set());
@@ -73,7 +69,9 @@ export function setupWebSocket(wss) {
             text,
             translation,
             audio: audio || null,
-            detectedLang
+            detectedLang,
+            sourceLang: detectedLang,
+            targetLang: targetLang,
           };
 
           console.log("[WS] sending preview back:", {
@@ -95,8 +93,6 @@ export function setupWebSocket(wss) {
 
         } else {
 
-          //const { original, cleaned, translation, warning = '', clientId: senderId } = JSON.parse(message);
-          //const { original, cleaned, translation, warning = '', clientId: senderId } = JSON.parse(message);
           const {
             original,
             cleaned = '',
@@ -116,6 +112,7 @@ export function setupWebSocket(wss) {
           console.log('   📥 inputMethod :', inputMethod);
           console.log('   📩 from clientId:', senderId);
 
+          /*
           const broadcastMessage = JSON.stringify({
             type: 'final',
             speaker: 'them',
@@ -135,9 +132,50 @@ export function setupWebSocket(wss) {
             warning,
             clientId: senderId
           });
+          */
+
+          const broadcastMessage = JSON.stringify({
+            type: 'final',
+            speaker: 'them',
+            original,
+            text: cleaned || original,
+            translation,
+            warning,
+            clientId: senderId,
+            sourceLang: message.detectedLang || '', // 🟨 if available
+            targetLang: targetLang
+          });
+
+          /*
+          const ownMessage = JSON.stringify({
+            type: 'final',
+            speaker: 'you',
+            original,
+            text: cleaned || original,
+            translation,
+            warning,
+            clientId: senderId,
+            sourceLang: message.detectedLang || '',
+            targetLang: targetLang
+          });
+          */
+          const ownMessage = JSON.stringify({
+            type: 'final',
+            speaker: 'you',
+            original,
+            text: cleaned || original,
+            translation,
+            warning,
+            clientId: senderId,
+            sourceLang: message.detectedLang || 'en',
+            targetLang: targetLang
+          });
 
           for (const client of rooms.get(ws.roomId || 'default') || []) {
             if (client.readyState !== WebSocket.OPEN) continue;
+
+            console.log("📤 Sending message to client:", client === ws ? ownMessage : broadcastMessage);
+
             client.send(client === ws ? ownMessage : broadcastMessage);
 
             console.log('📤 Broadcast complete for message above.\n');

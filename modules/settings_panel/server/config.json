@@ -1,6 +1,6 @@
 {
   "targetLang": "de",
-  "inputLangMode": "auto",
+  "inputLangMode": "manual",
   "manualInputLang": "es",
   "speechMode": "synthesis",
   "playAudioOn": "both",

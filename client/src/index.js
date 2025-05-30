@@ -156,7 +156,7 @@ document.addEventListener("DOMContentLoaded", () => {
     latestWarning = '';
   }
 
-  function addMessage({ text, original, translation, audio, lang, sender, warning = '' }) {
+  function addMessage({ text, original, translation, audio, lang, sender, warning = '', sourceLang = '', targetLang = '' }) {
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${sender}`;
 
@@ -173,7 +173,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const langLabel = document.createElement('div');
     langLabel.className = 'lang-label';
-    langLabel.textContent = lang;
+
+    const labelText = sourceLang && targetLang ? `${sourceLang} → ${targetLang}` : lang || '';
+    //const labelText = 'en → de'; // Hardcoded test
+    langLabel.textContent = labelText;
 
     const label = document.createElement('div');
     label.className = 'label';
@@ -192,8 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const translated = document.createElement('div');
     translated.className = 'translated';
-    //translated.textContent = translation;
-    // Filter out fuzzy GPT messages that sound like clarifications instead of translations 
+
     const fuzzyIndicators = [
       "could you clarify",
       "it seems like",
@@ -217,41 +219,6 @@ document.addEventListener("DOMContentLoaded", () => {
     SP_maybePlayAudio({ audio, translation, sender, lang });
   }
 
-  // ✅ Send button (for previewed content)
-  /*
-  if (sendBtn) {
-
-     sendBtn.onclick = () => {
-      if (!previewActive) {
-        alert("Please preview the message before sending.");
-        return;
-      }
-
-      const text = textInput.value.trim();
-      const translation = latestLanguage;
-      const audio = latestAudio;
-
-      const settings = JSON.parse(localStorage.getItem('whisper-settings') || '{}');
-      const expectedLang = settings.inputLangMode === 'manual' ? settings.manualInputLang : null;
-      const warning = latestWarning || '';
-
-      socket.send(JSON.stringify({
-        original: text,
-        cleaned: latestTranscript,
-        translation,
-        audio,
-        warning,
-        clientId,
-        moderatorSuggestion,
-        inputMethod: 'text'
-      }));
-
-      sendBtn.style.display = 'none';
-      previewContainer.style.display = 'none';
-      previewActive = false;
-    };
-  }
-  */
   // ✅ Send button (for previewed content)
   if (sendBtn) {
     sendBtn.onclick = () => {
@@ -377,66 +344,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   acceptBtn.style.display = 'none'; // 🧼 hide by default on page load
   
-  /*
-  previewTextBtn.onclick = async () => {
-    const text = textInput.value.trim();
-    if (!text) return;
-
-    console.log('📤 Previewing text input:', text);
-
-    const saved = localStorage.getItem('whisper-settings');
-    const cfg = saved ? JSON.parse(saved) : {};
-    const targetLang = cfg.targetLang || 'es';
-
-    try {
-      const res = await fetch('/manual-translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, targetLang })
-      });
-
-      const result = await res.json();
-      // Add right after: const result = await res.json();
-      const modRes = await fetch('/moderate-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: result.text })
-      });
-
-      const { needsCorrection, suggestedText } = await modRes.json();
-
-      setPreview(result.text, result.translation, result.audio, warning);
-      handleModeratorResponse({ needsCorrection, suggestedText }, 'text');
-
-      const warning = advancedSettings.showWarnings ? (result.warning || '') : '';
-      // 🟡 Save these globally for use when sending the message
-      latestDetectedLang = result.detectedLang || '';
-      latestWarning = warning;
-
-      //setPreview(result.text, result.translation, result.audio, warning);
-      if (moderatorSuggestion) {
-        console.log("🧠 Moderator suggested correction:", moderatorSuggestion);
-      } else {
-        console.log("✅ No moderator correction needed.");
-      }
-      console.log("⚠️ Detected vs Expected Language Warning:", warning || "(none)");
-      console.log("📝 Final preview text shown:", result.text);
-      console.log("🌐 Final preview translation:", result.translation);
-
-      console.log("🟨 Preview display updated:");
-      console.log("   📝 text        :", result.text);
-      console.log("   🌐 translation :", result.translation);
-      console.log("   ⚠️ warning     :", warning || "(none)");
-      console.log("   🧭 detectedLang:", latestDetectedLang || "(none)");
-      console.log("   🎧 audio       :", result.audio ? "[yes]" : "[none]");
-      console.log("   💬 modSuggest  :", moderatorSuggestion || "(none)");
-    } catch (err) {
-      //console.error('❌ Failed to preview typed input:', err);
-      console.error('❌ Failed to preview typed input:', err);
-      alert('⚠️ Could not contact the server. Please check if it crashed.');
-    }
-  };
-  */
   previewTextBtn.onclick = async () => {
     const text = textInput.value.trim();
     if (!text) return;
@@ -563,15 +470,6 @@ document.addEventListener("DOMContentLoaded", () => {
         textPreview.appendChild(okDiv);
       }
 
-      /*
-      console.log("🟨 Preview display updated:");
-      console.log("   📝 text        :", msg.text);
-      console.log("   🌐 translation :", msg.translation);
-      console.log("   ⚠️ warning     :", langWarning || "(none)");
-      console.log("   🧭 detectedLang:", msg.detectedLang || "(none)");
-      console.log("   🎧 audio       :", msg.audio ? "[yes]" : "[none]");
-      console.log("   💬 modSuggest  :", moderatorSuggestion || "(none)");
-      */
       console.log("🟨 Preview display updated:");
       console.log("   📝 text        :", msg.text);
       console.log("   🌐 translation :", msg.translation);
@@ -581,10 +479,15 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("   💬 modSuggest  :", moderatorSuggestion || "(none)");
     }
 
-    //if (msg.original && msg.translation) {
     if (msg.type === 'final' && msg.original && msg.translation) {
       const lang = msg.detectedLang || '';
       const warning = msg.warning || '';
+      const sourceLang = msg.sourceLang || '';
+      const targetLang = msg.targetLang || '';
+
+      console.log("🧾 Final message received:");
+      console.log("   sourceLang:", msg.sourceLang);
+      console.log("   targetLang:", msg.targetLang);
 
       addMessage({
         text: msg.original,
@@ -592,7 +495,9 @@ document.addEventListener("DOMContentLoaded", () => {
         audio: msg.audio || null,
         lang,
         warning,
-        sender: msg.speaker === 'you' ? 'me' : 'they'
+        sender: msg.speaker === 'you' ? 'me' : 'they',
+        sourceLang,
+        targetLang
       });
     }
   };
