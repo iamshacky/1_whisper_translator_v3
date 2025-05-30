@@ -481,6 +481,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (msg.type === 'final' && msg.original && msg.translation) {
       const lang = msg.detectedLang || '';
+      // 🟩 Check for "translated output" setting
+      //? Should this be contained in the translated-output-module and not in this file to keep things modular?
+      const outputSettings = JSON.parse(localStorage.getItem('translated-output-settings') || '{}');
+      const userLang = outputSettings.lang;
+      const shouldRetranslate = outputSettings.enabled && userLang && userLang !== msg.targetLang;
+
+      if (shouldRetranslate) {
+        try {
+          console.log("🔁 Retargeting message to userLang:", userLang);
+
+          const res = await fetch('/api/translated-output', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: msg.translation,
+              targetLang: userLang
+            })
+          });
+
+          const data = await res.json();
+          if (data?.translation) {
+            msg.translation = data.translation;
+            msg.audio = data.audio || null;
+            msg.targetLang = userLang;
+          }
+        } catch (err) {
+          console.error("❌ Retargeting failed:", err);
+        }
+      }
+
       const warning = msg.warning || '';
       const sourceLang = msg.sourceLang || '';
       const targetLang = msg.targetLang || '';
