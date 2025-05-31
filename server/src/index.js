@@ -19,8 +19,7 @@ const wss = new WebSocketServer({ server });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '../../');
 
-app.use(express.static(path.join(rootDir, 'client')));
-
+//app.use(express.static(path.join(rootDir, 'client')));
 
 /** 🔧 Core Middleware **/
 app.use(express.json());
@@ -28,29 +27,25 @@ app.use(express.static(path.join(rootDir, 'client')));
 
 /** 🔌 Modules & Plugins **/
 
-// settings_panel module
+// settings_panel
 import settingsPanel from '../../modules/settings_panel/server/index.js';
 app.use('/api/settings', settingsPanel);
-app.use('/plugin/settings-panel', express.static(
-  path.join(rootDir, 'modules', 'settings_panel', 'client')
-));
+app.use('/modules/settings-panel', express.static(path.join(rootDir, 'modules', 'settings_panel', 'client')));
 
-// advanced_settings_panel module
+// advanced_settings_panel
 import advancedSettingsPanel from '../../modules/advanced_settings_panel/server/index.js';
 app.use('/api/advanced-settings', advancedSettingsPanel);
-app.use('/plugin/advanced-settings-panel', express.static(
-  path.join(rootDir, 'modules', 'advanced_settings_panel', 'client')
-));
+app.use('/modules/advanced-settings-panel', express.static(path.join(rootDir, 'modules', 'advanced_settings_panel', 'client')));
 
-import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';
-
-// Translated Output Panel plugin
-import translatedOutputPanel from '../../modules/translated_output_panel/server/index.js';
-
-app.use('/api/translated-output', translatedOutputPanel);
-app.use('/modules/translated-output-panel', express.static(
+// translated_output_panel
+import translatedOutputModule from '../../modules/translated_output_panel/server/index.js';
+app.use('/api/translated-output', translatedOutputModule);
+app.use('/modules/translated_output_panel/client', express.static(
   path.join(rootDir, 'modules', 'translated_output_panel', 'client')
 ));
+
+
+import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';
 
 //const clients = new Set();
 import { setupWebSocket } from './controllers/wsHandler.js';

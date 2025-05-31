@@ -23,6 +23,7 @@ export function bindTranslatedOutputUI() {
 
     localStorage.setItem('translated-output-settings', JSON.stringify(newCfg));
     alert('✅ Translated Output settings saved.');
+    panel.style.display = 'none';
   };
 }
 
