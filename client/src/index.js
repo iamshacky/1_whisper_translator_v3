@@ -157,6 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
     latestWarning = '';
   }
 
+  /*
   function addMessage({ text, original, translation, audio, lang, sender, warning = '', sourceLang = '', targetLang = '' }) {
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${sender}`;
@@ -217,6 +218,96 @@ document.addEventListener("DOMContentLoaded", () => {
     wrapper.append(timestamp, langLabel, label, originalWrapper, translated);
     messagesContainer.append(wrapper);
 
+    SP_maybePlayAudio({ audio, translation, sender, lang });
+  }
+  */
+  async function addMessage({ text, original, translation, audio, lang, sender, warning = '', sourceLang = '', targetLang = '' }) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `msg ${sender}`;
+
+    if (warning) {
+      const warn = document.createElement('div');
+      warn.className = 'lang-warning';
+      warn.textContent = `⚠️ ${warning}`;
+      wrapper.appendChild(warn);
+    }
+
+    const timestamp = document.createElement('div');
+    timestamp.className = 'timestamp';
+    timestamp.textContent = formatTimestamp();
+
+    const langLabel = document.createElement('div');
+    langLabel.className = 'lang-label';
+    const labelText = sourceLang && targetLang ? `${sourceLang} → ${targetLang}` : lang || '';
+    langLabel.textContent = labelText;
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = sender === 'me' || sender === 'you' ? 'You said:' : 'They said:';
+
+    const originalWrapper = document.createElement('div');
+    originalWrapper.className = 'original';
+    if (original && original !== text) {
+      originalWrapper.innerHTML = `<em>Corrected:</em> "${text}"<br>Original: "${original}"`;
+    } else {
+      originalWrapper.textContent = text;
+    }
+
+    const translated = document.createElement('div');
+    translated.className = 'translated';
+
+    const fuzzyIndicators = [
+      "could you clarify",
+      "it seems like",
+      "i think you meant",
+      "make sure your",
+      "the text appears to be",
+      "a possible correction is"
+    ];
+    const isFuzzy = translation.toLowerCase().includes
+      ? fuzzyIndicators.some(ind => translation.toLowerCase().includes(ind))
+      : false;
+
+    translated.textContent = isFuzzy
+      ? "[Unclear translation. Please rephrase or correct the message.]"
+      : translation;
+
+    wrapper.append(timestamp, langLabel, label, originalWrapper, translated);
+
+    // ✅ Add "🌍 My Output" if sender is "they"
+    if (sender === 'they') {
+      try {
+        const settings = JSON.parse(localStorage.getItem('translated-output-settings') || '{}');
+        if (settings.enabled && settings.lang) {
+          const response = await fetch('/api/translated-output', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, targetLang: settings.lang })
+          });
+          const { translation: myOutput } = await response.json();
+
+          /*
+          if (myOutput) {
+            const outputDiv = document.createElement('div');
+            outputDiv.className = 'my-output';
+            outputDiv.innerHTML = `🌍 My Output: ${myOutput}`;
+            wrapper.appendChild(outputDiv);
+          }
+          */
+          if (myOutput) {
+            // 🔁 From translated_output_panel module
+            const SOP_outputDiv = document.createElement('div');
+            SOP_outputDiv.className = 'top-my-output';  // was 'my-output'
+            SOP_outputDiv.innerHTML = `🌍 My Output: ${myOutput}`;
+            wrapper.appendChild(SOP_outputDiv);
+          }
+        }
+      } catch (err) {
+        console.warn('⚠️ Failed to fetch "My Output" translation:', err);
+      }
+    }
+
+    messagesContainer.append(wrapper);
     SP_maybePlayAudio({ audio, translation, sender, lang });
   }
 
