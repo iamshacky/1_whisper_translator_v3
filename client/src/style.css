@@ -228,3 +228,46 @@ button:hover {
   font-style: italic;
 }
 
+
+/* translated_output_panel styles */
+
+/* Styles the output block shown in messages */
+.top-my-output {
+  margin-top: 6px;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: #007b8a;
+  background-color: #e6f7fa;
+  padding: 6px 10px;
+  border-left: 3px solid #00a6b6;
+  border-radius: 4px;
+  max-width: 90%;
+  word-wrap: break-word;
+}
+
+/* Styles for the settings panel container */
+#translated-output-panel {
+  background: #f5f5f5;
+  border: 1px solid #ccc;
+  padding: 14px;
+  margin: 20px auto;
+  width: 100%;
+  max-width: 400px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+/* Make sure it doesn’t go off screen on mobile */
+@media screen and (max-width: 480px) {
+  #translated-output-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    height: 50%;
+    overflow-y: auto;
+    z-index: 999;
+    border-radius: 12px 12px 0 0;
+  }
+}
