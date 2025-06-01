@@ -49,8 +49,12 @@ import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';
 
 //const clients = new Set();
 import { setupWebSocket } from './controllers/wsHandler.js';
+import { initDb } from '../db/persistence_sqlite.js';
 
 setupWebSocket(wss);
+
+// ⬇️ Initialize database
+await initDb();
 
 app.post('/manual-translate', async (req, res) => {
   const { text, targetLang } = req.body;

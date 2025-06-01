@@ -7,6 +7,11 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+//const db = require('../../db/persistence_sqlite');
+import * as db from '../../db/persistence_sqlite.js';
+
 const rooms = new Map(); // roomId → Set<WebSocket>
 
 export function setupWebSocket(wss) {
@@ -35,6 +40,27 @@ export function setupWebSocket(wss) {
     if (!rooms.has(roomId)) rooms.set(roomId, new Set());
     rooms.get(roomId).add(ws);
     ws.roomId = roomId;
+
+    const saveIncoming = async (msgData, roomId, targetLang) => {
+      try {
+        const dbRoomId = await db.ensureRoomExists(roomId || 'default');
+
+        await db.saveMessage({
+          room_id: dbRoomId,
+          sender_id: msgData.clientId,
+          sender_type: msgData.speaker === 'you' ? 'me' : 'them',
+          original: msgData.original,
+          corrected: msgData.text !== msgData.original ? msgData.text : null,
+          translated: msgData.translation,
+          my_output: msgData.myOutput || null,
+          source_lang: msgData.sourceLang || 'unknown',
+          target_lang: targetLang,
+          warning: msgData.warning || null
+        });
+      } catch (err) {
+        console.error("❌ [DB] Failed to save message:", err);
+      }
+    };
 
     ws.on('message', async (message, isBinary) => {
       console.log(`[WS] got ${isBinary ? 'binary' : 'text'} from ${clientId}`);
@@ -112,27 +138,15 @@ export function setupWebSocket(wss) {
           console.log('   📥 inputMethod :', inputMethod);
           console.log('   📩 from clientId:', senderId);
 
-          /*
-          const broadcastMessage = JSON.stringify({
-            type: 'final',
-            speaker: 'them',
+          await saveIncoming({
             original,
             text: cleaned || original,
             translation,
             warning,
-            clientId: senderId
-          });
-          
-          const ownMessage = JSON.stringify({
-            type: 'final',
-            speaker: 'you',
-            original,
-            text: cleaned || original,
-            translation,
-            warning,
-            clientId: senderId
-          });
-          */
+            clientId: senderId,
+            sourceLang: message.detectedLang || '',
+            targetLang: targetLang
+          }, ws.roomId, targetLang);
 
           const broadcastMessage = JSON.stringify({
             type: 'final',
@@ -146,19 +160,6 @@ export function setupWebSocket(wss) {
             targetLang: targetLang
           });
 
-          /*
-          const ownMessage = JSON.stringify({
-            type: 'final',
-            speaker: 'you',
-            original,
-            text: cleaned || original,
-            translation,
-            warning,
-            clientId: senderId,
-            sourceLang: message.detectedLang || '',
-            targetLang: targetLang
-          });
-          */
           const ownMessage = JSON.stringify({
             type: 'final',
             speaker: 'you',
