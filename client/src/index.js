@@ -286,14 +286,6 @@ document.addEventListener("DOMContentLoaded", () => {
           });
           const { translation: myOutput } = await response.json();
 
-          /*
-          if (myOutput) {
-            const outputDiv = document.createElement('div');
-            outputDiv.className = 'my-output';
-            outputDiv.innerHTML = `🌍 My Output: ${myOutput}`;
-            wrapper.appendChild(outputDiv);
-          }
-          */
           if (myOutput) {
             // 🔁 From translated_output_panel module
             const SOP_outputDiv = document.createElement('div');
@@ -310,6 +302,8 @@ document.addEventListener("DOMContentLoaded", () => {
     messagesContainer.append(wrapper);
     SP_maybePlayAudio({ audio, translation, sender, lang });
   }
+
+  window.addMessage = addMessage;  // Fixes the ❌ window.addMessage still undefined after waiting. error
 
   // ✅ Send button (for previewed content)
   if (sendBtn) {
@@ -597,6 +591,8 @@ document.addEventListener("DOMContentLoaded", () => {
         sourceLang,
         targetLang
       });
+      // Save to SQLite via modular helper
+      window.PS_saveFinalMessage?.(msg);
     }
   };
 });
