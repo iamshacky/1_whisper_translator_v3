@@ -22,6 +22,7 @@ export async function getDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       room TEXT,
       sender TEXT,
+      senderId TEXT,
       original TEXT,
       translation TEXT,
       warning TEXT,
@@ -30,6 +31,8 @@ export async function getDB() {
       timestamp TEXT
     );
   `);
+  
+  await db.exec(`ALTER TABLE messages ADD COLUMN senderId TEXT`).catch(() => {});
 
   return db;
 }

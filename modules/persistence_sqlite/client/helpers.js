@@ -6,6 +6,7 @@ export function PS_saveFinalMessage(data) {
   const msgToSave = {
     room,
     sender: data.speaker === 'you' ? 'me' : 'they',
+    senderId: localStorage.getItem('user-id'),
     original: data.original || data.text,
     translation: data.translation || '',
     warning: data.warning || '',
