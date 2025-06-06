@@ -32,9 +32,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       const currentUserId = localStorage.getItem('user-id');
 
+      /*
       messages.forEach(msg => {
         const isMine = msg.senderId && msg.senderId === currentUserId;
-
+ 
         window.addMessage({
           text: msg.original,
           original: msg.original,
@@ -46,9 +47,26 @@ document.addEventListener("DOMContentLoaded", async () => {
           targetLang: msg.targetLang
         });
       });
+      */
+     for (const msg of messages) {
+      const isMine = msg.senderId && msg.senderId === currentUserId;
+      await window.addMessage({
+        text: msg.original,
+        original: msg.original,
+        translation: msg.translation,
+        warning: msg.warning || '',
+        lang: msg.sourceLang ? `${msg.sourceLang} → ${msg.targetLang}` : '',
+        sender: isMine ? 'me' : 'they',
+        sourceLang: msg.sourceLang,
+        targetLang: msg.targetLang
+      });
+    }
+
+    // ✅ Scroll once all messages (and async translations) are fully inserted
+    scrollMessagesToBottom();
 
       // ✅ Scroll AFTER all messages are inserted
-      setTimeout(scrollMessagesToBottom, 100);
+      //setTimeout(scrollMessagesToBottom, 100);
     };
 
     function scrollMessagesToBottom() {
