@@ -17,22 +17,25 @@ export async function getDB() {
     driver: sqlite3.Database
   });
 
-  await db.exec(`
+   await db.exec(`
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       room TEXT,
       sender TEXT,
-      senderId TEXT,
       original TEXT,
       translation TEXT,
       warning TEXT,
       sourceLang TEXT,
       targetLang TEXT,
-      timestamp TEXT
+      timestamp TEXT,
+      senderId TEXT,
+      deleted INTEGER DEFAULT 0
     );
   `);
-  
+
+  /*
   await db.exec(`ALTER TABLE messages ADD COLUMN senderId TEXT`).catch(() => {});
+  */
 
   return db;
 }

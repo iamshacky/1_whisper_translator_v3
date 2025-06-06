@@ -1,10 +1,10 @@
-// modules/persistence_sqlite/client/init.js
 
 import { PS_saveFinalMessage } from './helpers.js';
 
 window.PS_saveFinalMessage = PS_saveFinalMessage;
 
-console.log("✅ PS_init loaded");
+
+﻿console.log("✅ PS_init loaded");
 
 document.addEventListener("DOMContentLoaded", async () => {
   const urlParams = new URLSearchParams(window.location.search);
@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   try {
     const res = await fetch(`/api/persistence-sqlite/messages?room=${room}`);
+  
     const messages = await res.json();
 
     console.log(`🕓 PS_loaded ${messages.length} messages from "${room}"`);
@@ -35,7 +36,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       messages.forEach(msg => {
         const isMine = msg.senderId && msg.senderId === currentUserId;
 
-        window.addMessage({
+        const messageDiv = window.addMessage({
           text: msg.original,
           original: msg.original,
           translation: msg.translation,
@@ -46,21 +47,58 @@ document.addEventListener("DOMContentLoaded", async () => {
           targetLang: msg.targetLang
         });
       });
-
-      // ✅ Scroll AFTER all messages are inserted
-      setTimeout(scrollMessagesToBottom, 100);
     };
-
-    function scrollMessagesToBottom() {
-      const messagesContainer = document.getElementById('messages');
-      if (messagesContainer) {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      }
-    }
 
     waitForAddMessage();
   } catch (err) {
     console.warn("⚠️ Failed to load messages from persistence:", err);
   }
+
+  // Persist new messages after send
+  const originalSend = window.sendBtn?.onclick;
+  if (originalSend) {
+    window.sendBtn.onclick = async () => {
+      await originalSend();
+
+      const text = document.getElementById('textInput').value.trim();
+      const translation = window.latestLanguage || '';
+      const warning = window.latestWarning || '';
+      const sender = 'me';
+
+      try {
+        await fetch('/api/persistence-sqlite/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            room,
+            sender,
+            original: text,
+            translation,
+            warning,
+            sourceLang: window.latestDetectedLang || '',
+            targetLang: translation,
+            timestamp: new Date().toISOString()
+          })
+        });
+        console.log('💾 Message saved to SQLite');
+      } catch (err) {
+        console.warn('⚠️ Failed to save message:', err);
+      }
+    };
+  }
 });
 
+
+// Expose for global use
+window.PS_saveMessage = async function(msg) {
+  try {
+    await fetch('/api/persistence-sqlite/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(msg)
+    });
+    console.log('📦 PS_saved message to database');
+  } catch (err) {
+    console.warn('⚠️ Failed to save message:', err);
+  }
+};
