@@ -579,8 +579,10 @@ document.addEventListener("DOMContentLoaded", () => {
         targetLang
       });
 
-      // ✅ Always save to DB — both sender and receiver
-      window.PS_saveFinalMessage?.(msg);
+      // ✅ Only save if message was not sent by this device
+      if (msg.deviceId !== myDeviceId) {
+        window.PS_saveFinalMessage?.(msg);
+      }
     }
   };
 });
