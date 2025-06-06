@@ -1,4 +1,4 @@
-﻿# Whisper Translator v3.03 – Stable Release (05-27 at 10:15 PM)
+﻿# C:\xampp\htdocs\project_1_individual_backups\1_whisper_translator_v6.01__06-04_at_0949pm__sqlite__save_and_view_added
 
 ## ✅ Core Fixes and Features
 
@@ -21,14 +21,15 @@
 
 ## 📂 Notes
 
-This version is ready for:
-- Extending advanced settings (e.g. avatars, voice config)
-- Optional UI/UX refinements later
-- Native app or wearable integration in future stages
+- Sqlite added.
+- Saves message to room_id=<room_id> in messages table each time one is sent.
+- Displays saved messages. (You have to be in the room, ex: room_id=warehouse).
+- That's it.
 
+## Next plan
+- Add more CRUD stuff.
 ---
 
 Backed up from `C:\xampp\htdocs\project1\1_whisper_translator_v3`  
-into:  
-`C:\xampp\htdocs\project_1_individual_backups\1_whisper_translator_v3.03__05-27_at_1015pm__stable_release_moderation_fixed`
+into: C:\xampp\htdocs\project_1_individual_backups\1_whisper_translator_v6.01__06-04_at_0949pm__sqlite__save_and_view_added
 

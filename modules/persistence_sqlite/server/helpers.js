@@ -3,17 +3,12 @@ import { getDB } from './db.js';
 
 export async function PS_saveMessage(message) {
   const db = await getDB();
-
   await db.run(
-    `INSERT INTO messages (
-      room, sender, senderId,
-      original, translation, warning,
-      sourceLang, targetLang, timestamp
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO messages (room, sender, original, translation, warning, sourceLang, targetLang, timestamp)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       message.room,
       message.sender,
-      message.senderId || null,
       message.original,
       message.translation,
       message.warning || '',
@@ -26,8 +21,9 @@ export async function PS_saveMessage(message) {
 
 export async function PS_getMessagesByRoom(room) {
   const db = await getDB();
-  return await db.all(
+  const rows = await db.all(
     `SELECT * FROM messages WHERE room = ? ORDER BY id ASC`,
     [room]
   );
+  return rows;
 }

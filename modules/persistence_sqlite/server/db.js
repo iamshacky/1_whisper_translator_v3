@@ -17,7 +17,7 @@ export async function getDB() {
     driver: sqlite3.Database
   });
 
-   await db.exec(`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       room TEXT,
@@ -27,15 +27,9 @@ export async function getDB() {
       warning TEXT,
       sourceLang TEXT,
       targetLang TEXT,
-      timestamp TEXT,
-      senderId TEXT,
-      deleted INTEGER DEFAULT 0
+      timestamp TEXT
     );
   `);
-
-  /*
-  await db.exec(`ALTER TABLE messages ADD COLUMN senderId TEXT`).catch(() => {});
-  */
 
   return db;
 }

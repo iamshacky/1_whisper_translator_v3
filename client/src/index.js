@@ -1,8 +1,4 @@
-﻿﻿// Ensure each device/browser has a persistent unique ID
-if (!localStorage.getItem('user-id')) {
-  localStorage.setItem('user-id', crypto.randomUUID());
-}
-
+﻿﻿//import { SP_maybePlayAudio } from '/plugin/settings-panel/audio.js';
 import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
 
 ﻿console.log("✅ index.js loaded");
@@ -161,6 +157,70 @@ document.addEventListener("DOMContentLoaded", () => {
     latestWarning = '';
   }
 
+  /*
+  function addMessage({ text, original, translation, audio, lang, sender, warning = '', sourceLang = '', targetLang = '' }) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `msg ${sender}`;
+
+    if (warning) {
+      const warn = document.createElement('div');
+      warn.className = 'lang-warning';
+      warn.textContent = `⚠️ ${warning}`;
+      wrapper.appendChild(warn);
+    }
+
+    const timestamp = document.createElement('div');
+    timestamp.className = 'timestamp';
+    timestamp.textContent = formatTimestamp();
+
+    const langLabel = document.createElement('div');
+    langLabel.className = 'lang-label';
+
+    const labelText = sourceLang && targetLang ? `${sourceLang} → ${targetLang}` : lang || '';
+    //const labelText = 'en → de'; // Hardcoded test
+    langLabel.textContent = labelText;
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = sender === 'me' || sender === 'you' ? 'You said:' : 'They said:';
+
+    const originalWrapper = document.createElement('div');
+    originalWrapper.className = 'original';
+    if (original && original !== text) {
+      originalWrapper.innerHTML = `
+        <em>Corrected:</em> "${text}"<br>
+        Original: "${original}"
+      `;
+    } else {
+      originalWrapper.textContent = text;
+    }
+
+    const translated = document.createElement('div');
+    translated.className = 'translated';
+
+    const fuzzyIndicators = [
+      "could you clarify",
+      "it seems like",
+      "i think you meant",
+      "make sure your",
+      "the text appears to be",
+      "a possible correction is"
+    ];
+
+    const isFuzzy = fuzzyIndicators.some(indicator =>
+      translation.toLowerCase().includes(indicator)
+    );
+
+    translated.textContent = isFuzzy
+      ? "[Unclear translation. Please rephrase or correct the message.]"
+      : translation;
+
+    wrapper.append(timestamp, langLabel, label, originalWrapper, translated);
+    messagesContainer.append(wrapper);
+
+    SP_maybePlayAudio({ audio, translation, sender, lang });
+  }
+  */
   async function addMessage({ text, original, translation, audio, lang, sender, warning = '', sourceLang = '', targetLang = '' }) {
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${sender}`;

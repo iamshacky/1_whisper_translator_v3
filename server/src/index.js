@@ -19,6 +19,8 @@ const wss = new WebSocketServer({ server });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '../../');
 
+//app.use(express.static(path.join(rootDir, 'client')));
+
 /** 🔧 Core Middleware **/
 app.use(express.json());
 app.use(express.static(path.join(rootDir, 'client')));
@@ -52,6 +54,8 @@ app.use('/modules/persistence-sqlite', express.static(
   path.join(rootDir, 'modules', 'persistence_sqlite', 'client')
 ));
 
+
+//import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';
 
 //const clients = new Set();
 import { setupWebSocket } from './controllers/wsHandler.js';
