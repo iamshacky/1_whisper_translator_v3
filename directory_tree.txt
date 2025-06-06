@@ -1,6 +1,7 @@
 
-davepass@Dave MINGW64 /c/xampp/htdocs/project1/1_whisper_translator_v3 (main)
+### Directory tree 
 
+davepass@Dave MINGW64 /c/xampp/htdocs/project1/1_whisper_translator_v3 (main)
 .
 |____.env
 |____.env.example
@@ -15,13 +16,11 @@ davepass@Dave MINGW64 /c/xampp/htdocs/project1/1_whisper_translator_v3 (main)
 | | |____style.css
 |____config
 | |____languages.json
+|____data
+| |____messages.db
 |____directory_tree.txt
-|____docker
-| |____Dockerfile.client
-| |____Dockerfile.server
 |____LICENSE
 |____modules
-|____node_modules
 | |____advanced_settings_panel
 | | |____client
 | | | |____init.js
@@ -31,6 +30,14 @@ davepass@Dave MINGW64 /c/xampp/htdocs/project1/1_whisper_translator_v3 (main)
 | | | |____defaults.js
 | | | |____index.js
 | | | |____panel.html
+| |____persistence_sqlite
+| | |____client
+| | | |____helpers.js
+| | | |____init.js
+| | |____server
+| | | |____db.js
+| | | |____helpers.js
+| | | |____index.js
 | |____settings_panel
 | | |____client
 | | | |____audio.js
@@ -54,8 +61,6 @@ davepass@Dave MINGW64 /c/xampp/htdocs/project1/1_whisper_translator_v3 (main)
 |____package-lock.json
 |____package.json
 |____README.md
-|____scripts
-| |____scaffold.ps1
 |____server
 | |____src
 | | |____config
@@ -71,3 +76,4 @@ davepass@Dave MINGW64 /c/xampp/htdocs/project1/1_whisper_translator_v3 (main)
 | | | |____translationService.js
 | | |____utils
 | | | |____bufferQueue.js
+
