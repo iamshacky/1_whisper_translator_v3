@@ -554,6 +554,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("   💬 modSuggest  :", moderatorSuggestion || "(none)");
     }
 
+    /*
     if (msg.type === 'final' && msg.original && msg.translation) {
       if (!msg.deviceId) msg.deviceId = myDeviceId;
 
@@ -579,11 +580,40 @@ document.addEventListener("DOMContentLoaded", () => {
         targetLang
       });
 
-      // ✅ Only save if message was not sent by this device
-      if (msg.deviceId !== myDeviceId) {
-        window.PS_saveFinalMessage?.(msg);
-      }
+      // ✅ Always save to DB — both sender and receiver
+      window.PS_saveFinalMessage?.(msg);
     }
+    */
+    if (msg.type === 'final' && msg.original && msg.translation) {
+      if (!msg.deviceId) msg.deviceId = myDeviceId;
+
+      const lang = msg.detectedLang || '';
+      const warning = msg.warning || '';
+      const sourceLang = msg.sourceLang || '';
+      const targetLang = msg.targetLang || '';
+
+      console.log("🧾 Final message received:");
+      console.log("   sourceLang:", sourceLang);
+      console.log("   targetLang:", targetLang);
+
+      const sender = (msg.deviceId === myDeviceId) ? 'me' : 'they';
+
+      addMessage({
+        text: msg.original,
+        translation: msg.translation,
+        audio: msg.audio || null,
+        lang,
+        warning,
+        sender,
+        sourceLang,
+        targetLang
+      });
+
+      // ✅ Save once: even if sender, allow it to save once *only*
+      // (receiver will skip because same deviceId)
+      window.PS_saveFinalMessage?.(msg);
+    }
+
   };
 });
 
