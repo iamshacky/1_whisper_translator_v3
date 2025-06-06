@@ -1,4 +1,14 @@
-﻿﻿//import { SP_maybePlayAudio } from '/plugin/settings-panel/audio.js';
+﻿﻿
+let myDeviceId = localStorage.getItem('deviceId');
+if (!myDeviceId) {
+  myDeviceId = Math.random().toString(36).substring(2, 15);
+  localStorage.setItem('deviceId', myDeviceId);
+}
+window.myDeviceId = myDeviceId; // for global access
+
+console.log("🔑 myDeviceId initialized:", myDeviceId);
+
+
 import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
 
 ﻿console.log("✅ index.js loaded");
@@ -157,70 +167,6 @@ document.addEventListener("DOMContentLoaded", () => {
     latestWarning = '';
   }
 
-  /*
-  function addMessage({ text, original, translation, audio, lang, sender, warning = '', sourceLang = '', targetLang = '' }) {
-    const wrapper = document.createElement('div');
-    wrapper.className = `msg ${sender}`;
-
-    if (warning) {
-      const warn = document.createElement('div');
-      warn.className = 'lang-warning';
-      warn.textContent = `⚠️ ${warning}`;
-      wrapper.appendChild(warn);
-    }
-
-    const timestamp = document.createElement('div');
-    timestamp.className = 'timestamp';
-    timestamp.textContent = formatTimestamp();
-
-    const langLabel = document.createElement('div');
-    langLabel.className = 'lang-label';
-
-    const labelText = sourceLang && targetLang ? `${sourceLang} → ${targetLang}` : lang || '';
-    //const labelText = 'en → de'; // Hardcoded test
-    langLabel.textContent = labelText;
-
-    const label = document.createElement('div');
-    label.className = 'label';
-    label.textContent = sender === 'me' || sender === 'you' ? 'You said:' : 'They said:';
-
-    const originalWrapper = document.createElement('div');
-    originalWrapper.className = 'original';
-    if (original && original !== text) {
-      originalWrapper.innerHTML = `
-        <em>Corrected:</em> "${text}"<br>
-        Original: "${original}"
-      `;
-    } else {
-      originalWrapper.textContent = text;
-    }
-
-    const translated = document.createElement('div');
-    translated.className = 'translated';
-
-    const fuzzyIndicators = [
-      "could you clarify",
-      "it seems like",
-      "i think you meant",
-      "make sure your",
-      "the text appears to be",
-      "a possible correction is"
-    ];
-
-    const isFuzzy = fuzzyIndicators.some(indicator =>
-      translation.toLowerCase().includes(indicator)
-    );
-
-    translated.textContent = isFuzzy
-      ? "[Unclear translation. Please rephrase or correct the message.]"
-      : translation;
-
-    wrapper.append(timestamp, langLabel, label, originalWrapper, translated);
-    messagesContainer.append(wrapper);
-
-    SP_maybePlayAudio({ audio, translation, sender, lang });
-  }
-  */
   async function addMessage({ text, original, translation, audio, lang, sender, warning = '', sourceLang = '', targetLang = '' }) {
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${sender}`;
@@ -572,6 +518,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (msg.type === 'final' && msg.original && msg.translation) {
+      msg.deviceId = myDeviceId; // ✅ Set this FIRST
       const lang = msg.detectedLang || '';
       const warning = msg.warning || '';
       const sourceLang = msg.sourceLang || '';
@@ -581,6 +528,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("   sourceLang:", msg.sourceLang);
       console.log("   targetLang:", msg.targetLang);
 
+      /*
       addMessage({
         text: msg.original,
         translation: msg.translation,
@@ -591,6 +539,20 @@ document.addEventListener("DOMContentLoaded", () => {
         sourceLang,
         targetLang
       });
+      */
+      const sender = (msg.deviceId && msg.deviceId === myDeviceId) ? 'me' : 'they';
+
+      addMessage({
+        text: msg.original,
+        translation: msg.translation,
+        audio: msg.audio || null,
+        lang,
+        warning,
+        sender,
+        sourceLang,
+        targetLang
+      });
+
       // Save to SQLite via modular helper
       window.PS_saveFinalMessage?.(msg);
     }

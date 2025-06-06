@@ -11,7 +11,7 @@ const dbPath = path.join(__dirname, '../../../data/messages.db');
 // Ensure data directory exists
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-export async function getDB() {
+export async function PS_getDB() {
   const db = await open({
     filename: dbPath,
     driver: sqlite3.Database
@@ -27,6 +27,7 @@ export async function getDB() {
       warning TEXT,
       sourceLang TEXT,
       targetLang TEXT,
+      deviceId TEXT,
       timestamp TEXT
     );
   `);
