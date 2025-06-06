@@ -1,8 +1,6 @@
 ﻿﻿//import { SP_maybePlayAudio } from '/plugin/settings-panel/audio.js';
 import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
 
-// alrighty then.
-
 ﻿console.log("✅ index.js loaded");
 
 document.addEventListener("DOMContentLoaded", () => {

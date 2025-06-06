@@ -1,5 +1,5 @@
 
-### Directory tree 
+### directory tree 
 
 davepass@Dave MINGW64 /c/xampp/htdocs/project1/1_whisper_translator_v3 (main)
 .
@@ -76,4 +76,3 @@ davepass@Dave MINGW64 /c/xampp/htdocs/project1/1_whisper_translator_v3 (main)
 | | | |____translationService.js
 | | |____utils
 | | | |____bufferQueue.js
-
