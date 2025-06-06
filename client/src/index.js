@@ -555,29 +555,18 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (msg.type === 'final' && msg.original && msg.translation) {
-      msg.deviceId = myDeviceId; // ✅ Set this FIRST
+      if (!msg.deviceId) msg.deviceId = myDeviceId;
+
       const lang = msg.detectedLang || '';
       const warning = msg.warning || '';
       const sourceLang = msg.sourceLang || '';
       const targetLang = msg.targetLang || '';
 
       console.log("🧾 Final message received:");
-      console.log("   sourceLang:", msg.sourceLang);
-      console.log("   targetLang:", msg.targetLang);
+      console.log("   sourceLang:", sourceLang);
+      console.log("   targetLang:", targetLang);
 
-      /*
-      addMessage({
-        text: msg.original,
-        translation: msg.translation,
-        audio: msg.audio || null,
-        lang,
-        warning,
-        sender: msg.speaker === 'you' ? 'me' : 'they',
-        sourceLang,
-        targetLang
-      });
-      */
-      const sender = (msg.deviceId && msg.deviceId === myDeviceId) ? 'me' : 'they';
+      const sender = (msg.deviceId === myDeviceId) ? 'me' : 'they';
 
       addMessage({
         text: msg.original,
@@ -590,7 +579,7 @@ document.addEventListener("DOMContentLoaded", () => {
         targetLang
       });
 
-      // Save to SQLite via modular helper
+      // ✅ Always save to DB — both sender and receiver
       window.PS_saveFinalMessage?.(msg);
     }
   };
