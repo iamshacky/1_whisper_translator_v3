@@ -28,7 +28,7 @@ devBanner.innerText = `🆔 ${PS_myDeviceId.slice(0, 6)}...`;
 devBanner.style = "position: fixed; top: 0; right: 0; font-size: 12px; background: #eee; padding: 2px 6px;";
 document.body.appendChild(devBanner);
 
-// Deduplication logic
+// 🧠 Deduplication logic (shared across live + reload)
 const PS_renderedMessages = new Set();
 
 function PS_isDuplicate(message) {
@@ -38,6 +38,10 @@ function PS_isDuplicate(message) {
 function PS_markAsRendered(message) {
   PS_renderedMessages.add(`${message.timestamp}_${message.deviceId}`);
 }
+
+window.PS_renderedMessages = PS_renderedMessages;
+window.PS_isDuplicate = PS_isDuplicate;
+window.PS_markAsRendered = PS_markAsRendered;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const room = new URLSearchParams(window.location.search).get("room") || "default";
