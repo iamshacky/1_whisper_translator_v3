@@ -1,7 +1,7 @@
 {
-  "targetLang": "de",
+  "targetLang": "en",
   "inputLangMode": "manual",
-  "manualInputLang": "fr",
+  "manualInputLang": "de",
   "speechMode": "synthesis",
   "playAudioOn": "both",
   "moderatorVoiceSpeed": 1,

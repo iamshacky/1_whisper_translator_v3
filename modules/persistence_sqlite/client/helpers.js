@@ -1,4 +1,3 @@
-// modules/persistence_sqlite/client/helpers.js
 console.log("✅ PS_helpers loaded");
 
 export function PS_saveMessage(msg) {
@@ -22,8 +21,7 @@ export function PS_getAllMessages(room) {
 
 export function PS_saveFinalMessage(data) {
   const room = new URLSearchParams(window.location.search).get("room") || "default";
-  const deviceId = window.myDeviceId || localStorage.getItem('deviceId');
-
+  const deviceId = window.PS_myDeviceId || localStorage.getItem("deviceId");
 
   const msgToSave = {
     room,
@@ -34,7 +32,7 @@ export function PS_saveFinalMessage(data) {
     warning: data.warning || "",
     sourceLang: data.sourceLang || "",
     targetLang: data.targetLang || "",
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
   };
 
   PS_saveMessage(msgToSave);

@@ -1,54 +1,9 @@
-﻿﻿/*
-let myDeviceId = localStorage.getItem('deviceId');
-if (!myDeviceId) {
-  myDeviceId = Math.random().toString(36).substring(2, 15);
-  localStorage.setItem('deviceId', myDeviceId);
-}
-window.myDeviceId = myDeviceId; // for global access
-
-console.log("🔑 myDeviceId initialized:", myDeviceId);
-*/
-
-
+﻿﻿
 import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
 
+import "../../modules/persistence_sqlite/client/init.js"; // or relative path as needed
+
 ﻿console.log("✅ index.js loaded");
-
-// 🔐 1. Allow override via URL
-let myDeviceId = localStorage.getItem('deviceId');
-const overrideId = new URLSearchParams(window.location.search).get('overrideDeviceId');
-
-if (overrideId) {
-  console.log("🛠️ Overriding deviceId from URL param:", overrideId);
-  myDeviceId = overrideId;
-  localStorage.setItem('deviceId', myDeviceId);
-}
-
-// 🧠 2. Generate new ID if not present
-if (!myDeviceId) {
-  myDeviceId = Math.random().toString(36).substring(2, 15);
-  localStorage.setItem('deviceId', myDeviceId);
-}
-
-window.myDeviceId = myDeviceId;
-console.log("🔑 myDeviceId initialized:", myDeviceId);
-
-// 🪧 3. Optional: Show visibly in UI for dev
-const devBanner = document.createElement('div');
-devBanner.textContent = `🧪 Device ID: ${myDeviceId}`;
-devBanner.style = `
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  background: #eee;
-  padding: 5px 8px;
-  font-size: 11px;
-  font-family: monospace;
-  border-top-right-radius: 5px;
-  box-shadow: 1px -1px 4px rgba(0,0,0,0.2);
-  z-index: 9999;
-`;
-document.body.appendChild(devBanner);
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("✅ DOM fully loaded");
@@ -554,9 +509,8 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("   💬 modSuggest  :", moderatorSuggestion || "(none)");
     }
 
-    /*
     if (msg.type === 'final' && msg.original && msg.translation) {
-      if (!msg.deviceId) msg.deviceId = myDeviceId;
+      if (!msg.deviceId) msg.deviceId = PS_myDeviceId;
 
       const lang = msg.detectedLang || '';
       const warning = msg.warning || '';
@@ -567,7 +521,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("   sourceLang:", sourceLang);
       console.log("   targetLang:", targetLang);
 
-      const sender = (msg.deviceId === myDeviceId) ? 'me' : 'they';
+      const sender = (msg.deviceId === PS_myDeviceId) ? 'me' : 'they';
 
       addMessage({
         text: msg.original,
@@ -577,36 +531,8 @@ document.addEventListener("DOMContentLoaded", () => {
         warning,
         sender,
         sourceLang,
-        targetLang
-      });
-
-      // ✅ Always save to DB — both sender and receiver
-      window.PS_saveFinalMessage?.(msg);
-    }
-    */
-    if (msg.type === 'final' && msg.original && msg.translation) {
-      if (!msg.deviceId) msg.deviceId = myDeviceId;
-
-      const lang = msg.detectedLang || '';
-      const warning = msg.warning || '';
-      const sourceLang = msg.sourceLang || '';
-      const targetLang = msg.targetLang || '';
-
-      console.log("🧾 Final message received:");
-      console.log("   sourceLang:", sourceLang);
-      console.log("   targetLang:", targetLang);
-
-      const sender = (msg.deviceId === myDeviceId) ? 'me' : 'they';
-
-      addMessage({
-        text: msg.original,
-        translation: msg.translation,
-        audio: msg.audio || null,
-        lang,
-        warning,
-        sender,
-        sourceLang,
-        targetLang
+        targetLang,
+        timestamp: Date.now()
       });
 
       // ✅ Save once: even if sender, allow it to save once *only*
