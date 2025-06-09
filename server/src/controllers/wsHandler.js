@@ -9,8 +9,6 @@ import { fileURLToPath } from 'url';
 
 const rooms = new Map(); // roomId → Set<WebSocket>
 
-const clientIdToDeviceIdMap = new Map(); // 🆕 Map to link clientId → deviceId
-
 export function setupWebSocket(wss) {
   wss.on('connection', async (ws, req) => {
     const url        = new URL(req.url, `http://${req.headers.host}`);
@@ -32,8 +30,6 @@ export function setupWebSocket(wss) {
       }
 
     ws.clientId = clientId;
-
-    clientIdToDeviceIdMap.set(clientId, url.searchParams.get('deviceId') || 'unknown');
 
     // Join the room
     if (!rooms.has(roomId)) rooms.set(roomId, new Set());
@@ -116,7 +112,27 @@ export function setupWebSocket(wss) {
           console.log('   📥 inputMethod :', inputMethod);
           console.log('   📩 from clientId:', senderId);
 
-          const deviceId = clientIdToDeviceIdMap.get(senderId);  // ✅ Already used below for ownMessage
+          /*
+          const broadcastMessage = JSON.stringify({
+            type: 'final',
+            speaker: 'them',
+            original,
+            text: cleaned || original,
+            translation,
+            warning,
+            clientId: senderId
+          });
+          
+          const ownMessage = JSON.stringify({
+            type: 'final',
+            speaker: 'you',
+            original,
+            text: cleaned || original,
+            translation,
+            warning,
+            clientId: senderId
+          });
+          */
 
           const broadcastMessage = JSON.stringify({
             type: 'final',
@@ -126,20 +142,31 @@ export function setupWebSocket(wss) {
             translation,
             warning,
             clientId: senderId,
-            deviceId,  // ✅ this is the key you're missing
-            sourceLang: message.detectedLang || '',
+            sourceLang: message.detectedLang || '', // 🟨 if available
             targetLang: targetLang
           });
 
+          /*
           const ownMessage = JSON.stringify({
             type: 'final',
-            speaker: 'me',
+            speaker: 'you',
             original,
             text: cleaned || original,
             translation,
             warning,
             clientId: senderId,
-            deviceId,
+            sourceLang: message.detectedLang || '',
+            targetLang: targetLang
+          });
+          */
+          const ownMessage = JSON.stringify({
+            type: 'final',
+            speaker: 'you',
+            original,
+            text: cleaned || original,
+            translation,
+            warning,
+            clientId: senderId,
             sourceLang: message.detectedLang || 'en',
             targetLang: targetLang
           });

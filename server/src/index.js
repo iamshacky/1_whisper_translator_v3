@@ -24,7 +24,6 @@ const rootDir = path.resolve(__dirname, '../../');
 /** 🔧 Core Middleware **/
 app.use(express.json());
 app.use(express.static(path.join(rootDir, 'client')));
-app.use('/modules', express.static('modules'));
 
 /** 🔌 Modules & Plugins **/
 
@@ -38,8 +37,6 @@ import advancedSettingsPanel from '../../modules/advanced_settings_panel/server/
 app.use('/api/advanced-settings', advancedSettingsPanel);
 app.use('/modules/advanced-settings-panel', express.static(path.join(rootDir, 'modules', 'advanced_settings_panel', 'client')));
 
-import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';
-
 // translated_output_panel
 import translatedOutputModule from '../../modules/translated_output_panel/server/index.js';
 app.use('/api/translated-output', translatedOutputModule);
@@ -48,14 +45,14 @@ app.use('/modules/translated_output_panel/client', express.static(
 ));
 
 // persistence_sqlite
-import persistenceSqlite from '../../modules/persistence_sqlite/server/index.js';
-app.use('/api/persistence-sqlite', persistenceSqlite);
+import persistenceSqliteRoutes from '../../modules/persistence_sqlite/server/routes.js';
+app.use('/api/persistence-sqlite', persistenceSqliteRoutes);
 app.use('/modules/persistence-sqlite', express.static(
   path.join(rootDir, 'modules', 'persistence_sqlite', 'client')
 ));
 
 
-//import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';
+import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';
 
 //const clients = new Set();
 import { setupWebSocket } from './controllers/wsHandler.js';

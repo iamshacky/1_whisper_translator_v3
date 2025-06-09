@@ -1,54 +1,9 @@
-﻿﻿/*
-let myDeviceId = localStorage.getItem('deviceId');
-if (!myDeviceId) {
-  myDeviceId = Math.random().toString(36).substring(2, 15);
-  localStorage.setItem('deviceId', myDeviceId);
-}
-window.myDeviceId = myDeviceId; // for global access
+﻿﻿import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
+import '/modules/persistence-sqlite/init.js';
+//import { renderMessageFromDb } from './helpers.js';
 
-console.log("🔑 myDeviceId initialized:", myDeviceId);
-*/
-
-
-import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
 
 ﻿console.log("✅ index.js loaded");
-
-// 🔐 1. Allow override via URL
-let myDeviceId = localStorage.getItem('deviceId');
-const overrideId = new URLSearchParams(window.location.search).get('overrideDeviceId');
-
-if (overrideId) {
-  console.log("🛠️ Overriding deviceId from URL param:", overrideId);
-  myDeviceId = overrideId;
-  localStorage.setItem('deviceId', myDeviceId);
-}
-
-// 🧠 2. Generate new ID if not present
-if (!myDeviceId) {
-  myDeviceId = Math.random().toString(36).substring(2, 15);
-  localStorage.setItem('deviceId', myDeviceId);
-}
-
-window.myDeviceId = myDeviceId;
-console.log("🔑 myDeviceId initialized:", myDeviceId);
-
-// 🪧 3. Optional: Show visibly in UI for dev
-const devBanner = document.createElement('div');
-devBanner.textContent = `🧪 Device ID: ${myDeviceId}`;
-devBanner.style = `
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  background: #eee;
-  padding: 5px 8px;
-  font-size: 11px;
-  font-family: monospace;
-  border-top-right-radius: 5px;
-  box-shadow: 1px -1px 4px rgba(0,0,0,0.2);
-  z-index: 9999;
-`;
-document.body.appendChild(devBanner);
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("✅ DOM fully loaded");
@@ -285,8 +240,6 @@ document.addEventListener("DOMContentLoaded", () => {
     messagesContainer.append(wrapper);
     SP_maybePlayAudio({ audio, translation, sender, lang });
   }
-
-  window.addMessage = addMessage;  // Fixes the ❌ window.addMessage still undefined after waiting. error
 
   // ✅ Send button (for previewed content)
   if (sendBtn) {
@@ -554,20 +507,15 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("   💬 modSuggest  :", moderatorSuggestion || "(none)");
     }
 
-    /*
     if (msg.type === 'final' && msg.original && msg.translation) {
-      if (!msg.deviceId) msg.deviceId = myDeviceId;
-
       const lang = msg.detectedLang || '';
       const warning = msg.warning || '';
       const sourceLang = msg.sourceLang || '';
       const targetLang = msg.targetLang || '';
 
       console.log("🧾 Final message received:");
-      console.log("   sourceLang:", sourceLang);
-      console.log("   targetLang:", targetLang);
-
-      const sender = (msg.deviceId === myDeviceId) ? 'me' : 'they';
+      console.log("   sourceLang:", msg.sourceLang);
+      console.log("   targetLang:", msg.targetLang);
 
       addMessage({
         text: msg.original,
@@ -575,46 +523,21 @@ document.addEventListener("DOMContentLoaded", () => {
         audio: msg.audio || null,
         lang,
         warning,
-        sender,
+        sender: msg.speaker === 'you' ? 'me' : 'they',
         sourceLang,
         targetLang
       });
-
-      // ✅ Always save to DB — both sender and receiver
-      window.PS_saveFinalMessage?.(msg);
+       // ✅ Save to SQLite
+       window.PS_saveFinalMessage?.(msg);
     }
-    */
-    if (msg.type === 'final' && msg.original && msg.translation) {
-      if (!msg.deviceId) msg.deviceId = myDeviceId;
-
-      const lang = msg.detectedLang || '';
-      const warning = msg.warning || '';
-      const sourceLang = msg.sourceLang || '';
-      const targetLang = msg.targetLang || '';
-
-      console.log("🧾 Final message received:");
-      console.log("   sourceLang:", sourceLang);
-      console.log("   targetLang:", targetLang);
-
-      const sender = (msg.deviceId === myDeviceId) ? 'me' : 'they';
-
-      addMessage({
-        text: msg.original,
-        translation: msg.translation,
-        audio: msg.audio || null,
-        lang,
-        warning,
-        sender,
-        sourceLang,
-        targetLang
-      });
-
-      // ✅ Save once: even if sender, allow it to save once *only*
-      // (receiver will skip because same deviceId)
-      window.PS_saveFinalMessage?.(msg);
-    }
-
   };
+  // 🔁 Load messages from SQLite on page load
+  (async () => {
+    const savedMessages = await window.PS_getAllMessages?.();
+    if (Array.isArray(savedMessages)) {
+      for (const msg of savedMessages) {
+        window.PS_renderMessageFromDb?.(msg, messagesContainer);
+      }
+    }
+  })();
 });
-
- 

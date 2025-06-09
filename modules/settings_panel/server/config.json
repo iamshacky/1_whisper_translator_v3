@@ -1,8 +1,8 @@
 {
-  "targetLang": "zh",
+  "targetLang": "de",
   "inputLangMode": "manual",
-  "manualInputLang": "de",
-  "speechMode": "tts",
+  "manualInputLang": "fr",
+  "speechMode": "synthesis",
   "playAudioOn": "both",
   "moderatorVoiceSpeed": 1,
   "profanityMode": "none"

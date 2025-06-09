@@ -1,3 +1,4 @@
+
 {
   "name": "1_whisper_translator_v3",
   "version": "1.0.0",
@@ -6,14 +7,12 @@
   "main": "server/src/index.js",
   "scripts": {
     "start": "node server/src/index.js",
-    "dev": "nodemon server/src/index.js"
+    "dev":   "nodemon server/src/index.js"
   },
   "dependencies": {
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "openai": "^4.97.0",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7",
     "ws": "^8.18.2"
   }
 }
