@@ -1,3 +1,4 @@
+// modules/persistence_sqlite/client/helpers.js
 console.log("✅ PS_helpers loaded");
 
 export function PS_saveMessage(msg) {
@@ -19,10 +20,10 @@ export function PS_getAllMessages(room) {
     });
 }
 
-/*
 export function PS_saveFinalMessage(data) {
   const room = new URLSearchParams(window.location.search).get("room") || "default";
-  const deviceId = window.PS_myDeviceId || localStorage.getItem("deviceId");
+  const deviceId = window.myDeviceId || localStorage.getItem('deviceId');
+
 
   const msgToSave = {
     room,
@@ -33,32 +34,8 @@ export function PS_saveFinalMessage(data) {
     warning: data.warning || "",
     sourceLang: data.sourceLang || "",
     targetLang: data.targetLang || "",
-    timestamp: Date.now(),
+    timestamp: new Date().toISOString(),
   };
 
   PS_saveMessage(msgToSave);
 }
-*/
-export function PS_saveFinalMessage(data) {
-  const room = new URLSearchParams(window.location.search).get("room") || "default";
-  const deviceId = window.PS_myDeviceId || localStorage.getItem("deviceId");
-
-  const msgToSave = {
-    room,
-    deviceId,
-    sender: data.deviceId === deviceId ? "me" : "they",
-    original: data.original || data.text,
-    translation: data.translation || "",
-    warning: data.warning || "",
-    sourceLang: data.sourceLang || "",
-    targetLang: data.targetLang || "",
-    timestamp: Date.now(),
-    audio: data.audio || null
-  };
-
-  PS_saveMessage(msgToSave);
-
-  // ✅ Return sender so index.js can use it in addMessage
-  return msgToSave.sender;
-}
-

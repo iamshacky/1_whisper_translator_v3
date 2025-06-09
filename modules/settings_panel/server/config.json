@@ -2,7 +2,7 @@
   "targetLang": "zh",
   "inputLangMode": "manual",
   "manualInputLang": "de",
-  "speechMode": "synthesis",
+  "speechMode": "tts",
   "playAudioOn": "both",
   "moderatorVoiceSpeed": 1,
   "profanityMode": "none"
