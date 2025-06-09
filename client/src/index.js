@@ -2,6 +2,16 @@
 import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
 
 import "../../modules/persistence_sqlite/client/init.js"; // or relative path as needed
+//import "../../modules/persistence_session/client/init.js";
+// instead of persistence_sqlite/client/init.js
+/*
+const mode = new URLSearchParams(location.search).get("mode");
+if (mode === "sqlite") {
+  import("../../modules/persistence_sqlite/client/init.js");
+} else {
+  import("../../modules/persistence_session/client/init.js");
+}
+*/
 
 ﻿console.log("✅ index.js loaded");
 
@@ -521,8 +531,9 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("   sourceLang:", sourceLang);
       console.log("   targetLang:", targetLang);
 
-      const sender = (msg.deviceId === PS_myDeviceId) ? 'me' : 'they';
+      //const sender = (msg.deviceId === PS_myDeviceId) ? 'me' : 'they';////
 
+      /*
       addMessage({
         text: msg.original,
         translation: msg.translation,
@@ -538,8 +549,22 @@ document.addEventListener("DOMContentLoaded", () => {
       // ✅ Save once: even if sender, allow it to save once *only*
       // (receiver will skip because same deviceId)
       window.PS_saveFinalMessage?.(msg);
+      */
     }
+    if (!msg.deviceId) msg.deviceId = PS_myDeviceId;
+      const sender = window.PS_saveFinalMessage?.(msg) || 'they';
 
+      addMessage({
+        text: msg.original,
+        translation: msg.translation,
+        audio: msg.audio || null,
+        lang: msg.detectedLang || '',
+        warning: msg.warning || '',
+        sender,
+        sourceLang: msg.sourceLang || '',
+        targetLang: msg.targetLang || '',
+        timestamp: Date.now()
+      });
   };
 });
 
