@@ -1,9 +1,9 @@
 {
-  "targetLang": "de",
+  "targetLang": "zh",
   "inputLangMode": "manual",
-  "manualInputLang": "fr",
+  "manualInputLang": "de",
   "speechMode": "synthesis",
-  "playAudioOn": "both",
+  "playAudioOn": "sender",
   "moderatorVoiceSpeed": 1,
   "profanityMode": "none"
 }

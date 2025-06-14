@@ -38,11 +38,6 @@ export async function translateController(audioBuffer, targetLang, inputLangMode
       console.log("🔍 Auto-detecting input language...");
     }
     
-    /*
-    const sourceLang = inputLangMode === 'manual'
-      ? manualInputLang
-      : await detectLanguage(transcriptText);
-    */
     const sourceLang = inputLangMode === 'manual'
       ? (transcript.detectedLang || manualInputLang)
       : await detectLanguage(transcriptText);

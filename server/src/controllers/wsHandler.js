@@ -92,7 +92,6 @@ export function setupWebSocket(wss) {
           console.log('🟨 End of preview log\n');
 
         } else {
-
           const {
             original,
             cleaned = '',
@@ -100,7 +99,10 @@ export function setupWebSocket(wss) {
             warning = '',
             clientId: senderId,
             moderatorSuggestion = '',
-            inputMethod = 'text'
+            inputMethod = 'text',
+            sourceLang = '',
+            targetLang: incomingTargetLang = '',
+            user = {}
           } = JSON.parse(message);
 
           console.log('🟦 Final message received:');
@@ -110,77 +112,37 @@ export function setupWebSocket(wss) {
           console.log('   🌐 translation :', translation);
           console.log('   ⚠️ warning     :', warning || '(none)');
           console.log('   📥 inputMethod :', inputMethod);
+          console.log('   👤 username    :', user?.username || '(none)');
+          console.log('   🆔 user_id     :', user?.user_id || '(none)');
           console.log('   📩 from clientId:', senderId);
 
-          /*
-          const broadcastMessage = JSON.stringify({
+          const finalMessage = {
             type: 'final',
-            speaker: 'them',
             original,
             text: cleaned || original,
             translation,
             warning,
-            clientId: senderId
-          });
-          
-          const ownMessage = JSON.stringify({
-            type: 'final',
-            speaker: 'you',
-            original,
-            text: cleaned || original,
-            translation,
-            warning,
-            clientId: senderId
-          });
-          */
-
-          const broadcastMessage = JSON.stringify({
-            type: 'final',
-            speaker: 'them',
-            original,
-            text: cleaned || original,
-            translation,
-            warning,
+            inputMethod,
+            sourceLang,
+            targetLang: incomingTargetLang || targetLang,
+            user_id: user?.user_id || null,
+            username: user?.username || null,
             clientId: senderId,
-            sourceLang: message.detectedLang || '', // 🟨 if available
-            targetLang: targetLang
-          });
-
-          /*
-          const ownMessage = JSON.stringify({
-            type: 'final',
-            speaker: 'you',
-            original,
-            text: cleaned || original,
-            translation,
-            warning,
-            clientId: senderId,
-            sourceLang: message.detectedLang || '',
-            targetLang: targetLang
-          });
-          */
-          const ownMessage = JSON.stringify({
-            type: 'final',
-            speaker: 'you',
-            original,
-            text: cleaned || original,
-            translation,
-            warning,
-            clientId: senderId,
-            sourceLang: message.detectedLang || 'en',
-            targetLang: targetLang
-          });
+          };
 
           for (const client of rooms.get(ws.roomId || 'default') || []) {
             if (client.readyState !== WebSocket.OPEN) continue;
 
-            console.log("📤 Sending message to client:", client === ws ? ownMessage : broadcastMessage);
+            const enriched = {
+              ...finalMessage,
+              speaker: client === ws ? 'you' : 'them',
+            };
 
-            client.send(client === ws ? ownMessage : broadcastMessage);
-
-            console.log('📤 Broadcast complete for message above.\n');
-
+            console.log("📤 Sending message to client:", enriched);
+            client.send(JSON.stringify(enriched));
           }
+
+          console.log('📤 Broadcast complete for message above.\n');
         }
       } catch (err) {
         console.error("❌ [WS] Error handling message:", err);

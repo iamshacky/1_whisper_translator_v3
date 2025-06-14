@@ -5,6 +5,7 @@ export function PS_getRoom() {
 }
 
 export function PS_saveMessage(msg) {
+  /*
   fetch("/api/persistence-sqlite/save", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -12,18 +13,27 @@ export function PS_saveMessage(msg) {
   }).catch((err) => {
     console.error("❌ Failed to save message:", err);
   });
+  */
+  fetch('/api/persistence-sqlite/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      room: msg.room,
+      original: msg.original,
+      translation: msg.translation,
+      warning: msg.warning,
+      sourceLang: msg.sourceLang,
+      targetLang: msg.targetLang,
+      timestamp: msg.timestamp,
+      audio: msg.audio,
+      user: {
+        user_id: msg.user_id,
+        username: msg.username
+      }
+    })
+  });
 }
 
-/*
-export function PS_getAllMessages(room = PS_getRoom()) {
-  return fetch(`/api/persistence-sqlite/messages?room=${room}`)
-    .then((res) => res.json())
-    .catch((err) => {
-      console.error("❌ Failed to load messages:", err);
-      return [];
-    });
-}
-*/
 export async function PS_getAllMessages() {
   try {
     const res = await fetch('/api/persistence-sqlite/load');
@@ -36,13 +46,24 @@ export async function PS_getAllMessages() {
 }
 
 export function PS_saveFinalMessage(data) {
-  const deviceId = window.PS_myDeviceId || localStorage.getItem("deviceId") || "unknown";
+  const user = JSON.parse(localStorage.getItem("whisper-user"));
+  if (!user || !user.user_id) {
+    console.warn("❌ No logged-in user found. Message not saved.");
+    return;
+  }
+
+  // 🛡️ Check if this message belongs to the current user
+  if (data.user_id !== user.user_id) {
+    console.log("🛑 Not saving — this message is from another user.");
+    return;
+  }
+
   const room = PS_getRoom();
 
   const msg = {
     room,
-    deviceId,
-    sender: data.deviceId === deviceId ? "me" : "they",
+    user_id: user.user_id,
+    username: user.username,
     original: data.original || data.text,
     translation: data.translation || "",
     warning: data.warning || "",
@@ -53,45 +74,10 @@ export function PS_saveFinalMessage(data) {
   };
 
   PS_saveMessage(msg);
-  return msg.sender;
+  return 'saved';
 }
 
 /*
-export function renderMessageFromDb(msg) {
-  const {
-    id,
-    speaker,
-    original,
-    text,
-    translation,
-    warning,
-    sourceLang,
-    targetLang,
-    timestamp,
-    audio,
-    deviceId
-  } = msg;
-
-  const sender = (deviceId === window.PS_myDeviceId) ? 'me' : 'they';
-
-  const bubble = document.createElement('div');
-  bubble.classList.add('message', sender);
-  if (audio) bubble.classList.add('has-audio');
-
-  bubble.innerHTML = `
-    <div class="original-text">${text || original || ''}</div>
-    <div class="translation-text">${translation || ''}</div>
-    <div class="meta">
-      ${sourceLang ? `<span>${sourceLang} → ${targetLang}</span>` : ''}
-      ${warning ? `<span class="warning">${warning}</span>` : ''}
-      ${timestamp ? `<span class="timestamp">${new Date(Number(timestamp)).toLocaleString()}</span>` : ''}
-    </div>
-  `;
-
-  const container = document.querySelector('#messages') || document.body;
-  container.appendChild(bubble);
-}
-*/
 export function renderMessageFromDb(msg, messagesContainer) {
   const {
     text,
@@ -102,12 +88,23 @@ export function renderMessageFromDb(msg, messagesContainer) {
     targetLang = '',
     timestamp,
     audio,
-    deviceId
+    user_id,
+    username
   } = msg;
 
-  const sender = (deviceId === PS_myDeviceId) ? 'me' : 'they';
+  const loggedInUser = JSON.parse(localStorage.getItem("whisper-user") || '{}');
+  const senderIsCurrentUser = loggedInUser?.user_id === user_id;
+
+  // ✅ Only save if current user sent it
+  if (!senderIsCurrentUser) return;
+
+  console.log("🟦 RENDERING MESSAGE:");
+  console.log("   loggedInUser:", loggedInUser);
+  console.log("   msg.user_id :", user_id);
+  console.log("   senderIsCurrentUser:", senderIsCurrentUser);
+
   const wrapper = document.createElement('div');
-  wrapper.className = `msg ${sender}`;
+  wrapper.className = `msg ${senderIsCurrentUser ? 'me' : 'they'}`;
 
   if (warning) {
     const warn = document.createElement('div');
@@ -130,9 +127,79 @@ export function renderMessageFromDb(msg, messagesContainer) {
 
   const label = document.createElement('div');
   label.className = 'label';
-  label.textContent = sender === 'me' || sender === 'you'
+
+  const displayName = username?.trim?.() || 'Someone';
+  label.textContent = senderIsCurrentUser
     ? 'You said:'
-    : 'They said:';
+    : `${displayName} said:`;
+
+  const originalWrapper = document.createElement('div');
+  originalWrapper.className = 'original';
+  if (original && original !== text) {
+    originalWrapper.innerHTML = `<em>Corrected:</em> "${text}"<br>Original: "${original}"`;
+  } else {
+    originalWrapper.textContent = text || original || '';
+  }
+
+  const translated = document.createElement('div');
+  translated.className = 'translated';
+  translated.textContent = translation || '';
+
+  wrapper.append(timestampDiv, langLabel, label, originalWrapper, translated);
+  messagesContainer.appendChild(wrapper);
+}
+*/
+export function renderMessageFromDb(msg, messagesContainer) {
+  const {
+    text,
+    original,
+    translation,
+    warning = '',
+    sourceLang = '',
+    targetLang = '',
+    timestamp,
+    audio,
+    user_id,
+    username
+  } = msg;
+
+  const loggedInUser = JSON.parse(localStorage.getItem("whisper-user") || '{}');
+  const senderIsCurrentUser = loggedInUser?.user_id === user_id;
+
+  console.log("🟦 RENDERING MESSAGE:");
+  console.log("   loggedInUser:", loggedInUser);
+  console.log("   msg.user_id :", user_id);
+  console.log("   senderIsCurrentUser:", senderIsCurrentUser);
+
+  const wrapper = document.createElement('div');
+  wrapper.className = `msg ${senderIsCurrentUser ? 'me' : 'they'}`;
+
+  if (warning) {
+    const warn = document.createElement('div');
+    warn.className = 'lang-warning';
+    warn.textContent = `⚠️ ${warning}`;
+    wrapper.appendChild(warn);
+  }
+
+  const timestampDiv = document.createElement('div');
+  timestampDiv.className = 'timestamp';
+  timestampDiv.textContent = timestamp
+    ? new Date(Number(timestamp)).toLocaleString()
+    : '';
+
+  const langLabel = document.createElement('div');
+  langLabel.className = 'lang-label';
+  langLabel.textContent = sourceLang && targetLang
+    ? `${sourceLang} → ${targetLang}`
+    : '';
+
+  const label = document.createElement('div');
+  label.className = 'label';
+
+  const displayName = username?.trim?.() || 'Someone';
+  label.textContent = senderIsCurrentUser
+    ? 'You said:'
+    : `${displayName} said:`;
 
   const originalWrapper = document.createElement('div');
   originalWrapper.className = 'original';

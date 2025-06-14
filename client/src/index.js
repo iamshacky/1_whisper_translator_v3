@@ -1,6 +1,5 @@
 ﻿﻿import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
 import '/modules/persistence-sqlite/init.js';
-//import { renderMessageFromDb } from './helpers.js';
 
 
 ﻿console.log("✅ index.js loaded");
@@ -37,6 +36,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let audioChunks = [];
   let isRecording = false;
 
+
+  ///// WORKAREA 1 — 🎤 Mic button + recording flow
   // 🎤 Mic recording toggle
   micBtn.onclick = () => {
     if (!isRecording) {
@@ -48,6 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     isRecording = !isRecording;
   };
+  ///// WORKAREA 1 END
 
   const chatBtn = document.getElementById('chat-btn');
     if (chatBtn) {
@@ -241,6 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
     SP_maybePlayAudio({ audio, translation, sender, lang });
   }
 
+  ///// WORKAREA 2 — 📤 Message sending
   // ✅ Send button (for previewed content)
   if (sendBtn) {
     sendBtn.onclick = () => {
@@ -273,6 +276,8 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("   🎧 audio present? :", !!audio);
       console.log("   📥 inputMethod    : text");
 
+      const user = JSON.parse(localStorage.getItem('whisper-user') || '{}');
+
       socket.send(JSON.stringify({
         original: text,
         cleaned: latestTranscript,
@@ -282,7 +287,11 @@ document.addEventListener("DOMContentLoaded", () => {
         clientId,
         moderatorSuggestion,
         inputMethod: 'text',
-        detectedLang: latestDetectedLang
+        detectedLang: latestDetectedLang,
+        user: {
+          user_id: user.user_id,
+          username: user.username
+        }
       }));
 
       sendBtn.style.display = 'none';
@@ -290,6 +299,7 @@ document.addEventListener("DOMContentLoaded", () => {
       previewActive = false;
     };
   }
+  ///// WORKAREA 2 END
 
   deleteBtn.onclick = () => clearPreview();
 
@@ -507,6 +517,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("   💬 modSuggest  :", moderatorSuggestion || "(none)");
     }
 
+    ///// WORKAREA 3 — 📨 Handle final messages from server
     if (msg.type === 'final' && msg.original && msg.translation) {
       const lang = msg.detectedLang || '';
       const warning = msg.warning || '';
@@ -530,6 +541,7 @@ document.addEventListener("DOMContentLoaded", () => {
        // ✅ Save to SQLite
        window.PS_saveFinalMessage?.(msg);
     }
+    ///// WORKAREA 3 END
   };
   // 🔁 Load messages from SQLite on page load
   (async () => {

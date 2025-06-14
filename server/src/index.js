@@ -51,6 +51,12 @@ app.use('/modules/persistence-sqlite', express.static(
   path.join(rootDir, 'modules', 'persistence_sqlite', 'client')
 ));
 
+// login.html (temporary)
+app.get('/login', (_, res) => {
+  res.sendFile(path.join(rootDir, 'client', 'login.html'));
+});
+
+
 
 import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';
 
