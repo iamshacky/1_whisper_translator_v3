@@ -8,6 +8,7 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 |____client
 | |____index.html
 | |____login.html
+| |____login.js
 | |____public
 | | |____favicon.ico
 | |____src
@@ -16,9 +17,6 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 |____config
 | |____languages.json
 |____directory_tree.txt
-|____docker
-| |____Dockerfile.client
-| |____Dockerfile.server
 |____modules
 | |____advanced_settings_panel
 | | |____client

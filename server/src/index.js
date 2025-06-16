@@ -56,6 +56,20 @@ app.get('/login', (_, res) => {
   res.sendFile(path.join(rootDir, 'client', 'login.html'));
 });
 
+// Login module - new
+import loginRoutes from '../../modules/login/server/index.js';
+app.use('/api/login', loginRoutes);
+// login module static files
+app.use('/modules/login', express.static(
+  path.join(rootDir, 'modules', 'login', 'client')
+));
+
+app.use('/modules/login', express.static(
+  path.join(rootDir, 'modules', 'login', 'client')
+));
+
+
+
 
 
 import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';

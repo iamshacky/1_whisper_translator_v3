@@ -1,4 +1,7 @@
-﻿﻿import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
+﻿﻿import { LOGIN__initClient } from '/modules/login/init.js';
+LOGIN__initClient();
+
+import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
 import '/modules/persistence-sqlite/init.js';
 
 
