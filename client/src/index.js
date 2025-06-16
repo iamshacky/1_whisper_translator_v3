@@ -4,7 +4,7 @@ LOGIN__initClient();
 import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
 import '/modules/persistence-sqlite/init.js';
 
-
+ 
 ﻿console.log("✅ index.js loaded");
 
 document.addEventListener("DOMContentLoaded", () => {
