@@ -1,34 +1,15 @@
-﻿# Whisper Translator v3.03 – Stable Release (05-27 at 10:15 PM)
+﻿
 
-## ✅ Core Fixes and Features
+# 1_whisper_translator_v7.012
 
-- Full voice-to-voice and text-to-text translation pipeline is working.
-- Moderator suggestions and language warnings unified across both audio and text input.
-- Accept button and "Did you mean..." messages work as intended.
-- Manual and auto language modes tested successfully.
-- System survives edge case sequences like: Preview > Send > Accept > Re-Preview.
-- Advanced Settings Panel works (voice prompts, warning toggles).
-- Mobile (Android) and desktop cross-device tested via WebSocket.
-- Preview UI properly updates with feedback from moderator and language detection.
-- Language labels added 05/29/2025. Example: `en → de`. 
+- Version: 1_whisper_translator_v7.012__06-18_at_1035am__login_module_added__mostly_works
 
-## 🔧 Tech Details
+- Login let's you log in with a password that doesn't match.
+- Let's you log in if no account has been created yet.
+- I don't know if the above are good or bad, because there may be different login/permission modes. 
+- For now, it works well enough to display username of message sender and show "You said:..." if your logged in and you sent the message.
 
-- Deployed via Railway:  
-  https://1whispertranslatorv3-production.up.railway.app/?room=warehouse
-- Localhost testing:  
-  http://localhost:3000/?room=warehouse
+## Next plan
 
-## 📂 Notes
-
-This version is ready for:
-- Extending advanced settings (e.g. avatars, voice config)
-- Optional UI/UX refinements later
-- Native app or wearable integration in future stages
-
----
-
-Backed up from `C:\xampp\htdocs\project1\1_whisper_translator_v3`  
-into:  
-`C:\xampp\htdocs\project_1_individual_backups\1_whisper_translator_v3.03__05-27_at_1015pm__stable_release_moderation_fixed`
+- Refactor a bit. Separate the moderator logic from various other files.
 

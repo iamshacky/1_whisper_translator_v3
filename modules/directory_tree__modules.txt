@@ -1,21 +1,5 @@
-c/xampp/htdocs/project1/1_whisper_translator_v3
+c/xampp/htdocs/project1/1_whisper_translator_v3/modules
 .
-|____.env
-|____.env.example
-|____.gitignore
-|____.gitignorecls
-|____client
-| |____index.html
-| |____public
-| | |____favicon.ico
-| |____src
-| | |____index.js
-| | |____style.css
-| |____zlogin.html
-| |____zlogin.js
-|____config
-| |____languages.json
-|____directory_tree.txt
 |____modules
 | |____advanced_settings_panel
 | | |____client
@@ -76,19 +60,3 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____helpers.js
 | | | |____index.js
 | | | |____panel.html
-|____package-lock.json
-|____package.json
-|____README.md
-|____server
-| |____src
-| | |____config
-| | | |____settings.js
-| | |____controllers
-| | | |____translate.js
-| | | |____wsHandler.js
-| | |____index copy.js
-| | |____index.js
-| | |____services
-| | | |____openaiService.js
-| | | |____translationService.js
-|____x.txt

@@ -1,0 +1,38 @@
+/*
+body {
+  background-color: blue;
+}
+*/
+
+/* modules/login/client/login-ui.css */
+
+.login-ui-btn {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 10000;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.login-ui-btn:hover {
+  background-color: #0056b3;
+}
+
+/* login-buttons-container does nothing at the moment but will when we use css grid with it. 
+#login-buttons-container {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 10000;
+  background-color: red;
+}
+*/

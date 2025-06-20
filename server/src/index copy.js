@@ -51,18 +51,12 @@ app.use('/modules/persistence-sqlite', express.static(
   path.join(rootDir, 'modules', 'persistence_sqlite', 'client')
 ));
 
-
-
-
-
-
-// Login module
-/* Temporarily commented out to see if "app.get('/login', (_, res) => {...}" is even needed. */
-
+// login.html (temporary)
 app.get('/login', (_, res) => {
-  res.sendFile(path.join(rootDir, 'modules', 'login', 'client', 'login.html'));
+  res.sendFile(path.join(rootDir, 'client', 'login.html'));
 });
 
+// Login module - new
 import loginRoutes from '../../modules/login/server/index.js';
 app.use('/api/login', loginRoutes);
 // login module static files
@@ -70,9 +64,11 @@ app.use('/modules/login', express.static(
   path.join(rootDir, 'modules', 'login', 'client')
 ));
 
-
-
-
+/*
+app.use('/modules/login', express.static(
+  path.join(rootDir, 'modules', 'login', 'client')
+));
+*/
 
 
 
@@ -162,11 +158,9 @@ app.post('/moderate-message', async (req, res) => {
   }
 });
 
-// Is the "app.get('/',..." below needed for anything? 6/18/2025
 app.get('/', (_, res) => {
   res.sendFile(path.join(rootDir, 'client', 'index.html'));
 });
-
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Listening on port ${PORT}`));

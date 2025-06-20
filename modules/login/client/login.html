@@ -1,0 +1,79 @@
+<!-- client/login.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    form { max-width: 300px; margin: auto; }
+    input, button { width: 100%; padding: 0.75rem; margin-bottom: 1rem; }
+    .error { color: red; margin-top: 1rem; }
+  </style>
+  <!--<link rel="stylesheet" href="/modules/login/login.css" />-->
+</head>
+<body>
+  <h2>Login or Create Account</h2>
+  <form id="loginForm">
+    <input type="text" id="username" placeholder="Username" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button type="submit">Login</button>
+    <button type="button" id="registerBtn">Create Account</button>
+    <div class="error" id="errorMsg"></div>
+  </form>
+
+  <script type="module" src="/modules/login/login.js"></script>
+
+  <script type="module">
+    /*
+    const form = document.getElementById('loginForm');
+    const registerBtn = document.getElementById('registerBtn');
+    const errorMsg = document.getElementById('errorMsg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      try {
+        const res = await fetch('/api/login/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const user = await res.json();
+        if (!res.ok) throw new Error(user.error || 'Login failed.');
+
+        localStorage.setItem('whisper-user', JSON.stringify(user));
+        window.location.href = '/';
+      } catch (err) {
+        errorMsg.textContent = err.message;
+      }
+    });
+
+    registerBtn.addEventListener('click', async () => {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      try {
+        const res = await fetch('/api/login/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const user = await res.json();
+        if (!res.ok) throw new Error(user.error || 'Registration failed.');
+
+        localStorage.setItem('whisper-user', JSON.stringify(user));
+        window.location.href = '/';
+      } catch (err) {
+        errorMsg.textContent = err.message;
+      }
+    });
+    */
+  </script>
+</body>
+</html>

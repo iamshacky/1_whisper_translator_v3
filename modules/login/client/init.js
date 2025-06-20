@@ -1,8 +1,8 @@
 // modules/login/client/init.js
-import { LOGIN__setupUI } from './ui.js';
+import { LOGIN__loginButton } from './login_button.js';
 import { LOGIN__checkAndRedirect } from './logic.js';
 
 export function LOGIN__initClient() {
-  LOGIN__setupUI();
+  LOGIN__loginButton();
   LOGIN__checkAndRedirect();
 }
