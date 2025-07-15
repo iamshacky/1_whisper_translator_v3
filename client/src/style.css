@@ -10,7 +10,6 @@ body {
   background-color: lightgreen;
   display: flex;
   flex-direction: column;
-  /* overflow: hidden; */ /* ✅ good to comment out */
 }
 
 /* Chat Messages */
@@ -66,8 +65,10 @@ body {
 
 /* 🎤 Mic & Chat Buttons */
 #mic-btn, #chat-btn {
+  /*
   position: fixed;
   right: 1rem;
+  */
   padding: 0.5rem;
   border: none;
   border-radius: 50%;
