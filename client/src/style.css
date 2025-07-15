@@ -64,11 +64,7 @@ body {
 }
 
 /* 🎤 Mic & Chat Buttons */
-#mic-btn, #chat-btn {
-  /*
-  position: fixed;
-  right: 1rem;
-  */
+#mic-btn {
   padding: 0.5rem;
   border: none;
   border-radius: 50%;
@@ -85,15 +81,6 @@ body {
 }
 #mic-btn:hover {
   background: #218838;
-}
-
-#chat-btn {
-  background: #17a2b8;
-  font-size: 1.5rem;
-  top: 4.5rem;
-}
-#chat-btn:hover {
-  background: #138496;
 }
 
 .settings-panel {
@@ -192,6 +179,12 @@ body {
 }
 #text-preview {
   margin-bottom: 1rem;
+}
+
+#textInput {
+  width: 92%;
+  height: 3rem;
+  margin-bottom: 3px;
 }
 
 /* 🧭 Settings Panels */
