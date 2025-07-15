@@ -5,15 +5,6 @@ export function PS_getRoom() {
 }
 
 export function PS_saveMessage(msg) {
-  /*
-  fetch("/api/persistence-sqlite/save", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(msg),
-  }).catch((err) => {
-    console.error("❌ Failed to save message:", err);
-  });
-  */
   fetch('/api/persistence-sqlite/save', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -77,78 +68,6 @@ export function PS_saveFinalMessage(data) {
   return 'saved';
 }
 
-/*
-export function renderMessageFromDb(msg, messagesContainer) {
-  const {
-    text,
-    original,
-    translation,
-    warning = '',
-    sourceLang = '',
-    targetLang = '',
-    timestamp,
-    audio,
-    user_id,
-    username
-  } = msg;
-
-  const loggedInUser = JSON.parse(localStorage.getItem("whisper-user") || '{}');
-  const senderIsCurrentUser = loggedInUser?.user_id === user_id;
-
-  // ✅ Only save if current user sent it
-  if (!senderIsCurrentUser) return;
-
-  console.log("🟦 RENDERING MESSAGE:");
-  console.log("   loggedInUser:", loggedInUser);
-  console.log("   msg.user_id :", user_id);
-  console.log("   senderIsCurrentUser:", senderIsCurrentUser);
-
-  const wrapper = document.createElement('div');
-  wrapper.className = `msg ${senderIsCurrentUser ? 'me' : 'they'}`;
-
-  if (warning) {
-    const warn = document.createElement('div');
-    warn.className = 'lang-warning';
-    warn.textContent = `⚠️ ${warning}`;
-    wrapper.appendChild(warn);
-  }
-
-  const timestampDiv = document.createElement('div');
-  timestampDiv.className = 'timestamp';
-  timestampDiv.textContent = timestamp
-    ? new Date(Number(timestamp)).toLocaleString()
-    : '';
-
-  const langLabel = document.createElement('div');
-  langLabel.className = 'lang-label';
-  langLabel.textContent = sourceLang && targetLang
-    ? `${sourceLang} → ${targetLang}`
-    : '';
-
-  const label = document.createElement('div');
-  label.className = 'label';
-
-  const displayName = username?.trim?.() || 'Someone';
-  label.textContent = senderIsCurrentUser
-    ? 'You said:'
-    : `${displayName} said:`;
-
-  const originalWrapper = document.createElement('div');
-  originalWrapper.className = 'original';
-  if (original && original !== text) {
-    originalWrapper.innerHTML = `<em>Corrected:</em> "${text}"<br>Original: "${original}"`;
-  } else {
-    originalWrapper.textContent = text || original || '';
-  }
-
-  const translated = document.createElement('div');
-  translated.className = 'translated';
-  translated.textContent = translation || '';
-
-  wrapper.append(timestampDiv, langLabel, label, originalWrapper, translated);
-  messagesContainer.appendChild(wrapper);
-}
-*/
 export function renderMessageFromDb(msg, messagesContainer) {
   const {
     text,

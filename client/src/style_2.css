@@ -1,0 +1,81 @@
+#translated-output-toggle {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 1; /* adjust if needed */
+}
+
+#moderation-settings-wrapper {
+  position: relative;
+}
+
+.panel-wrapper {
+  margin-bottom: 20px;
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+}
+
+#settings-container {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+
+
+/* Style All Panels with Better Spacing and Visuals */
+.panel-wrapper {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: #f9f9f9;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+.panel-wrapper h3 {
+  margin-top: 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+.panel-wrapper label {
+  display: block;
+  margin: 0.5rem 0;
+  font-size: 0.95rem;
+}
+.panel-wrapper select,
+.panel-wrapper input[type="text"],
+.panel-wrapper input[type="checkbox"] {
+  margin-left: 0.5rem;
+}
+.panel-wrapper button {
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.95rem;
+  border-radius: 4px;
+  border: none;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+.panel-wrapper button:disabled {
+  background-color: #5cb85c;
+  cursor: default;
+}
+
+/* Add Scroll Padding for Mobile Devices */
+#settings-container {
+  padding: 1rem;
+  overflow-y: auto;
+  max-height: 90vh;
+}
+
+/* Add Responsive Font Sizes (Optional) */
+@media (max-width: 600px) {
+  .panel-wrapper {
+    font-size: 0.9rem;
+  }
+
+  .panel-wrapper button {
+    font-size: 0.85rem;
+    padding: 0.35rem 0.6rem;
+  }
+}

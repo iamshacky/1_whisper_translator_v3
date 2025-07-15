@@ -1,11 +1,3 @@
-/*
-body {
-  background-color: blue;
-}
-*/
-
-/* modules/login/client/login-ui.css */
-
 .login-ui-btn {
   position: fixed;
   top: 10px;
@@ -24,15 +16,3 @@ body {
 .login-ui-btn:hover {
   background-color: #0056b3;
 }
-
-/* login-buttons-container does nothing at the moment but will when we use css grid with it. 
-#login-buttons-container {
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  display: flex;
-  gap: 0.5rem;
-  z-index: 10000;
-  background-color: red;
-}
-*/

@@ -95,10 +95,12 @@ button:hover {
 
 
 #mic-btn {
+  /*
   position: fixed;
   top: 1rem;
   right: 1rem;
-  font-size: 2rem;
+  */
+  font-size: 1.2rem;
   background: #28a745;
   color: white;
   border: none;
@@ -196,21 +198,6 @@ button:hover {
   z-index: 1000;
 }
 
-/* Advanced settings panel */
-#adv-settings-panel {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  background: white;
-  border: 2px solid #333;
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  z-index: 999;
-  max-width: 300px;
-}
-
-
 .moderator-suggestion {
   margin-top: 8px;
   font-style: italic;
@@ -246,6 +233,7 @@ button:hover {
 }
 
 /* Styles for the settings panel container */
+/*
 #translated-output-panel {
   background: #f5f5f5;
   border: 1px solid #ccc;
@@ -257,8 +245,10 @@ button:hover {
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   margin-top: -100px;
 }
+*/
 
 /* Make sure it doesn’t go off screen on mobile */
+/*
 @media screen and (max-width: 480px) {
   #translated-output-panel {
     position: fixed;
@@ -272,3 +262,33 @@ button:hover {
     border-radius: 12px 12px 0 0;
   }
 }
+*/
+
+@media (max-width: 360px) {
+  .preview-controls {
+    gap: 0px;
+  }
+
+  .input-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .input-bar input[type="text"] {
+    font-size: 0.9rem;
+    padding: 6px;
+  }
+
+  .input-bar button {
+    font-size: 1.1rem;
+    padding: 6px 10px;
+    margin-left: 0;
+  }
+
+  #mic-btn {
+    align-self: flex-end;
+    margin-top: -6px;
+  }
+}
+

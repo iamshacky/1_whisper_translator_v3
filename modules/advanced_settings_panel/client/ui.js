@@ -1,21 +1,15 @@
 export function ADV_bindSettingsPanelEvents() {
-  const toggle = document.getElementById('adv-settings-toggle');
-  const panel = document.getElementById('adv-settings-panel');
   const saveBtn = document.getElementById('adv-settings-save');
 
-  if (!toggle || !panel || !saveBtn) {
+  if (!saveBtn) {
     console.warn('⚠️ Advanced settings panel not fully loaded.');
     return;
   }
 
-  toggle.onclick = () => {
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-  };
-
   saveBtn.onclick = async () => {
     const newCfg = {
-      showWarnings: document.getElementById('adv-showWarnings').value === 'true',
-      playWarningAudio: document.getElementById('adv-playWarningAudio').value === 'true'
+      showWarnings: document.getElementById('adv-showWarnings')?.value === 'true',
+      playWarningAudio: document.getElementById('adv-playWarningAudio')?.value === 'true'
     };
 
     localStorage.setItem('whisper-advanced-settings', JSON.stringify(newCfg));
@@ -28,8 +22,13 @@ export function ADV_bindSettingsPanelEvents() {
       });
 
       if (res.ok) {
-        alert('✅ Advanced settings saved. Reloading...');
-        window.location.reload();
+        // ✅ Confirmation feedback without reload
+        saveBtn.textContent = '✅ Saved!';
+        saveBtn.disabled = true;
+        setTimeout(() => {
+          saveBtn.textContent = 'Save';
+          saveBtn.disabled = false;
+        }, 1500);
       } else {
         alert('⚠️ Failed to save settings.');
       }
@@ -60,6 +59,9 @@ export async function ADV_loadSettingsToForm() {
     }
   }
 
-  document.getElementById('adv-showWarnings').value = String(cfg.showWarnings);
-  document.getElementById('adv-playWarningAudio').value = String(cfg.playWarningAudio);
+  const showWarningsEl = document.getElementById('adv-showWarnings');
+  const playWarningAudioEl = document.getElementById('adv-playWarningAudio');
+
+  if (showWarningsEl) showWarningsEl.value = String(cfg.showWarnings);
+  if (playWarningAudioEl) playWarningAudioEl.value = String(cfg.playWarningAudio);
 }

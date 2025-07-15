@@ -54,11 +54,7 @@ app.use('/modules/persistence-sqlite', express.static(
 
 
 
-
-
 // Login module
-/* Temporarily commented out to see if "app.get('/login', (_, res) => {...}" is even needed. */
-
 app.get('/login', (_, res) => {
   res.sendFile(path.join(rootDir, 'modules', 'login', 'client', 'login.html'));
 });
@@ -69,11 +65,6 @@ app.use('/api/login', loginRoutes);
 app.use('/modules/login', express.static(
   path.join(rootDir, 'modules', 'login', 'client')
 ));
-
-
-
-
-
 
 
 
@@ -127,22 +118,46 @@ app.post('/manual-translate', async (req, res) => {
   }
 });
 
+
+
+/* Before it was moved to index.html
+import { buildModeratorPrompt } from '../../modules/moderation_engine/server/buildModeratorPrompt.js';
+app.use('/moderation-settings', express.static(
+  path.join(rootDir, 'modules', 'moderation_engine', 'client')
+));
+*/
+
+import { buildModeratorPrompt } from '../../modules/moderation_engine/server/buildModeratorPrompt.js';
+app.use('/modules/moderation_engine/client', express.static(
+  path.join(rootDir, 'modules', 'moderation_engine', 'client')
+));
+
+
+
+
 app.post('/moderate-message', async (req, res) => {
-  const { text } = req.body;
+  const {
+    text,
+    correctionMode = 'default',
+    toneStyle = '',
+    moderatorPersona = '',
+    verbosity = ''
+  } = req.body;
+
+  console.log('🧠 Server moderation triggered for:', text);
 
   try {
+    const messages = buildModeratorPrompt({
+      text,
+      correctionMode,
+      toneStyle,
+      persona: moderatorPersona,
+      verbosity
+    });
+
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: "You are a helpful assistant that checks if a Whisper transcription is accurate. If it's not, suggest a correction. If it's fine, say 'ok'."
-        },
-        {
-          role: "user",
-          content: `Transcription: "${text}"`
-        }
-      ]
+      messages
     });
 
     const reply = response.choices?.[0]?.message?.content?.trim() || "";
@@ -162,10 +177,6 @@ app.post('/moderate-message', async (req, res) => {
   }
 });
 
-// Is the "app.get('/',..." below needed for anything? 6/18/2025
-app.get('/', (_, res) => {
-  res.sendFile(path.join(rootDir, 'client', 'index.html'));
-});
 
 
 const PORT = process.env.PORT || 3000;

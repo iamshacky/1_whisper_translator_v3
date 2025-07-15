@@ -26,6 +26,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const clientId = urlParams.get('clientId') || Math.random().toString(36).substring(2);
   const advancedSettings = JSON.parse(localStorage.getItem('whisper-advanced-settings') || '{}');
 
+  // modules/moderation_engine stuff
+  const modSettings = JSON.parse(localStorage.getItem('moderator-settings') || '{}');
+  const promptVariant = modSettings.promptVariant || 'default';
+
+
 
   let latestTranscript = '';
   let latestAudio = '';
@@ -34,11 +39,75 @@ document.addEventListener("DOMContentLoaded", () => {
   let previewActive = false;
   let latestWarning = '';
   let latestDetectedLang = '';
+  let lastModeratedText = '';
+  let lastModeratorContext = '';
+
 
   let mediaRecorder;
   let audioChunks = [];
   let isRecording = false;
 
+  // 🔁 Shared moderation handler
+  async function moderateTextFlow(text, context = 'text') {
+    // 🧼 Prevent duplicate moderation
+    if (text === lastModeratedText && context === lastModeratorContext) {
+      console.log(`⏭️ Skipping redundant moderation for [${context}]`);
+      return;
+    }
+    lastModeratedText = text;
+    lastModeratorContext = context;
+
+    const moderationSettings = JSON.parse(localStorage.getItem('moderation-settings') || '{}');
+    const autoAcceptCorrections = moderationSettings.autoAcceptCorrections === true;
+
+    console.log(`🧠 Moderating [${context}]: "${text}"`);
+
+    const res = await fetch('/moderate-message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      /*
+      body: JSON.stringify({ 
+        text, 
+        promptVariant: moderationSettings.promptVariant || 'default',
+        moderatorPersona: moderationSettings.moderatorPersona || null,
+        verbosity: moderationSettings.verbosity || null 
+      })
+      */
+      body: JSON.stringify({ 
+        text,
+        correctionMode: moderationSettings.correctionMode || 'default',
+        toneStyle: moderationSettings.toneStyle || null,
+        moderatorPersona: moderationSettings.moderatorPersona || null,
+        verbosity: moderationSettings.verbosity || null 
+      })
+    });
+
+    const result = await res.json();
+
+    if (result.needsCorrection) {
+      /*
+      handleModeratorResponse({ 
+        needsCorrection: result.needsCorrection, 
+        suggestedText: result.suggestedText, 
+        context,
+        autoAcceptCorrections
+      });
+      */
+      handleModeratorResponse({ 
+        needsCorrection: result.needsCorrection, 
+        suggestedText: result.suggestedText, 
+        autoAcceptCorrections,
+        context // 👈 put context *inside* the object
+      });
+    } else {
+      const okDiv = document.createElement('div');
+      okDiv.className = 'moderator-ok';
+      okDiv.innerHTML = `✔️ <em>Moderator approved. No corrections needed.</em>`;
+      textPreview.appendChild(okDiv);
+    }
+
+    return result;
+  }
 
   ///// WORKAREA 1 — 🎤 Mic button + recording flow
   // 🎤 Mic recording toggle
@@ -63,27 +132,43 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       console.warn("⚠️ chatBtn not found in DOM");
     }
-
+ 
+  /*
   function handleModeratorResponse(result, context = 'text') {
+    const { needsCorrection, suggestedText, autoAcceptCorrections } = result;
+  */
+  function handleModeratorResponse(result) {
+    const { needsCorrection, suggestedText, autoAcceptCorrections, context = 'text' } = result;
     moderatorSuggestion = ''; // Always reset first
 
-    if (result.needsCorrection && result.suggestedText) {
-      moderatorSuggestion = result.suggestedText;
-
-      if (advancedSettings.playWarningAudio) {
-        speak(`Did you mean: ${moderatorSuggestion}?`);
-      }
-
-      document.getElementById('accept-btn').style.display = 'inline-block';
+    if (needsCorrection && suggestedText) {
+      moderatorSuggestion = suggestedText;
 
       const suggestionDiv = document.createElement('div');
       suggestionDiv.className = 'moderator-suggestion';
       suggestionDiv.innerHTML = `<em>Did you mean:</em> "${moderatorSuggestion}"`;
       textPreview.appendChild(suggestionDiv);
 
+      if (autoAcceptCorrections) {
+        document.getElementById('accept-btn').style.display = 'none';  // ✅ hide Accept button
+        console.log("✅ Auto-accepting moderator suggestion:", moderatorSuggestion);
+        //setTimeout(() => acceptBtn.onclick(), 200); // slight delay to allow preview render
+        setTimeout(() => {
+          textInput.value = moderatorSuggestion;
+          handleSend(); // Send immediately without re-moderation
+        }, 200);
+      } else {
+        document.getElementById('accept-btn').style.display = 'inline-block';
+
+        if (advancedSettings.playWarningAudio) {
+          speak(`Did you mean: ${moderatorSuggestion}?`);
+        }
+      }
+
       console.log(`💡 Moderator (${context}) suggestion: "${moderatorSuggestion}"`);
       console.log("🟩 Suggestion div inserted into preview:", suggestionDiv);
     } else {
+      moderatorSuggestion = '';
       document.getElementById('accept-btn').style.display = 'none';
 
       const okDiv = document.createElement('div');
@@ -257,7 +342,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const text = textInput.value.trim();
       const translation = latestLanguage;
-      const audio = latestAudio;
+      const audio = latestAudio; 
 
       const settings = JSON.parse(localStorage.getItem('whisper-settings') || '{}');
       const expectedLang = settings.inputLangMode === 'manual' ? settings.manualInputLang : null;
@@ -318,25 +403,11 @@ document.addEventListener("DOMContentLoaded", () => {
     moderatorSuggestion = '';
     acceptBtn.style.display = 'none';
 
-    // 🔒 Disable Send during async flow
     sendBtn.disabled = true;
     sendBtn.style.opacity = 0.5;
     sendBtn.style.pointerEvents = 'none';
 
     try {
-      // 🧠 Re-check moderation (usually fast, often skipped)
-      const modRes = await fetch('/moderate-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText })
-      });
-
-      const { needsCorrection, suggestedText } = await modRes.json();
-      if (needsCorrection) {
-        console.log("🧠 Moderator still flagged the correction, skipping reapply");
-      }
-
-      // ✅ Get target language from saved settings
       const saved = localStorage.getItem('whisper-settings');
       const cfg = saved ? JSON.parse(saved) : {};
       const targetLang = cfg.targetLang || 'es';
@@ -352,10 +423,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const result = await translateRes.json();
-
       const warning = advancedSettings.showWarnings ? (result.warning || '') : '';
 
-      // Save global state for Send
       latestTranscript = cleanText;
       latestLanguage = targetLang;
       latestAudio = result.audio;
@@ -400,20 +469,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
       latestDetectedLang = result.detectedLang || '';
 
+      // Refactor moderator - area 2.1
       // Now set the preview first
       const warning = advancedSettings.showWarnings ? (result.warning || '') : '';
       latestWarning = warning;
       setPreview(result.text, result.translation, result.audio, warning);
 
       // Then handle moderator suggestion
-      const modRes = await fetch('/moderate-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: result.text })
-      });
-
-      const { needsCorrection, suggestedText } = await modRes.json();
-      await handleModeratorResponse({ needsCorrection, suggestedText, context: 'text' });
+      await moderateTextFlow(result.text, 'text');
 
       console.log("📝 Final preview text shown:", result.text);
       console.log("🌐 Final preview translation:", result.translation);
@@ -446,70 +509,14 @@ document.addEventListener("DOMContentLoaded", () => {
         latestDetectedLang = msg.detectedLang;
 
         try {
-          const modRes = await fetch('/moderate-message', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: msg.text })
-          });
-
-          const modResult = await modRes.json();
-          moderatorSuggestion = '';
+          await moderateTextFlow(msg.text, 'voice');
 
           setPreview(msg.text, msg.translation, msg.audio, langWarning);
-          handleModeratorResponse(modResult, 'voice');
+          
         } catch (err) {
           console.error('❌ Auto-preview on Accept failed:', err);
         }
-
-      const res = await fetch('/moderate-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: msg.text })
-      });
-      const modResult = await res.json();
-
-      moderatorSuggestion = '';
-
-      console.log("🧠 Moderation results (voice input):");
-      console.log("   ✏️ needsCorrection :", modResult.needsCorrection);
-      console.log("   💬 suggestedText   :", modResult.suggestedText || "(none)");
       
-      if (modResult.needsCorrection && modResult.suggestedText) {
-  moderatorSuggestion = modResult.suggestedText;
-
-        if (advancedSettings.playWarningAudio) {
-          speak(`Did you mean: ${moderatorSuggestion}?`);
-        }
-
-        document.getElementById('accept-btn').style.display = 'inline-block';
-
-        console.log(`💡 Moderator suggestion: "${moderatorSuggestion}"`);
-
-        // Append the moderator suggestion to the preview box
-        const suggestionDiv = document.createElement('div');
-        suggestionDiv.className = 'moderator-suggestion';
-        suggestionDiv.innerHTML = `<em>Did you mean:</em> "${moderatorSuggestion}"`;
-        textPreview.appendChild(suggestionDiv);
-
-      } else {
-        document.getElementById('accept-btn').style.display = 'none';
-      }
-
-      // 🟠 Pass langWarning to setPreview
-      setPreview(msg.text, msg.translation, msg.audio, langWarning);
-      
-      if (moderatorSuggestion) {
-        const suggestionDiv = document.createElement('div');
-        suggestionDiv.className = 'moderator-suggestion';
-        suggestionDiv.innerHTML = `<em>Did you mean:</em> "${moderatorSuggestion}"`;
-        textPreview.appendChild(suggestionDiv);
-      } else {
-        // No correction needed — show light reassurance
-        const okDiv = document.createElement('div');
-        okDiv.className = 'moderator-ok';
-        okDiv.innerHTML = `✔️ <em>Moderator approved. No corrections needed.</em>`;
-        textPreview.appendChild(okDiv);
-      }
 
       console.log("🟨 Preview display updated:");
       console.log("   📝 text        :", msg.text);
@@ -544,8 +551,9 @@ document.addEventListener("DOMContentLoaded", () => {
        // ✅ Save to SQLite
        window.PS_saveFinalMessage?.(msg);
     }
-    ///// WORKAREA 3 END
   };
+  ///// WORKAREA 3 END
+
   // 🔁 Load messages from SQLite on page load
   (async () => {
     const savedMessages = await window.PS_getAllMessages?.();

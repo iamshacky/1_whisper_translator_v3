@@ -1,18 +1,10 @@
-// modules/settings_panel/client/ui.js
-
 export function SP_bindSettingsPanelEvents() {
-  const debugToggle = document.getElementById('debug-toggle');
-  const debugPanel = document.getElementById('debug-panel');
   const saveBtn = document.getElementById('cfg-save');
 
-  if (!debugToggle || !debugPanel || !saveBtn) {
+  if (!saveBtn) {
     console.warn('⚠️ Settings panel not loaded yet.');
     return;
   }
-
-  debugToggle.onclick = () => {
-    debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
-  };
 
   const inputLangModeDropdown = document.getElementById('cfg-inputLangMode');
   const manualLangLabel = document.getElementById('manualInputLangLabel');
@@ -42,8 +34,12 @@ export function SP_bindSettingsPanelEvents() {
       });
 
       if (res.ok) {
-        alert('✅ Settings saved. Reloading...');
-        window.location.reload();
+        saveBtn.textContent = '✅ Saved!';
+        saveBtn.disabled = true;
+        setTimeout(() => {
+          saveBtn.textContent = 'Save';
+          saveBtn.disabled = false;
+        }, 1500);
       } else {
         alert('⚠️ Server rejected settings update.');
       }

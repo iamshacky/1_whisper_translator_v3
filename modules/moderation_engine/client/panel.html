@@ -1,0 +1,52 @@
+<div class="panel-wrapper">
+  <h3>🧠 Moderation Settings</h3>
+
+  <!-- 🧠 Correction Style -->
+  <label for="correctionMode">Correction Style:</label>
+  <select id="correctionMode">
+    <option value="default">Default (basic accuracy)</option>
+    <option value="make_smarter">Make Smarter</option>
+    <option value="strict">Strict (no profanity)</option>
+    <option value="silly_filter">Silly Profanity Filter</option>
+  </select>
+
+  <!-- ✨ Tone Style -->
+  <label for="toneStyle">Tone Style:</label>
+  <select id="toneStyle">
+    <option value="">None</option>
+    <option value="polite_mode">Polite</option>
+    <option value="dramatic">Dramatic</option>
+  </select>
+
+  <!-- 🎭 Persona -->
+  <label for="moderatorPersona">Persona:</label>
+  <select id="moderatorPersona">
+    <option value="">None</option>
+    <option value="wizard">Wizard 🧙</option>
+    <option value="professor">Professor 👨‍🏫</option>
+    <option value="goose">Silly Goose 🪿</option>
+  </select>
+
+  <!-- 📝 Verbosity Level -->
+  <label for="verbosity">Verbosity:</label>
+  <select id="verbosity">
+    <option value="">Normal</option>
+    <option value="brief">Brief</option>
+    <option value="verbose">Verbose</option>
+    <option value="extremely_verbose">Extremely verbose</option>
+  </select>
+
+  <!-- ✅ Auto-Accept -->
+  <label>
+    <input type="checkbox" id="autoAcceptCorrections">
+    Auto-Accept Moderator Suggestions
+  </label>
+
+  <button id="moderation-settings-save">Save</button>
+</div>
+
+<script type="module">
+  import { MOD_bindSettingsPanelEvents, MOD_loadSettings } from '/moderation-settings/ui.js';
+  MOD_bindSettingsPanelEvents();
+  MOD_loadSettings();
+</script>

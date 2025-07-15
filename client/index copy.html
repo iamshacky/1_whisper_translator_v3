@@ -91,43 +91,6 @@
     .hidden {
       display: none;
     }
-
-    @media (max-width: 360px) {
-    .preview-controls {
-      gap: 5px;
-    }
-
-    .input-bar {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 6px;
-    }
-
-    .input-bar input[type="text"] {
-      font-size: 0.9rem;
-      padding: 6px;
-    }
-
-    .input-bar button {
-      font-size: 1.1rem;
-      padding: 6px 10px;
-      margin-left: 0;
-    }
-
-    #mic-btn {
-      align-self: flex-end;
-      margin-top: -6px;
-    }
-  }
-  
-  @media (max-width: 344px) {
-    .preview-controls {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-      gap: 8px;
-      padding-top: 8px;
-    }
-  }
   </style>
 </head>
 <body>
@@ -142,25 +105,19 @@
   <!-- 📝 Preview Area -->
   <div id="preview">
     <div id="text-preview"></div>
-
-    <!-- ✏️ Typing area -->
-    <input id="textInput" type="text" placeholder="Type something..." />
- 
-    <!-- 🔘 Buttons -->
     <div class="preview-controls">
       <button id="send-btn">Send</button>
       <button id="delete-btn">Delete</button>
       <button id="accept-btn">Accept</button>
-      <!--<input id="textInput" type="text" placeholder="Type something..." />-->
+      <input id="textInput" type="text" placeholder="Type something..." />
       <button id="previewTextBtn">Preview</button>
-      <button id="mic-btn" class="hidden">🎤</button>
     </div>
   </div>
 
   <!-- 🔽 Footer Input (like ChatGPT) -->
   <div id="footer">
     <div class="footer-buttons">
-      <!--<button id="mic-btn" class="hidden">🎤</button>-->
+      <button id="mic-btn" class="hidden">🎤</button>
     </div>
     <div class="footer-input">
       <input id="textInputBar" type="text" placeholder="Type a message..." />

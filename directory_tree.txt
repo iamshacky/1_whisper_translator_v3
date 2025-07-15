@@ -11,8 +11,7 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | |____src
 | | |____index.js
 | | |____style.css
-| |____zlogin.html
-| |____zlogin.js
+| | |____style_2.css
 |____config
 | |____languages.json
 |____directory_tree.txt
@@ -34,11 +33,17 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____login.js
 | | | |____login_button.css
 | | | |____login_button.js
-| | | |____ui copy.js
 | | |____server
 | | | |____controller.js
 | | | |____index.js
 | | | |____routes.js
+| |____moderation_engine
+| | |____client
+| | | |____init.js
+| | | |____panel.html
+| | | |____ui.js
+| | |____server
+| | | |____buildModeratorPrompt.js
 | |____persistence_sqlite
 | | |____client
 | | | |____helpers.js
@@ -46,16 +51,6 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | |____messages.db
 | | |____server
 | | | |____routes.js
-| | |____whisper_google_login_bundle
-| | | |____client
-| | | | |____src
-| | | | | |____index.js
-| | | |____index.html
-| | | |____modules
-| | | | |____persistence_sqlite
-| | | | | |____server
-| | | | | | |____routes.js
-| | |____whisper_google_login_bundle.zip
 | |____settings_panel
 | | |____client
 | | | |____audio.js
@@ -78,7 +73,6 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____panel.html
 |____package-lock.json
 |____package.json
-|____README.md
 |____server
 | |____src
 | | |____config
@@ -86,9 +80,7 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | |____controllers
 | | | |____translate.js
 | | | |____wsHandler.js
-| | |____index copy.js
 | | |____index.js
 | | |____services
 | | | |____openaiService.js
 | | | |____translationService.js
-|____x.txt
