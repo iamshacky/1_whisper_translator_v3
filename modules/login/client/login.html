@@ -25,55 +25,5 @@
 
   <script type="module" src="/modules/login/login.js"></script>
 
-  <script type="module">
-    /*
-    const form = document.getElementById('loginForm');
-    const registerBtn = document.getElementById('registerBtn');
-    const errorMsg = document.getElementById('errorMsg');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
-
-      try {
-        const res = await fetch('/api/login/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-
-        const user = await res.json();
-        if (!res.ok) throw new Error(user.error || 'Login failed.');
-
-        localStorage.setItem('whisper-user', JSON.stringify(user));
-        window.location.href = '/';
-      } catch (err) {
-        errorMsg.textContent = err.message;
-      }
-    });
-
-    registerBtn.addEventListener('click', async () => {
-      const username = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value.trim();
-
-      try {
-        const res = await fetch('/api/login/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-
-        const user = await res.json();
-        if (!res.ok) throw new Error(user.error || 'Registration failed.');
-
-        localStorage.setItem('whisper-user', JSON.stringify(user));
-        window.location.href = '/';
-      } catch (err) {
-        errorMsg.textContent = err.message;
-      }
-    });
-    */
-  </script>
 </body>
 </html>

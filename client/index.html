@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+
   <title>Whisper Translator</title>
   <link rel="stylesheet" href="src/style.css" />
+  <!---->
   <link rel="stylesheet" href="/modules/login/login_button.css" />
   <link rel="stylesheet" href="src/style_2.css" />
 
@@ -132,8 +135,40 @@
 </head>
 <body>
 
+  <style>
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px;
+      background: #fff;
+      border-bottom: 1px solid #ccc;
+      position: sticky;
+      top: 0;
+      z-index: 9999;
+    }
+
+    #logout-btn, #login-btn {
+      float: right;
+    }
+  </style>
+
+  <!--
+  <div class="top-bar">
+    <button id="main-settings-toggle" class="settings-btn">⚙️</button>
+    <button id="login-btn" class="login-ui-btn">Login</button>
+  </div>
+  -->
+  <div class="top-bar">
+    <button id="main-settings-toggle" class="settings-btn">⚙️</button>
+    <!-- Logout button is injected dynamically -->
+  </div>
+
+
+
+
   <!-- ⚙️ Settings -->
-  <button id="main-settings-toggle" class="fixed-top-right">⚙️</button>
+  <!--<button id="main-settings-toggle" class="fixed-top-right">⚙️</button>-->
   <div id="settings-container" class="settings-panel"></div>
 
   <!-- 🔊 Messages -->

@@ -1,7 +1,9 @@
 .login-ui-btn {
+  /*
   position: fixed;
   top: 10px;
   left: 10px;
+  */
   z-index: 10000;
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
