@@ -20,7 +20,8 @@ export async function detectLanguage(text) {
   const prompt = `What is the ISO 639-1 language code for this sentence: "${text}"? Respond with only the code.`;
 
   const response = await openai.responses.create({
-    model: "gpt-4o",
+    //model: "gpt-4o",
+    model: "gpt-4o-mini",
     input: [{ role: "user", content: prompt }]
   });
 

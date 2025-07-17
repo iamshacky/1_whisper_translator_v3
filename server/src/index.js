@@ -51,6 +51,15 @@ app.use('/modules/persistence-sqlite', express.static(
   path.join(rootDir, 'modules', 'persistence_sqlite', 'client')
 ));
 
+// Delete messages in a room
+import { PERSIST__initServer } from '../../modules/persistence_sqlite/delete/server/init.js';
+PERSIST__initServer(app);
+
+app.use('/modules/persistence_sqlite/delete/client', express.static(
+  path.join(rootDir, 'modules', 'persistence_sqlite', 'delete', 'client')
+));
+
+
 
 
 
@@ -120,12 +129,7 @@ app.post('/manual-translate', async (req, res) => {
 
 
 
-/* Before it was moved to index.html
-import { buildModeratorPrompt } from '../../modules/moderation_engine/server/buildModeratorPrompt.js';
-app.use('/moderation-settings', express.static(
-  path.join(rootDir, 'modules', 'moderation_engine', 'client')
-));
-*/
+
 
 import { buildModeratorPrompt } from '../../modules/moderation_engine/server/buildModeratorPrompt.js';
 app.use('/modules/moderation_engine/client', express.static(
@@ -156,7 +160,8 @@ app.post('/moderate-message', async (req, res) => {
     });
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      //model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages
     });
 

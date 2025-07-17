@@ -25,9 +25,24 @@ export function PS_saveMessage(msg) {
   });
 }
 
+/*
 export async function PS_getAllMessages() {
   try {
     const res = await fetch('/api/persistence-sqlite/load');
+    if (!res.ok) throw new Error('Failed to load messages');
+    return await res.json();
+  } catch (err) {
+    console.error('PS_getAllMessages error:', err);
+    return [];
+  }
+}
+*/
+export async function PS_getAllMessages() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const room = urlParams.get('room') || 'default';
+
+    const res = await fetch(`/api/persistence-sqlite/messages?room=${encodeURIComponent(room)}`);
     if (!res.ok) throw new Error('Failed to load messages');
     return await res.json();
   } catch (err) {

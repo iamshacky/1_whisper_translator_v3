@@ -11,7 +11,6 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | |____src
 | | |____index.js
 | | |____style.css
-| | |____style_2.css
 |____config
 | |____languages.json
 |____directory_tree.txt

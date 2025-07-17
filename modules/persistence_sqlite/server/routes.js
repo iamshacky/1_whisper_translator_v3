@@ -92,6 +92,7 @@ router.get('/messages', async (req, res) => {
   }
 });
 
+/* Commented out 7/16 at 325pm
 router.get('/load', async (req, res) => {
   try {
     const dbPath = path.resolve('./modules/persistence_sqlite/messages.db');
@@ -107,6 +108,7 @@ router.get('/load', async (req, res) => {
     res.status(500).json({ error: 'Failed to load messages' });
   }
 });
+*/
 
 // 🆕 Login or create user
 router.post('/login-or-create', async (req, res) => {

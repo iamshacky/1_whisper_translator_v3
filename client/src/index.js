@@ -123,6 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
   ///// WORKAREA 1 END
 
+  /*
   const chatBtn = document.getElementById('chat-btn');
     if (chatBtn) {
       chatBtn.onclick = () => {
@@ -132,6 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       console.warn("⚠️ chatBtn not found in DOM");
     }
+  */
  
   /*
   function handleModeratorResponse(result, context = 'text') {
