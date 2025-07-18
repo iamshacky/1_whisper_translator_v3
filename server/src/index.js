@@ -60,6 +60,15 @@ app.use('/modules/persistence_sqlite/delete/client', express.static(
 ));
 
 
+// room_manager_qr module (no server routes, just static files)
+// room_manager_qr
+app.use('/modules/room_manager_qr/client', express.static(
+  path.join(rootDir, 'modules', 'room_manager_qr', 'client')
+));
+app.use('/modules/room_manager_qr', express.static(
+  path.join(rootDir, 'modules', 'room_manager_qr', 'client')
+));
+
 
 
 
