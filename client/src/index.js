@@ -251,7 +251,8 @@ document.addEventListener("DOMContentLoaded", () => {
     latestWarning = '';
   }
 
-  async function addMessage({ text, original, translation, audio, lang, sender, warning = '', sourceLang = '', targetLang = '' }) {
+  async function addMessage({ text, original, translation, audio, lang, sender, warning = '', sourceLang = '', targetLang = '', room = '' }) {
+    console.log("🧾 addMessage() for room:", room);
     const wrapper = document.createElement('div');
     wrapper.className = `msg ${sender}`;
 
@@ -368,6 +369,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const user = JSON.parse(localStorage.getItem('whisper-user') || '{}');
 
+      const room = new URLSearchParams(window.location.search).get('room') || 'default';
+
       socket.send(JSON.stringify({
         original: text,
         cleaned: latestTranscript,
@@ -378,6 +381,7 @@ document.addEventListener("DOMContentLoaded", () => {
         moderatorSuggestion,
         inputMethod: 'text',
         detectedLang: latestDetectedLang,
+        room,
         user: {
           user_id: user.user_id,
           username: user.username
@@ -497,6 +501,13 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log('🟣 WebSocket message received:', event.data);
     const msg = JSON.parse(event.data);
 
+    // ✅ Only show messages for the current room
+    const currentRoom = new URLSearchParams(window.location.search).get('room') || 'default';
+    if (msg.room && msg.room !== currentRoom) {
+      console.log(`🚫 Skipping message for room "${msg.room}" (current room is "${currentRoom}")`);
+      return;
+    }
+
       if (msg.type === 'preview') {
         console.log('📥 Received preview message:', msg);
 
@@ -548,7 +559,8 @@ document.addEventListener("DOMContentLoaded", () => {
         warning,
         sender: msg.speaker === 'you' ? 'me' : 'they',
         sourceLang,
-        targetLang
+        targetLang,
+        room: msg.room
       });
        // ✅ Save to SQLite
        window.PS_saveFinalMessage?.(msg);

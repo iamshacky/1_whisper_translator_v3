@@ -7,10 +7,30 @@ export function generateRoomId() {
 }
 
 // Save room to localStorage
+/*
 export function saveRoom(roomId, nickname = '') {
   const existing = loadRooms();
   existing.push({ roomId, nickname });
   localStorage.setItem('qr_rooms', JSON.stringify(existing));
+}
+*/
+// Save room to localStorage (both qr_rooms and whisper-room-names)
+export function saveRoom(roomId, nickname = '') {
+  // 1. Save to qr_rooms (for QR UI listing)
+  const existing = loadRooms();
+  existing.push({ roomId, nickname });
+  localStorage.setItem('qr_rooms', JSON.stringify(existing));
+
+  // 2. Save to whisper-room-names (for room banner display)
+  try {
+    const nameMap = JSON.parse(localStorage.getItem('whisper-room-names') || '{}');
+    if (nickname) {
+      nameMap[roomId] = nickname;
+      localStorage.setItem('whisper-room-names', JSON.stringify(nameMap));
+    }
+  } catch (err) {
+    console.warn("⚠️ Failed to update whisper-room-names:", err);
+  }
 }
 
 // Load rooms

@@ -31,34 +31,6 @@ export async function setupExpirationHandlers(currentRoom) {
     console.warn('Could not fetch expiration setting', err);
   }
 
-  /*
-  saveBtn.addEventListener('click', async () => {
-    const value = parseInt(select.value);
-
-    if (value === 0) {
-      const confirmClear = confirm("Are you sure you want to delete all messages in this room?");
-      if (!confirmClear) return;
-
-      //await fetch(`/api/persistence-sqlite/delete-all?room=${encodeURIComponent(currentRoom)}`, {
-      await fetch(`/api/persistence-sqlite/delete/delete-all?room=${encodeURIComponent(currentRoom)}`, {
-        method: 'POST'
-      });
-      alert('Messages deleted.');
-    }
-
-    //await fetch('/api/persistence-sqlite/set-expiration', {
-    await fetch('/api/persistence-sqlite/delete/set-expiration', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        room: currentRoom,
-        expires_after_ms: value
-      })
-    });
-
-    alert('Expiration setting saved.');
-  });
-  */
   
   saveBtn.addEventListener('click', async () => {
     const value = parseInt(select.value);

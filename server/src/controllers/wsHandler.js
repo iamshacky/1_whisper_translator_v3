@@ -72,6 +72,7 @@ export function setupWebSocket(wss) {
             detectedLang,
             sourceLang: detectedLang,
             targetLang: targetLang,
+            room: ws.roomId
           };
 
           console.log("[WS] sending preview back:", {
@@ -92,6 +93,7 @@ export function setupWebSocket(wss) {
           console.log('🟨 End of preview log\n');
 
         } else {
+          const parsed = JSON.parse(message);
           const {
             original,
             cleaned = '',
@@ -102,6 +104,7 @@ export function setupWebSocket(wss) {
             inputMethod = 'text',
             sourceLang = '',
             targetLang: incomingTargetLang = '',
+            room = ws.roomId,
             user = {}
           } = JSON.parse(message);
 
@@ -128,6 +131,7 @@ export function setupWebSocket(wss) {
             user_id: user?.user_id || null,
             username: user?.username || null,
             clientId: senderId,
+            room
           };
 
           for (const client of rooms.get(ws.roomId || 'default') || []) {

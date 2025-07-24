@@ -47,9 +47,24 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | |____client
 | | | |____helpers.js
 | | | |____init.js
+| | |____delete
+| | | |____client
+| | | | |____helpers.js
+| | | | |____init.js
+| | | |____server
+| | | | |____controller.js
+| | | | |____init.js
+| | | | |____model.js
+| | | | |____routes.js
 | | |____messages.db
 | | |____server
 | | | |____routes.js
+| |____room_manager_qr
+| | |____client
+| | | |____init.js
+| | | |____panel.html
+| | | |____qr_utils.js
+| | | |____room_ui.js
 | |____settings_panel
 | | |____client
 | | | |____audio.js
