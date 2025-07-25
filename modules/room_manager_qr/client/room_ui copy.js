@@ -84,18 +84,8 @@ export function setupQRRoomManager() {
           rooms.splice(index, 1);
           localStorage.setItem('qr_rooms', JSON.stringify(rooms));
           updateRoomListUI();
-
-          // ✅ Also remove from whisper-room-names
-          try {
-            const nameMap = JSON.parse(localStorage.getItem('whisper-room-names') || '{}');
-            delete nameMap[room.roomId];
-            localStorage.setItem('whisper-room-names', JSON.stringify(nameMap));
-          } catch (err) {
-            console.warn("⚠️ Failed to update whisper-room-names during delete:", err);
-          }
         }
       });
-
 
       li.appendChild(toggleQRBtn);
       li.appendChild(editBtn);
@@ -172,12 +162,15 @@ function saveSharedRoom() {
 
       saveRoom(roomId, nickname);
       status.textContent = `✅ Room saved as "${nickname}"`;
-      updateRoomListUI();
+
+      const container = document.createElement('div');
+      document.getElementById('save-shared-room-container').appendChild(container);
+      const fullUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
+      generateQRCode(fullUrl, container);
 
     } catch (err) {
       console.error("❌ Error fetching room messages:", err);
-      //status.textContent = "❌ Failed to verify room.";
-      setTimeout(() => { status.textContent = ''; }, 3000);
+      status.textContent = "❌ Failed to verify room.";
     }
   });
 }
