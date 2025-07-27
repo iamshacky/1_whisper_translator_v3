@@ -58,24 +58,6 @@ export async function setupExpirationHandlers(currentRoom) {
           method: 'POST'
         });
 
-        //alert('Messages deleted.');
-        // ✅ LocalStorage cleanup
-        try {
-          const qrRooms = JSON.parse(localStorage.getItem('qr_rooms') || '[]');
-          const updatedQRRooms = qrRooms.filter(r => r.roomId !== currentRoom);
-          localStorage.setItem('qr_rooms', JSON.stringify(updatedQRRooms));
-
-          const names = JSON.parse(localStorage.getItem('whisper-room-names') || '{}');
-          delete names[currentRoom];
-          localStorage.setItem('whisper-room-names', JSON.stringify(names));
-
-          const myRooms = JSON.parse(localStorage.getItem('my_created_rooms') || '[]');
-          const updatedMyRooms = myRooms.filter(r => r !== currentRoom);
-          localStorage.setItem('my_created_rooms', JSON.stringify(updatedMyRooms));
-        } catch (err) {
-          console.warn('⚠️ Failed to clean up localStorage after deletion:', err);
-        }
-
         alert('Messages deleted.');
       }
 

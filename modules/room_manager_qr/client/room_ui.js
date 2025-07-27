@@ -105,6 +105,7 @@ export function setupQRRoomManager() {
     }
   }
 
+  /*
   createBtn.addEventListener('click', () => {
     currentRoomId = generateRoomId();
     const roomUrl = `${window.location.origin}/?room=${currentRoomId}`;
@@ -114,6 +115,28 @@ export function setupQRRoomManager() {
     nicknameInput.value = '';
     roomQr.innerHTML = '';
     generateQRCode(roomUrl, roomQr);
+  });
+  */
+  createBtn.addEventListener('click', () => {
+    currentRoomId = generateRoomId();
+    const roomUrl = `${window.location.origin}/?room=${currentRoomId}`;
+
+    urlSpan.textContent = roomUrl;
+    roomDetails.style.display = 'block';
+    nicknameInput.value = '';
+    roomQr.innerHTML = '';
+    generateQRCode(roomUrl, roomQr);
+
+    // ✅ Also mark this as a created room in localStorage
+    try {
+      const myRooms = JSON.parse(localStorage.getItem('my_created_rooms') || '[]');
+      if (!myRooms.includes(currentRoomId)) {
+        myRooms.push(currentRoomId);
+        localStorage.setItem('my_created_rooms', JSON.stringify(myRooms));
+      }
+    } catch (err) {
+      console.warn('⚠️ Failed to update my_created_rooms:', err);
+    }
   });
 
   saveBtn.addEventListener('click', () => {
@@ -172,7 +195,9 @@ function saveSharedRoom() {
 
       saveRoom(roomId, nickname);
       status.textContent = `✅ Room saved as "${nickname}"`;
-      updateRoomListUI();
+      setTimeout(() => {
+        location.reload();
+      }, 500);
 
     } catch (err) {
       console.error("❌ Error fetching room messages:", err);

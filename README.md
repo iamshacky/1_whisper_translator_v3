@@ -1,15 +1,34 @@
-# 1_whisper_translator_v9.03__07-24
+# 1_whisper_translator_v9.04__07-25
 
-C:\xampp\htdocs\project_1_individual_backups\1_whisper_translator_v9.03__07-24_at_206pm__fixed_room_url_issue
+1_whisper_translator_v9.04__07-25_at_1116pm__time_to_start_deletion_module_refinement
 
 ### Updates
 
-- Fixed the issue where messages meant to be room specific could be seen from other rooms.
+- Option to save a room url they visit to localStorage. A room needs atleast 1 message in it before it can be shared.
 
-- Room name and its nickname are shown in the main ui now. That data comes from localStorage.
+- QR codes get generated when saving a shared room.
 
 ### Next 
 
-- Option to save a room url they visit to localStorage. At the moment, rooms can only be saved when creating a room.
+- Refine modules/persistence_sqlite/delete
+- Per-message expiration. Automatically delete at a set time from when the timestamp says they were created.
+```
+// modules\persistence_sqlite\delete\server\model.js
 
-- Then, generate a QR code from that room url.
+export async function deleteExpiredMessagesForAllRooms() {
+  ...
+localStorage["room-owners"] = {
+  "room-xyz": "user_abc"
+}
+...
+}
+```
+
+### Notes and considerations
+
+#### Restrict who can delete rooms or all messages. 
+1. The room creater could be determined by localStorage. 
+  - What if they cleared their localStorage? Logging in and sending a message populates localStorage again.
+  - What if they forget their login after deleting a room? Then they or noone else can delete that room. 
+    - Maybe that's it may be worth considering a feature where if a room isn't used by anyone for a certain amount of time, the room automatically gets deleted.
+ 

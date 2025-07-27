@@ -52,24 +52,3 @@ export async function createUser(req, res) {
     return res.status(500).json({ error: 'Server error' });
   }
 }
-
-// Gets user created rooms and populates their localStorage with the array.
-export async function getMyCreatedRooms(req, res) {
-  const user_id = parseInt(req.query.user_id);
-  if (!user_id) return res.status(400).json({ error: 'Missing or invalid user_id' });
-
-  try {
-    const db = await open({
-      filename: path.resolve('modules/persistence_sqlite/messages.db'),
-      driver: sqlite3.Database,
-    });
-
-    const rows = await db.all('SELECT DISTINCT room FROM messages WHERE user_id = ?', user_id);
-    const rooms = rows.map(row => row.room);
-    res.json({ rooms });
-  } catch (err) {
-    console.error('❌ Error fetching user-created rooms:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-}
-
