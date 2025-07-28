@@ -79,11 +79,36 @@ export function setupQRRoomManager() {
       deleteBtn.textContent = '🗑️';
       deleteBtn.title = 'Delete room';
       deleteBtn.style.marginLeft = '5px';
-      deleteBtn.addEventListener('click', () => {
+      deleteBtn.addEventListener('click', async () => {
         if (confirm(`Delete room ${room.roomId}?`)) {
+          /*
           rooms.splice(index, 1);
           localStorage.setItem('qr_rooms', JSON.stringify(rooms));
           updateRoomListUI();
+          */
+          rooms.splice(index, 1);
+          localStorage.setItem('qr_rooms', JSON.stringify(rooms));
+          updateRoomListUI();
+
+          // ✅ Also remove from whisper-room-names
+          try {
+            const nameMap = JSON.parse(localStorage.getItem('whisper-room-names') || '{}');
+            delete nameMap[room.roomId];
+            localStorage.setItem('whisper-room-names', JSON.stringify(nameMap));
+          } catch (err) {
+            console.warn("⚠️ Failed to update whisper-room-names during delete:", err);
+          }
+
+          // ✅ Also delete SQL messages if user created the room
+          try {
+            const createdRooms = JSON.parse(localStorage.getItem('my_created_rooms') || '[]');
+            if (createdRooms.includes(room.roomId)) {
+              const { DEL__deleteRoomMessages } = await import('../../modules/persistence_sqlite/delete/client/api.js');
+              await DEL__deleteRoomMessages(room.roomId);
+            }
+          } catch (err) {
+            console.warn("⚠️ Failed to check/remove SQL messages for owned room:", err);
+          }
 
           // ✅ Also remove from whisper-room-names
           try {

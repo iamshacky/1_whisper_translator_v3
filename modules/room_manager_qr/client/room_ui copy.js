@@ -84,8 +84,18 @@ export function setupQRRoomManager() {
           rooms.splice(index, 1);
           localStorage.setItem('qr_rooms', JSON.stringify(rooms));
           updateRoomListUI();
+
+          // ✅ Also remove from whisper-room-names
+          try {
+            const nameMap = JSON.parse(localStorage.getItem('whisper-room-names') || '{}');
+            delete nameMap[room.roomId];
+            localStorage.setItem('whisper-room-names', JSON.stringify(nameMap));
+          } catch (err) {
+            console.warn("⚠️ Failed to update whisper-room-names during delete:", err);
+          }
         }
       });
+
 
       li.appendChild(toggleQRBtn);
       li.appendChild(editBtn);
@@ -95,6 +105,7 @@ export function setupQRRoomManager() {
     }
   }
 
+  /*
   createBtn.addEventListener('click', () => {
     currentRoomId = generateRoomId();
     const roomUrl = `${window.location.origin}/?room=${currentRoomId}`;
@@ -104,6 +115,28 @@ export function setupQRRoomManager() {
     nicknameInput.value = '';
     roomQr.innerHTML = '';
     generateQRCode(roomUrl, roomQr);
+  });
+  */
+  createBtn.addEventListener('click', () => {
+    currentRoomId = generateRoomId();
+    const roomUrl = `${window.location.origin}/?room=${currentRoomId}`;
+
+    urlSpan.textContent = roomUrl;
+    roomDetails.style.display = 'block';
+    nicknameInput.value = '';
+    roomQr.innerHTML = '';
+    generateQRCode(roomUrl, roomQr);
+
+    // ✅ Also mark this as a created room in localStorage
+    try {
+      const myRooms = JSON.parse(localStorage.getItem('my_created_rooms') || '[]');
+      if (!myRooms.includes(currentRoomId)) {
+        myRooms.push(currentRoomId);
+        localStorage.setItem('my_created_rooms', JSON.stringify(myRooms));
+      }
+    } catch (err) {
+      console.warn('⚠️ Failed to update my_created_rooms:', err);
+    }
   });
 
   saveBtn.addEventListener('click', () => {
@@ -162,15 +195,14 @@ function saveSharedRoom() {
 
       saveRoom(roomId, nickname);
       status.textContent = `✅ Room saved as "${nickname}"`;
-
-      const container = document.createElement('div');
-      document.getElementById('save-shared-room-container').appendChild(container);
-      const fullUrl = `${window.location.origin}${window.location.pathname}?room=${roomId}`;
-      generateQRCode(fullUrl, container);
+      setTimeout(() => {
+        location.reload();
+      }, 500);
 
     } catch (err) {
       console.error("❌ Error fetching room messages:", err);
-      status.textContent = "❌ Failed to verify room.";
+      //status.textContent = "❌ Failed to verify room.";
+      setTimeout(() => { status.textContent = ''; }, 3000);
     }
   });
 }
