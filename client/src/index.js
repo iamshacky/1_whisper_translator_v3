@@ -3,6 +3,8 @@ LOGIN__initClient();
 
 import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
 import '/modules/persistence-sqlite/init.js';
+import { ROOM__checkIfDeletedAndBlockUI } from '/modules/room_manager_qr/client/helpers.js';
+
 
  
 ﻿console.log("✅ index.js loaded");
@@ -471,6 +473,20 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ text, targetLang })
       });
 
+      /*
+      if (res.status === 403) {
+        alert('❌ This room was deleted and cannot be used.');
+        return;
+      }
+      */
+      if (res.status === 403) {
+        alert('❌ This room was deleted and cannot be used.');
+        setTimeout(() => {
+          location.reload();
+        }, 300); // small delay ensures alert renders before reload
+        return;
+      }
+
       const result = await res.json();
 
       latestDetectedLang = result.detectedLang || '';
@@ -490,10 +506,20 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("🧭 detectedLang:", latestDetectedLang || "(none)");
       console.log("🎧 audio:", result.audio ? "[yes]" : "[none]");
       console.log("💬 modSuggest:", moderatorSuggestion || "(none)");
-
+    /*
     } catch (err) {
       console.error('❌ Failed to preview typed input:', err);
       alert('⚠️ Could not contact the server. Please check if it crashed.');
+    }
+    */
+    } catch (err) {
+      console.error('❌ Failed to preview typed input:', err);
+
+      if (err?.response?.status === 403) {
+        alert('❌ This room was deleted and cannot be used.');
+      } else {
+        alert('⚠️ Could not contact the server. Please check if it crashed.');
+      }
     }
   };
 
@@ -569,12 +595,28 @@ document.addEventListener("DOMContentLoaded", () => {
   ///// WORKAREA 3 END
 
   // 🔁 Load messages from SQLite on page load
+  /*
   (async () => {
     const savedMessages = await window.PS_getAllMessages?.();
     if (Array.isArray(savedMessages)) {
       for (const msg of savedMessages) {
         window.PS_renderMessageFromDb?.(msg, messagesContainer);
       }
+    }
+  })();
+  */
+  (async () => {
+    const savedMessages = await window.PS_getAllMessages?.();
+    if (!Array.isArray(savedMessages)) return;
+
+    const currentRoom = new URLSearchParams(window.location.search).get('room') || 'default';
+
+    // ✅ Check if deleted
+    const isDeleted = ROOM__checkIfDeletedAndBlockUI(savedMessages, currentRoom);
+    if (isDeleted) return;
+
+    for (const msg of savedMessages) {
+      window.PS_renderMessageFromDb?.(msg, messagesContainer);
     }
   })();
 });

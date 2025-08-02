@@ -77,6 +77,9 @@ export async function setupExpirationHandlers(currentRoom) {
         }
 
         alert('Messages deleted.');
+        setTimeout(() => {
+          location.reload();
+        }, 300);
       }
 
       await fetch('/api/persistence-sqlite/delete/set-expiration', {
@@ -99,4 +102,30 @@ export async function setupExpirationHandlers(currentRoom) {
       alert('❌ Save failed.');
     }
   });
+}
+
+// So that room_manager_qr can use this too.
+export async function deleteRoomAndCleanUI(currentRoom) {
+  await fetch(`/api/persistence-sqlite/delete/delete-all?room=${encodeURIComponent(currentRoom)}`, {
+    method: 'POST'
+  });
+
+  try {
+    const qrRooms = JSON.parse(localStorage.getItem('qr_rooms') || '[]');
+    const updatedQRRooms = qrRooms.filter(r => r.roomId !== currentRoom);
+    localStorage.setItem('qr_rooms', JSON.stringify(updatedQRRooms));
+
+    const names = JSON.parse(localStorage.getItem('whisper-room-names') || '{}');
+    delete names[currentRoom];
+    localStorage.setItem('whisper-room-names', JSON.stringify(names));
+
+    const myRooms = JSON.parse(localStorage.getItem('my_created_rooms') || '[]');
+    const updatedMyRooms = myRooms.filter(r => r !== currentRoom);
+    localStorage.setItem('my_created_rooms', JSON.stringify(updatedMyRooms));
+  } catch (err) {
+    console.warn('⚠️ Failed to clean up localStorage after deletion:', err);
+  }
+
+  alert('Room deleted.');
+  setTimeout(() => location.reload(), 300);
 }

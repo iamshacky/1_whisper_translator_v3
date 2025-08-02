@@ -1,5 +1,7 @@
 // room_ui.js__v1.5 (REVISED)
 import { generateRoomId, generateQRCode, saveRoom, loadRooms } from './qr_utils.js';
+//import { deleteRoomAndCleanUI } from '../../persistence_sqlite/delete/client/helpers.js';
+
 
 export function setupQRRoomManager() {
   const createBtn = document.getElementById('create-room-btn');
@@ -79,7 +81,7 @@ export function setupQRRoomManager() {
       deleteBtn.textContent = '🗑️';
       deleteBtn.title = 'Delete room';
       deleteBtn.style.marginLeft = '5px';
-      deleteBtn.addEventListener('click', () => {
+      deleteBtn.addEventListener('click', async () => {
         if (confirm(`Delete room ${room.roomId}?`)) {
           rooms.splice(index, 1);
           localStorage.setItem('qr_rooms', JSON.stringify(rooms));
@@ -93,6 +95,31 @@ export function setupQRRoomManager() {
           } catch (err) {
             console.warn("⚠️ Failed to update whisper-room-names during delete:", err);
           }
+
+          // ✅ Also delete SQL messages if user created the room
+          try {
+            const createdRooms = JSON.parse(localStorage.getItem('my_created_rooms') || '[]');
+            if (createdRooms.includes(room.roomId)) {
+              const { DEL__deleteRoomMessages } = await import('../../modules/persistence_sqlite/delete/client/api.js');
+              await DEL__deleteRoomMessages(room.roomId);
+            }
+          } catch (err) {
+            console.warn("⚠️ Failed to check/remove SQL messages for owned room:", err);
+          }
+
+          // ✅ Also remove from whisper-room-names
+          try {
+            const nameMap = JSON.parse(localStorage.getItem('whisper-room-names') || '{}');
+            delete nameMap[room.roomId];
+            localStorage.setItem('whisper-room-names', JSON.stringify(nameMap));
+          } catch (err) {
+            console.warn("⚠️ Failed to update whisper-room-names during delete:", err);
+          }
+          document.dispatchEvent(new CustomEvent('room-deleted', { detail: { roomId: room.roomId } }));
+          setTimeout(() => {
+            alert('alrighty then');
+            location.reload();
+          }, 900);
         }
       });
 
@@ -105,18 +132,6 @@ export function setupQRRoomManager() {
     }
   }
 
-  /*
-  createBtn.addEventListener('click', () => {
-    currentRoomId = generateRoomId();
-    const roomUrl = `${window.location.origin}/?room=${currentRoomId}`;
-
-    urlSpan.textContent = roomUrl;
-    roomDetails.style.display = 'block';
-    nicknameInput.value = '';
-    roomQr.innerHTML = '';
-    generateQRCode(roomUrl, roomQr);
-  });
-  */
   createBtn.addEventListener('click', () => {
     currentRoomId = generateRoomId();
     const roomUrl = `${window.location.origin}/?room=${currentRoomId}`;
@@ -207,3 +222,18 @@ function saveSharedRoom() {
   });
 }
 
+
+// Optional cleanup trigger after a QR deletion if user owns the room
+document.addEventListener('room-deleted', (e) => {
+  const deletedRoomId = e.detail.roomId;
+  const currentRoom = new URLSearchParams(window.location.search).get('room');
+  const ownedRooms = JSON.parse(localStorage.getItem('my_created_rooms') || '[]');
+
+  if (currentRoom === deletedRoomId && ownedRooms.includes(currentRoom)) {
+    const saveBtn = document.getElementById('save-expiration-btn');
+    if (saveBtn) {
+      console.log('🧹 Triggering Message Expiration panel cleanup via Save button...');
+      saveBtn.click();
+    }
+  }
+});

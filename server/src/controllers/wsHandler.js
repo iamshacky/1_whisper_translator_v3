@@ -7,9 +7,16 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { deletedRooms } from '../lib/deletedRoomCache.js';
+
+
 const rooms = new Map(); // roomId → Set<WebSocket>
+//const deletedRooms = new Set(); // 🧠 In-memory tombstone cache
+
 
 export function setupWebSocket(wss) {
+  preloadDeletedRooms(); // ⬅️ Important!
+
   wss.on('connection', async (ws, req) => {
     const url        = new URL(req.url, `http://${req.headers.host}`);
 
@@ -41,6 +48,20 @@ export function setupWebSocket(wss) {
 
       try {
         if (isBinary) {
+          /*
+          if (deletedRooms.has(ws.roomId)) {
+            console.warn(`❌ Preview rejected — deleted room: "${ws.roomId}"`);
+            return;
+          }
+          */
+          const urlParams = new URLSearchParams(ws.url?.split('?')[1] || '');
+          const roomId = urlParams.get('room') || 'default';
+
+          if (deletedRooms.has(roomId)) {
+            console.warn(`❌ Preview rejected — deleted room: "${roomId}"`);
+            return;
+          }
+
           const __dirname = path.dirname(fileURLToPath(import.meta.url));
           const rootDir = path.resolve(__dirname, '../../../');
           const configPath = path.join(rootDir, 'modules', 'settings_panel', 'server', 'config.json');
@@ -93,7 +114,20 @@ export function setupWebSocket(wss) {
           console.log('🟨 End of preview log\n');
 
         } else {
+          /*
+          if (deletedRooms.has(ws.roomId)) {
+            console.warn(`❌ Final message rejected — deleted room: "${ws.roomId}"`);
+            return;
+          }
+          */
           const parsed = JSON.parse(message);
+
+          if (parsed.room && deletedRooms.has(parsed.room)) {
+            console.warn(`❌ Final message rejected — deleted room: "${parsed.room}"`);
+            console.log(`🔒 Rejected message:`, parsed);
+            return;
+          }
+
           const {
             original,
             cleaned = '',
@@ -162,3 +196,27 @@ export function setupWebSocket(wss) {
     });
   });
 }
+
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
+
+// 🔁 Load deleted rooms into memory on startup
+async function preloadDeletedRooms() {
+  try {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const dbPath = path.join(__dirname, '../../../modules/persistence_sqlite/messages.db');
+    const db = await open({ filename: dbPath, driver: sqlite3.Database });
+
+    const rows = await db.all(`SELECT room FROM messages WHERE username = 'hide_url'`);
+    for (const row of rows) {
+      deletedRooms.add(row.room);
+    }
+
+    console.log(`🪦 Preloaded ${deletedRooms.size} deleted rooms into memory`);
+  } catch (err) {
+    console.error('❌ Failed to preload deleted rooms:', err);
+  }
+}
+
+
+//export { deletedRooms };

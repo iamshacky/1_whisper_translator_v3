@@ -49,6 +49,7 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____init.js
 | | |____delete
 | | | |____client
+| | | | |____api.js
 | | | | |____helpers.js
 | | | | |____init.js
 | | | |____server
@@ -61,6 +62,7 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____routes.js
 | |____room_manager_qr
 | | |____client
+| | | |____helpers.js
 | | | |____init.js
 | | | |____panel.html
 | | | |____qr_utils.js
@@ -87,6 +89,7 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____panel.html
 |____package-lock.json
 |____package.json
+|____README.md
 |____server
 | |____src
 | | |____config
@@ -95,6 +98,9 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____translate.js
 | | | |____wsHandler.js
 | | |____index.js
+| | |____lib
+| | | |____deletedRoomCache.js
 | | |____services
 | | | |____openaiService.js
 | | | |____translationService.js
+|____x.txt

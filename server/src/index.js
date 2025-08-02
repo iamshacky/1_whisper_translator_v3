@@ -7,6 +7,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import OpenAI from 'openai';
 
+import { deletedRooms } from './lib/deletedRoomCache.js';
+
+
 config();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -70,6 +73,11 @@ app.use('/modules/room_manager_qr', express.static(
 ));
 
 
+// room_manager_qr server (new backend logic)
+import { ROOMQR__initServer } from '../../modules/room_manager_qr/server/init.js';
+ROOMQR__initServer(app);
+
+
 
 
 // Login module
@@ -95,6 +103,16 @@ setupWebSocket(wss);
 
 app.post('/manual-translate', async (req, res) => {
   const { text, targetLang } = req.body;
+
+  // 🆕 Check if current room is deleted
+  const referer = req.get('referer') || '';
+  const match = referer.match(/[?&]room=([^&]+)/);
+  const room = match ? decodeURIComponent(match[1]) : null;
+
+  if (room && deletedRooms.has(room)) {
+    console.warn(`❌ Preview blocked for deleted room: ${room}`);
+    return res.status(403).json({ error: 'Room was deleted and cannot be used.' });
+  }
 
   let finalLang = targetLang;
   let inputLangMode = 'auto';

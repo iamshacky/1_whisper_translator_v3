@@ -1,5 +1,7 @@
 // room_ui.js__v1.5 (REVISED)
 import { generateRoomId, generateQRCode, saveRoom, loadRooms } from './qr_utils.js';
+//import { deleteRoomAndCleanUI } from '../../persistence_sqlite/delete/client/helpers.js';
+
 
 export function setupQRRoomManager() {
   const createBtn = document.getElementById('create-room-btn');
@@ -81,11 +83,6 @@ export function setupQRRoomManager() {
       deleteBtn.style.marginLeft = '5px';
       deleteBtn.addEventListener('click', async () => {
         if (confirm(`Delete room ${room.roomId}?`)) {
-          /*
-          rooms.splice(index, 1);
-          localStorage.setItem('qr_rooms', JSON.stringify(rooms));
-          updateRoomListUI();
-          */
           rooms.splice(index, 1);
           localStorage.setItem('qr_rooms', JSON.stringify(rooms));
           updateRoomListUI();
@@ -118,6 +115,11 @@ export function setupQRRoomManager() {
           } catch (err) {
             console.warn("⚠️ Failed to update whisper-room-names during delete:", err);
           }
+          document.dispatchEvent(new CustomEvent('room-deleted', { detail: { roomId: room.roomId } }));
+          setTimeout(() => {
+            alert('alrighty then');
+            location.reload();
+          }, 900);
         }
       });
 
@@ -140,17 +142,6 @@ export function setupQRRoomManager() {
     nicknameInput.value = '';
     roomQr.innerHTML = '';
     generateQRCode(roomUrl, roomQr);
-  });
-  */
-  createBtn.addEventListener('click', () => {
-    currentRoomId = generateRoomId();
-    const roomUrl = `${window.location.origin}/?room=${currentRoomId}`;
-
-    urlSpan.textContent = roomUrl;
-    roomDetails.style.display = 'block';
-    nicknameInput.value = '';
-    roomQr.innerHTML = '';
-    generateQRCode(roomUrl, roomQr);
 
     // ✅ Also mark this as a created room in localStorage
     try {
@@ -163,6 +154,45 @@ export function setupQRRoomManager() {
       console.warn('⚠️ Failed to update my_created_rooms:', err);
     }
   });
+  */
+  createBtn.addEventListener('click', async () => {
+    currentRoomId = generateRoomId();
+    const roomUrl = `${window.location.origin}/?room=${currentRoomId}`;
+
+    // ✅ Register in backend created_rooms table
+    const user = JSON.parse(localStorage.getItem('whisper-user') || '{}');
+    const createdBy = user?.user_id || 'unknown';
+
+    try {
+      await fetch('/api/room-manager-qr/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId: currentRoomId, createdBy })
+      });
+      console.log('✅ Room registered in DB:', currentRoomId);
+    } catch (err) {
+      console.warn('⚠️ Failed to register room in DB:', err);
+    }
+
+    // Continue with existing behavior
+    urlSpan.textContent = roomUrl;
+    roomDetails.style.display = 'block';
+    nicknameInput.value = '';
+    roomQr.innerHTML = '';
+    generateQRCode(roomUrl, roomQr);
+
+    // ✅ Local my_created_rooms
+    try {
+      const myRooms = JSON.parse(localStorage.getItem('my_created_rooms') || '[]');
+      if (!myRooms.includes(currentRoomId)) {
+        myRooms.push(currentRoomId);
+        localStorage.setItem('my_created_rooms', JSON.stringify(myRooms));
+      }
+    } catch (err) {
+      console.warn('⚠️ Failed to update my_created_rooms:', err);
+    }
+  });
+
 
   saveBtn.addEventListener('click', () => {
     const nickname = nicknameInput.value.trim();
@@ -201,6 +231,22 @@ function saveSharedRoom() {
   }
 
   saveBtn.addEventListener('click', async () => {
+    status.textContent = "Checking room validity...";
+
+    // ✅ Check if this room is registered
+    try {
+      const validCheck = await fetch(`/api/room-manager-qr/is-valid?room=${encodeURIComponent(roomId)}`);
+      const isValid = (await validCheck.json())?.valid;
+
+      if (!isValid) {
+        status.textContent = "❌ This room was never officially created and cannot be saved.";
+        return;
+      }
+    } catch (err) {
+      console.warn("❌ Failed to check room validity:", err);
+      status.textContent = "❌ Could not verify room registration.";
+      return;
+    }
     status.textContent = "Checking room usage...";
 
     try {
@@ -232,3 +278,18 @@ function saveSharedRoom() {
   });
 }
 
+
+// Optional cleanup trigger after a QR deletion if user owns the room
+document.addEventListener('room-deleted', (e) => {
+  const deletedRoomId = e.detail.roomId;
+  const currentRoom = new URLSearchParams(window.location.search).get('room');
+  const ownedRooms = JSON.parse(localStorage.getItem('my_created_rooms') || '[]');
+
+  if (currentRoom === deletedRoomId && ownedRooms.includes(currentRoom)) {
+    const saveBtn = document.getElementById('save-expiration-btn');
+    if (saveBtn) {
+      console.log('🧹 Triggering Message Expiration panel cleanup via Save button...');
+      saveBtn.click();
+    }
+  }
+});

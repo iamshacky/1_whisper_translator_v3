@@ -1,6 +1,8 @@
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
+import { deletedRooms } from '../../../../server/src/lib/deletedRoomCache.js';
+
 
 let db;
 
@@ -41,9 +43,30 @@ export async function deleteMessagesOlderThan(room, cutoffTime) {
   `, [room, cutoffTime]);
 }
 
+/*
 export async function deleteAllMessages(room) {
   console.log("🔍 Deleting messages for room:", room);
   await db.run(`DELETE FROM messages WHERE room = ?`, [room]);
+}
+*/
+export async function deleteAllMessages(room) {
+  console.log("🔍 Deleting messages for room:", room);
+  await db.run(`DELETE FROM messages WHERE room = ?`, [room]);
+
+  // ⛔ Insert a tombstone message to mark room as deleted
+  await db.run(`
+    INSERT INTO messages (room, username, original, translation, timestamp)
+    VALUES (?, 'hide_url', '', '', ?)
+  `, [room, Date.now()]);
+  // ✅ Update in-memory deletedRooms cache if available
+  try {
+    //const { deletedRooms } = await import('../../../../server/src/controllers/wsHandler.js');
+
+    console.log(`🔍 Deleting messages for room: ${room}`);
+    deletedRooms.add(room);
+  } catch (err) {
+    console.warn("⚠️ Could not update in-memory deletedRooms cache:", err);
+  }
 }
 
 export async function deleteExpiredMessagesForAllRooms() {
