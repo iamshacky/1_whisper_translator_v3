@@ -1,16 +1,31 @@
-﻿﻿import { LOGIN__initClient } from '/modules/login/init.js';
+﻿﻿/* Start client/src/index.js__partial_1_of_3 */
+import { LOGIN__initClient } from '/modules/login/init.js';
 LOGIN__initClient();
 
 import { SP_maybePlayAudio } from '/modules/settings-panel/audio.js';
+
 import '/modules/persistence-sqlite/init.js';
+
 import { ROOM__checkIfDeletedAndBlockUI } from '/modules/room_manager_qr/client/helpers.js';
 
+import { UI_LANG_init } from '/modules/ui_language_selector/client/selector.js';
+UI_LANG_init();
 
- 
+
+
 ﻿console.log("✅ index.js loaded");
 
 document.addEventListener("DOMContentLoaded", () => {
   console.log("✅ DOM fully loaded");
+
+  const roomId = new URLSearchParams(window.location.search).get('room');
+  const blockedList = JSON.parse(sessionStorage.getItem('blocked_rooms') || '[]');
+
+  if (roomId && blockedList.includes(roomId)) {
+    alert("❌ This room was never created via the QR system.");
+    location.href = '/';
+    return;
+  }
 
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   const socket = new WebSocket(`${protocol}://${location.host}/ws`);
@@ -32,8 +47,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const modSettings = JSON.parse(localStorage.getItem('moderator-settings') || '{}');
   const promptVariant = modSettings.promptVariant || 'default';
 
-
-
   let latestTranscript = '';
   let latestAudio = '';
   let latestLanguage = '';
@@ -43,7 +56,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let latestDetectedLang = '';
   let lastModeratedText = '';
   let lastModeratorContext = '';
-
 
   let mediaRecorder;
   let audioChunks = [];
@@ -67,14 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const res = await fetch('/moderate-message', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      /*
-      body: JSON.stringify({ 
-        text, 
-        promptVariant: moderationSettings.promptVariant || 'default',
-        moderatorPersona: moderationSettings.moderatorPersona || null,
-        verbosity: moderationSettings.verbosity || null 
-      })
-      */
+
       body: JSON.stringify({ 
         text,
         correctionMode: moderationSettings.correctionMode || 'default',
@@ -87,14 +92,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const result = await res.json();
 
     if (result.needsCorrection) {
-      /*
-      handleModeratorResponse({ 
-        needsCorrection: result.needsCorrection, 
-        suggestedText: result.suggestedText, 
-        context,
-        autoAcceptCorrections
-      });
-      */
+
       handleModeratorResponse({ 
         needsCorrection: result.needsCorrection, 
         suggestedText: result.suggestedText, 
@@ -111,8 +109,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return result;
   }
 
-  ///// WORKAREA 1 — 🎤 Mic button + recording flow
-  // 🎤 Mic recording toggle
   micBtn.onclick = () => {
     if (!isRecording) {
       startRecording();
@@ -123,24 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     isRecording = !isRecording;
   };
-  ///// WORKAREA 1 END
 
-  /*
-  const chatBtn = document.getElementById('chat-btn');
-    if (chatBtn) {
-      chatBtn.onclick = () => {
-        previewContainer.style.display = 'block';
-        textInput.focus();
-      };
-    } else {
-      console.warn("⚠️ chatBtn not found in DOM");
-    }
-  */
- 
-  /*
-  function handleModeratorResponse(result, context = 'text') {
-    const { needsCorrection, suggestedText, autoAcceptCorrections } = result;
-  */
   function handleModeratorResponse(result) {
     const { needsCorrection, suggestedText, autoAcceptCorrections, context = 'text' } = result;
     moderatorSuggestion = ''; // Always reset first
@@ -156,7 +135,6 @@ document.addEventListener("DOMContentLoaded", () => {
       if (autoAcceptCorrections) {
         document.getElementById('accept-btn').style.display = 'none';  // ✅ hide Accept button
         console.log("✅ Auto-accepting moderator suggestion:", moderatorSuggestion);
-        //setTimeout(() => acceptBtn.onclick(), 200); // slight delay to allow preview render
         setTimeout(() => {
           textInput.value = moderatorSuggestion;
           handleSend(); // Send immediately without re-moderation
@@ -221,7 +199,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const now = new Date();
     return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
+  /* End client/src/index.js__partial_1_of_3 */
 
+  /* Start client/src/index.js__partial_2_of_3 */
   function setPreview(text, lang, audio, warning = '') {
     previewActive = true;
     latestTranscript = text;
@@ -336,7 +316,6 @@ document.addEventListener("DOMContentLoaded", () => {
     SP_maybePlayAudio({ audio, translation, sender, lang });
   }
 
-  ///// WORKAREA 2 — 📤 Message sending
   // ✅ Send button (for previewed content)
   if (sendBtn) {
     sendBtn.onclick = () => {
@@ -395,7 +374,6 @@ document.addEventListener("DOMContentLoaded", () => {
       previewActive = false;
     };
   }
-  ///// WORKAREA 2 END
 
   deleteBtn.onclick = () => clearPreview();
 
@@ -453,7 +431,9 @@ document.addEventListener("DOMContentLoaded", () => {
       sendBtn.style.pointerEvents = 'auto';
     }
   };
+  /* End client/src/index.js__partial_2_of_3 */
 
+  /* Start client/src/index.js__partial_3_of_3 */
   acceptBtn.style.display = 'none'; // 🧼 hide by default on page load
   
   previewTextBtn.onclick = async () => {
@@ -473,16 +453,11 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ text, targetLang })
       });
 
-      /*
       if (res.status === 403) {
-        alert('❌ This room was deleted and cannot be used.');
-        return;
-      }
-      */
-      if (res.status === 403) {
-        alert('❌ This room was deleted and cannot be used.');
+        alert('❌ Preview blocked for unregistered room. Rooms can only be created with the QR room manager.');
         setTimeout(() => {
-          location.reload();
+          //location.reload();
+          location.href = '/';
         }, 300); // small delay ensures alert renders before reload
         return;
       }
@@ -491,7 +466,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       latestDetectedLang = result.detectedLang || '';
 
-      // Refactor moderator - area 2.1
       // Now set the preview first
       const warning = advancedSettings.showWarnings ? (result.warning || '') : '';
       latestWarning = warning;
@@ -506,12 +480,7 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("🧭 detectedLang:", latestDetectedLang || "(none)");
       console.log("🎧 audio:", result.audio ? "[yes]" : "[none]");
       console.log("💬 modSuggest:", moderatorSuggestion || "(none)");
-    /*
-    } catch (err) {
-      console.error('❌ Failed to preview typed input:', err);
-      alert('⚠️ Could not contact the server. Please check if it crashed.');
-    }
-    */
+
     } catch (err) {
       console.error('❌ Failed to preview typed input:', err);
 
@@ -526,6 +495,22 @@ document.addEventListener("DOMContentLoaded", () => {
   socket.onmessage = async (event) => {
     console.log('🟣 WebSocket message received:', event.data);
     const msg = JSON.parse(event.data);
+
+    if (msg.error) {
+
+      const room = new URLSearchParams(window.location.search).get('room');
+      if (room) {
+        const blocked = JSON.parse(sessionStorage.getItem('blocked_rooms') || '[]');
+        if (!blocked.includes(room)) {
+          blocked.push(room);
+          sessionStorage.setItem('blocked_rooms', JSON.stringify(blocked));
+        }
+      }
+
+      alert(`❌ ${msg.error}`);
+      location.href = '/';
+      return;
+    }
 
     // ✅ Only show messages for the current room
     const currentRoom = new URLSearchParams(window.location.search).get('room') || 'default';
@@ -555,7 +540,6 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
           console.error('❌ Auto-preview on Accept failed:', err);
         }
-      
 
       console.log("🟨 Preview display updated:");
       console.log("   📝 text        :", msg.text);
@@ -566,7 +550,6 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("   💬 modSuggest  :", moderatorSuggestion || "(none)");
     }
 
-    ///// WORKAREA 3 — 📨 Handle final messages from server
     if (msg.type === 'final' && msg.original && msg.translation) {
       const lang = msg.detectedLang || '';
       const warning = msg.warning || '';
@@ -592,19 +575,8 @@ document.addEventListener("DOMContentLoaded", () => {
        window.PS_saveFinalMessage?.(msg);
     }
   };
-  ///// WORKAREA 3 END
 
   // 🔁 Load messages from SQLite on page load
-  /*
-  (async () => {
-    const savedMessages = await window.PS_getAllMessages?.();
-    if (Array.isArray(savedMessages)) {
-      for (const msg of savedMessages) {
-        window.PS_renderMessageFromDb?.(msg, messagesContainer);
-      }
-    }
-  })();
-  */
   (async () => {
     const savedMessages = await window.PS_getAllMessages?.();
     if (!Array.isArray(savedMessages)) return;
@@ -620,3 +592,4 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   })();
 });
+/* End client/src/index.js__partial_3_of_3 */

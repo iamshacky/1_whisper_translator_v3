@@ -22,7 +22,6 @@ const wss = new WebSocketServer({ server });
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '../../');
 
-//app.use(express.static(path.join(rootDir, 'client')));
 
 /** 🔧 Core Middleware **/
 app.use(express.json());
@@ -64,7 +63,6 @@ app.use('/modules/persistence_sqlite/delete/client', express.static(
 
 
 // room_manager_qr module (no server routes, just static files)
-// room_manager_qr
 app.use('/modules/room_manager_qr/client', express.static(
   path.join(rootDir, 'modules', 'room_manager_qr', 'client')
 ));
@@ -93,6 +91,15 @@ app.use('/modules/login', express.static(
 ));
 
 
+// ui_language_selector module (static client-only)
+app.use('/modules/ui_language_selector/client', express.static(
+  path.join(rootDir, 'modules', 'ui_language_selector', 'client')
+));
+app.use('/modules/ui_language_selector', express.static(
+  path.join(rootDir, 'modules', 'ui_language_selector', 'client')
+));
+
+
 
 import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';
 
@@ -101,19 +108,46 @@ import { setupWebSocket } from './controllers/wsHandler.js';
 
 setupWebSocket(wss);
 
+// manual-translate
+import sqlite3 from 'sqlite3';
+import { open } from 'sqlite';
+
+// 🧠 Setup SQLite connection (if not done globally)
+const dbPromise = open({
+  filename: path.join(rootDir, 'modules', 'persistence_sqlite', 'messages.db'),
+  driver: sqlite3.Database
+});
+
 app.post('/manual-translate', async (req, res) => {
   const { text, targetLang } = req.body;
 
-  // 🆕 Check if current room is deleted
   const referer = req.get('referer') || '';
   const match = referer.match(/[?&]room=([^&]+)/);
   const room = match ? decodeURIComponent(match[1]) : null;
 
+  // ❌ Block deleted rooms (existing logic)
   if (room && deletedRooms.has(room)) {
     console.warn(`❌ Preview blocked for deleted room: ${room}`);
     return res.status(403).json({ error: 'Room was deleted and cannot be used.' });
   }
 
+  // ❌ Block unregistered rooms
+  if (room) {
+    try {
+      const db = await dbPromise;
+      const exists = await db.get(`SELECT 1 FROM created_rooms WHERE room = ?`, room);
+      if (!exists) {
+        console.warn(`❌ Preview blocked for unregistered room: ${room}`);
+
+        return res.status(403).json({ error: 'This room was never created via the QR system.' });
+      }
+    } catch (err) {
+      console.error('❌ Failed to check created_rooms:', err);
+      return res.status(500).json({ error: 'Internal server error.' });
+    }
+  }
+
+  // Existing config + translation logic...
   let finalLang = targetLang;
   let inputLangMode = 'auto';
   let manualInputLang = 'en';
@@ -126,7 +160,6 @@ app.post('/manual-translate', async (req, res) => {
     inputLangMode = config.inputLangMode || 'auto';
     manualInputLang = config.manualInputLang || 'en';
 
-    // Try reading advanced settings
     try {
       const advRaw = await readFile(path.join(rootDir, 'modules', 'advanced_settings_panel', 'server', 'config.json'), 'utf-8');
       const advConfig = JSON.parse(advRaw);
@@ -153,6 +186,7 @@ app.post('/manual-translate', async (req, res) => {
     res.status(500).json({ error: 'Translation failed' });
   }
 });
+
 
 
 

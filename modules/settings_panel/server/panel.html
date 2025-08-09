@@ -1,56 +1,47 @@
-
-<!-- modules/settings_panel/server/panel.html -->
-<!--<button id="debug-toggle">⚙️</button>-->
-<!--<div id="debug-panel" style="display:none;">-->
 <div class="panel-wrapper">
-  <h3>🛠️ Settings</h3>
+  <h3 id="settings-header">🛠️ Settings</h3>
 
-  <label>Target Lang:
-    <select id="cfg-targetLang">
-      <option value="es">Spanish</option>
-      <option value="fr">French</option>
-      <option value="de">German</option>
-      <option value="zh">Chinese</option>
-      <option value="ne">Nepali</option>
-      <option value="en">English</option>
-      <option value="auto">Auto Detect</option>
-    </select>
+  <!-- Target Language -->
+  <label for="cfg-targetLang">
+    <span id="cfg-targetLang-label">Target Language:</span>
   </label>
+  <select id="cfg-targetLang"></select>
 
-  <label>Input Language Mode:
-    <select id="cfg-inputLangMode">
-      <option value="auto">Auto Detect</option>
-      <option value="manual">Manual Select</option>
-    </select>
+  <!-- Input Language Mode -->
+  <label for="cfg-inputLangMode">
+    <span id="input-lang-mode-label">Input Language Mode:</span>
   </label>
+  <select id="cfg-inputLangMode">
+    <option value="auto" data-i18n-key="lang_auto">Auto Detect</option>
+    <option value="manual" data-i18n-key="input_manual">Manual Select</option>
+  </select>
 
-  <label id="manualInputLangLabel" style="display:none;">Manual Input Language:
-    <select id="cfg-manualInputLang">
-      <option value="en">English</option>
-      <option value="es">Spanish</option>
-      <option value="fr">French</option>
-      <option value="de">German</option>
-      <option value="zh">Chinese</option>
-      <option value="ne">Nepali</option>
-    </select>
+  <!-- Manual Input Language -->
+  <label id="manualInputLangLabel" style="display:none;" for="cfg-manualInputLang">
+    <span id="manual-input-lang-label">Manual Input Language:</span>
   </label>
+  <select id="cfg-manualInputLang"></select>
 
-  <label>Speech Mode:
-    <select id="cfg-speechMode">
-      <option value="tts">TTS</option>
-      <option value="synthesis">Synthesis</option>
-    </select>
-  </label><br />
+  <!-- Speech Mode -->
+  <label for="cfg-speechMode">
+    <span id="speech-mode-label">Speech Mode:</span>
+  </label>
+  <select id="cfg-speechMode">
+    <option value="tts" data-i18n-key="speech_tts">TTS</option>
+    <option value="synthesis" data-i18n-key="speech_synthesis">Synthesis</option>
+  </select><br />
 
-  <label>Play Audio On:
-    <select id="cfg-playAudioOn">
-      <option value="both">Both</option>
-      <option value="sender">Sender</option>
-      <option value="receiver">Receiver</option>
-      <option value="none">None</option>
-    </select>
-  </label><br />
+  <!-- Play Audio On -->
+  <label for="cfg-playAudioOn">
+    <span id="play-audio-on-label">Play Audio On:</span>
+  </label>
+  <select id="cfg-playAudioOn">
+    <option value="both" data-i18n-key="play_audio_both">Both</option>
+    <option value="sender" data-i18n-key="play_audio_sender">Sender</option>
+    <option value="receiver" data-i18n-key="play_audio_receiver">Receiver</option>
+    <option value="none" data-i18n-key="play_audio_none">None</option>
+  </select><br />
 
+  <!-- Save button -->
   <button id="cfg-save">Save</button>
 </div>
-<!--</div>-->

@@ -67,6 +67,11 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____panel.html
 | | | |____qr_utils.js
 | | | |____room_ui.js
+| | |____server
+| | | |____controller.js
+| | | |____init.js
+| | | |____model.js
+| | | |____routes.js
 | |____settings_panel
 | | |____client
 | | | |____audio.js
@@ -82,11 +87,18 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | |____client
 | | | |____init.js
 | | | |____retranslate.js
+| | | |____ui copy.js
 | | | |____ui.js
 | | |____server
 | | | |____helpers.js
 | | | |____index.js
+| | | |____panel copy.html
 | | | |____panel.html
+| |____ui_language_selector
+| | |____client
+| | | |____languages.js
+| | | |____selector.js
+| | | |____translations.js
 |____package-lock.json
 |____package.json
 |____README.md
@@ -96,6 +108,7 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____settings.js
 | | |____controllers
 | | | |____translate.js
+| | | |____wsHandler copy.js
 | | | |____wsHandler.js
 | | |____index.js
 | | |____lib

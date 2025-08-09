@@ -4,11 +4,7 @@ import { SP_bindSettingsPanelEvents, SP_loadSettingsToForm } from '/modules/sett
 fetch('/api/settings/ui')
   .then(res => res.text())
   .then(html => {
-    /*
-    const container = document.createElement('div');
-    container.innerHTML = html;
-    document.body.appendChild(container);
-    */
+
     //window.injectToSettingsContainer(html);
     const container = document.createElement('div');
     container.innerHTML = html;

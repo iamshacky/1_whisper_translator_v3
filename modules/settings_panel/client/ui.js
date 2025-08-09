@@ -1,3 +1,5 @@
+import { populateLanguageSelect } from '/modules/ui_language_selector/client/languages.js';
+
 export function SP_bindSettingsPanelEvents() {
   const saveBtn = document.getElementById('cfg-save');
 
@@ -65,16 +67,30 @@ export async function SP_loadSettingsToForm() {
       console.warn("⚠️ Failed to load settings from server:", err);
       cfg = {
         targetLang: 'es',
+        inputLangMode: 'auto', // New
+        manualInputLang: 'en', // New
         speechMode: 'synthesis',
         playAudioOn: 'both'
       };
     }
   }
 
+
+  // New
+  // Dynamically populate language dropdowns
+  populateLanguageSelect(document.getElementById('cfg-targetLang'), {
+    includeAuto: true,
+    preselected: cfg.targetLang
+  });
+
+  populateLanguageSelect(document.getElementById('cfg-manualInputLang'), {
+    preselected: cfg.manualInputLang
+  });
+
   // Populate form
-  document.getElementById('cfg-targetLang').value = cfg.targetLang;
+  //document.getElementById('cfg-targetLang').value = cfg.targetLang;
   document.getElementById('cfg-inputLangMode').value = cfg.inputLangMode;
-  document.getElementById('cfg-manualInputLang').value = cfg.manualInputLang;
+  //document.getElementById('cfg-manualInputLang').value = cfg.manualInputLang;
   document.getElementById('cfg-speechMode').value = cfg.speechMode;
   document.getElementById('cfg-playAudioOn').value = cfg.playAudioOn;
 

@@ -1,43 +1,43 @@
 <div class="panel-wrapper">
-  <h3>🧠 Moderation Settings</h3>
+  <h3 id="moderation-header">🧠 Moderation Settings</h3>
 
   <!-- 🧠 Correction Style -->
-  <label for="correctionMode">Correction Style:</label>
+  <label for="correctionMode" id="correction-style-label">Correction Style:</label>
   <select id="correctionMode">
-    <option value="default">Default (basic accuracy)</option>
-    <option value="make_smarter">Make Smarter</option>
-    <option value="strict">Strict (no profanity)</option>
-    <option value="silly_filter">Silly Profanity Filter</option>
+    <option value="default" data-i18n-key="correction_default">Default (basic accuracy)</option>
+    <option value="make_smarter" data-i18n-key="correction_make_smarter">Make Smarter</option>
+    <option value="strict" data-i18n-key="correction_strict">Strict (no profanity)</option>
+    <option value="silly_filter" data-i18n-key="correction_silly_filter">Silly Profanity Filter</option>
   </select>
 
   <!-- ✨ Tone Style -->
-  <label for="toneStyle">Tone Style:</label>
+  <label for="toneStyle" id="tone-style-label">Tone Style:</label>
   <select id="toneStyle">
-    <option value="">None</option>
-    <option value="polite_mode">Polite</option>
-    <option value="dramatic">Dramatic</option>
+    <option value="" data-i18n-key="tone_none">None</option>
+    <option value="polite_mode" data-i18n-key="tone_polite">Polite</option>
+    <option value="dramatic" data-i18n-key="tone_dramatic">Dramatic</option>
   </select>
 
   <!-- 🎭 Persona -->
-  <label for="moderatorPersona">Persona:</label>
+  <label for="moderatorPersona" id="persona-label">Persona:</label>
   <select id="moderatorPersona">
-    <option value="">None</option>
-    <option value="wizard">Wizard 🧙</option>
-    <option value="professor">Professor 👨‍🏫</option>
-    <option value="goose">Silly Goose 🪿</option>
+    <option value="" data-i18n-key="persona_none">None</option>
+    <option value="wizard" data-i18n-key="persona_wizard">Wizard 🧙</option>
+    <option value="professor" data-i18n-key="persona_professor">Professor 👨‍🏫</option>
+    <option value="goose" data-i18n-key="persona_goose">Silly Goose 🪿</option>
   </select>
 
   <!-- 📝 Verbosity Level -->
-  <label for="verbosity">Verbosity:</label>
+  <label for="verbosity" id="verbosity-label">Verbosity:</label>
   <select id="verbosity">
-    <option value="">Normal</option>
-    <option value="brief">Brief</option>
-    <option value="verbose">Verbose</option>
-    <option value="extremely_verbose">Extremely verbose</option>
+    <option value="" data-i18n-key="verbosity_normal">Normal</option>
+    <option value="brief" data-i18n-key="verbosity_brief">Brief</option>
+    <option value="verbose" data-i18n-key="verbosity_verbose">Verbose</option>
+    <option value="extremely_verbose" data-i18n-key="verbosity_extremely_verbose">Extremely verbose</option>
   </select>
 
   <!-- ✅ Auto-Accept -->
-  <label>
+  <label id="auto-accept-label">
     <input type="checkbox" id="autoAcceptCorrections">
     Auto-Accept Moderator Suggestions
   </label>

@@ -1,24 +1,21 @@
-<!--<button id="adv-settings-toggle">⚙️+</button>-->
-<!--<div id="adv-settings-panel" style="display:none;">-->
 <div class="panel-wrapper">
-  <h3>⚙️ Advanced Settings</h3>
+  <h3 id="advanced-header">⚙️ Advanced Settings</h3>
 
-  <label>
-    Show Warnings:
+  <label for="adv-showWarnings">
+    <span id="show-warnings-label">Show Warnings:</span>
     <select id="adv-showWarnings">
-      <option value="true">Yes</option>
-      <option value="false">No</option>
+      <option value="true" id="show-warnings-yes">Yes</option>
+      <option value="false" id="show-warnings-no">No</option>
     </select>
   </label><br />
 
-  <label>
-    Play Warning Audio:
+  <label for="adv-playWarningAudio">
+    <span id="play-warning-audio-label">Play Warning Audio:</span>
     <select id="adv-playWarningAudio">
-      <option value="true">Yes</option>
-      <option value="false">No</option>
+      <option value="true" id="play-warning-audio-yes">Yes</option>
+      <option value="false" id="play-warning-audio-no">No</option>
     </select>
   </label><br />
 
   <button id="adv-settings-save">Save</button>
 </div>
-<!--</div>-->

@@ -1,6 +1,4 @@
-// room_ui.js__v1.5 (REVISED)
 import { generateRoomId, generateQRCode, saveRoom, loadRooms } from './qr_utils.js';
-//import { deleteRoomAndCleanUI } from '../../persistence_sqlite/delete/client/helpers.js';
 
 
 export function setupQRRoomManager() {
@@ -216,6 +214,12 @@ function saveSharedRoom() {
 
   const params = new URLSearchParams(window.location.search);
   const roomId = params.get('room');
+
+  if (roomId && sessionStorage.getItem(`blocked-room-${roomId}`)) {
+    alert("❌ This room was never created via the QR system.");
+    location.href = '/';
+    return;
+  }
 
   if (!roomId) {
     saveBtn.disabled = true;

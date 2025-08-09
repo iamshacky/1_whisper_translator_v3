@@ -1,14 +1,13 @@
 export function renderExpirationSettingsUI() {
   const container = document.createElement('div');
-  //container.className = 'settings-section';
   container.className = 'panel-wrapper';
   container.innerHTML = `
-    <h3>Message Expiration</h3>
-    <label for="expire-after-select">Auto-delete messages after:</label>
+    <h3 id="expiration-header">Message Expiration</h3>
+    <label for="expire-after-select" id="expire-after-label">Auto-delete messages after:</label>
     <select id="expire-after-select">
-      <option value="0">Now (delete all)</option>
-      <option value="3600000">1 hour</option>
-      <option value="43200000" selected>12 hours</option>
+      <option value="0" data-i18n-key="expire_now">Now (delete all)</option>
+      <option value="3600000" data-i18n-key="expire_1h">1 hour</option>
+      <option value="43200000" data-i18n-key="expire_12h" selected>12 hours</option>
     </select>
     <button id="save-expire-setting">Save</button>
   `;

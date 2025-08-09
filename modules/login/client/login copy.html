@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title id="login-page-title" data-i18n-key="login_page_title">Login</title>
+  <title>Login</title>
   <style>
     body { font-family: sans-serif; padding: 2rem; }
     form { max-width: 300px; margin: auto; }
@@ -14,15 +14,16 @@
   <link rel="stylesheet" href="/modules/login/login.css" />
 </head>
 <body>
-  <h2 id="login-header" data-i18n-key="login_header">Login or Create Account</h2>
+  <h2>Login or Create Account</h2>
   <form id="loginForm">
-    <input type="text" id="username" placeholder="Username" data-i18n-placeholder="username_placeholder" required />
-    <input type="password" id="password" placeholder="Password" data-i18n-placeholder="password_placeholder" required />
-    <button type="submit" id="login-btn" data-i18n-key="login_btn">Login</button>
-    <button type="button" id="registerBtn" data-i18n-key="create_account_btn">Create Account</button>
+    <input type="text" id="username" placeholder="Username" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button type="submit">Login</button>
+    <button type="button" id="registerBtn">Create Account</button>
     <div class="error" id="errorMsg"></div>
   </form>
 
   <script type="module" src="/modules/login/login.js"></script>
+
 </body>
 </html>

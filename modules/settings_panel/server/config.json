@@ -1,7 +1,7 @@
 {
-  "targetLang": "zh",
+  "targetLang": "ne",
   "inputLangMode": "manual",
-  "manualInputLang": "en",
+  "manualInputLang": "sw",
   "speechMode": "synthesis",
   "playAudioOn": "both",
   "moderatorVoiceSpeed": 1,

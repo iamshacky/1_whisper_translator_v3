@@ -92,23 +92,6 @@ router.get('/messages', async (req, res) => {
   }
 });
 
-/* Commented out 7/16 at 325pm
-router.get('/load', async (req, res) => {
-  try {
-    const dbPath = path.resolve('./modules/persistence_sqlite/messages.db');
-    const db = await open({
-      filename: dbPath,
-      driver: sqlite3.Database
-    });
-
-    const messages = await db.all('SELECT * FROM messages ORDER BY timestamp ASC');
-    res.json(messages);
-  } catch (err) {
-    console.error('Failed to load messages:', err);
-    res.status(500).json({ error: 'Failed to load messages' });
-  }
-});
-*/
 
 // 🆕 Login or create user
 router.post('/login-or-create', async (req, res) => {

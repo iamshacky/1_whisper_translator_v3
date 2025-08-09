@@ -1,23 +1,29 @@
+import { populateLanguageSelect } from '/modules/ui_language_selector/client/languages.js';
+
 export function bindTranslatedOutputUI() {
   const saveBtn = document.getElementById('translated-output-save');
+  const langSelect = document.getElementById('translated-output-lang');
 
-  if (!saveBtn) {
+  if (!saveBtn || !langSelect) {
     console.warn('⚠️ Translated Output panel not fully loaded.');
     return;
   }
 
+  // Populate language select with full names
+  populateLanguageSelect(langSelect, {
+    preselected: localStorage.getItem('translated-output-settings')
+      ? JSON.parse(localStorage.getItem('translated-output-settings')).lang
+      : 'en'
+  });
+
   saveBtn.onclick = () => {
     const enabled = document.getElementById('translated-output-enabled').checked;
-    const lang = document.getElementById('translated-output-lang').value;
+    const lang = langSelect.value;
 
-    const newCfg = {
-      enabled,
-      lang
-    };
-
+    const newCfg = { enabled, lang };
     localStorage.setItem('translated-output-settings', JSON.stringify(newCfg));
 
-    // Visual feedback (✅ Saved!)
+    // Visual feedback
     saveBtn.textContent = '✅ Saved!';
     saveBtn.disabled = true;
     setTimeout(() => {
