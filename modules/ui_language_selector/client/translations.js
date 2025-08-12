@@ -103,14 +103,6 @@ export const UI_TRANSLATIONS = {
     save_room_btn: "💾 Save Room",
 
     your_rooms_header: "Your Rooms",
-
-    // Modules: logout
-    login_page_title: "Login",
-    login_header: "Login or Create Account",
-    username_placeholder: "Username",
-    password_placeholder: "Password",
-    login_btn: "Login",
-    create_account_btn: "Create Account",
   },
   
   es: {
@@ -217,14 +209,6 @@ export const UI_TRANSLATIONS = {
     save_room_btn: "💾 Guardar sala",
 
     your_rooms_header: "Tus salas",
-
-    // Modules: logout
-    login_page_title: "Iniciar sesión",
-    login_header: "Iniciar sesión o crear cuenta",
-    username_placeholder: "Nombre de usuario",
-    password_placeholder: "Contraseña",
-    login_btn: "Iniciar sesión",
-    create_account_btn: "Crear cuenta",
   }
 };
 

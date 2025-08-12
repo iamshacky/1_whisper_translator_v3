@@ -4,7 +4,7 @@ import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
 import path from 'path';
 
-// --- DB helper ---------------------------------------------------------------
+// Internal helper: open DB connection
 async function getDB() {
   return open({
     filename: path.resolve('modules/persistence_sqlite/messages.db'),
@@ -12,7 +12,7 @@ async function getDB() {
   });
 }
 
-// Create a new user with password
+// Internal helper: create a new user
 async function createNewUser(db, username, password) {
   const created_at = Date.now();
   await db.run(
@@ -22,14 +22,13 @@ async function createNewUser(db, username, password) {
   return db.get('SELECT * FROM users WHERE username = ?', username);
 }
 
-// Update only the password column
+// Internal helper: update an existing user's password
 async function updateUserPassword(db, user_id, password) {
   await db.run('UPDATE users SET password = ? WHERE user_id = ?', password, user_id);
 }
 
-// --- Handlers ----------------------------------------------------------------
-
-// STRICT login (no auto-create). Returns 401 if user missing, 403 if wrong password.
+// Login handler (also creates account if user doesn’t exist)
+/*
 export async function loginUser(req, res) {
   const { username, password } = req.body;
   if (!username || !password) {
@@ -40,22 +39,55 @@ export async function loginUser(req, res) {
     const db = await getDB();
     let user = await db.get('SELECT * FROM users WHERE username = ?', username);
 
-    // Not found → do NOT create here
     if (!user) {
-      return res.status(401).json({ error: 'User not found.' });
+      // No user → create them
+      user = await createNewUser(db, username, password);
+    } else {
+      // If password is missing or different → update it
+      if (!user.password || user.password !== password) {
+        await updateUserPassword(db, user.user_id, password);
+        user.password = password;
+      }
+
+      // Check password match
+      if (user.password !== password) {
+        return res.status(403).json({ error: 'Incorrect password.' });
+      }
     }
 
-    // Optional legacy support:
-    // If this account exists but the password column is empty, set it on first successful login.
-    // Remove this block if you want fully strict behavior.
-    if (!user.password) {
-      await updateUserPassword(db, user.user_id, password);
-      user.password = password;
+    return res.json({ user_id: user.user_id, username: user.username });
+  } catch (err) {
+    console.error('❌ Login error:', err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+}
+*/
+export async function loginUser(req, res) {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password required.' });
+  }
+
+  try {
+    const db = await getDB();
+    let user = await db.get('SELECT * FROM users WHERE username = ?', username);
+
+    if (!user) {
+      // Create brand new user with provided password
+      user = await createNewUser(db, username, password);
+      return res.json({ user_id: user.user_id, username: user.username });
     }
 
-    // Check password match
+    // If user exists, validate password first
     if (user.password !== password) {
-      return res.status(403).json({ error: 'Incorrect password.' });
+      // If password field is empty (legacy account), set it
+      if (!user.password) {
+        await updateUserPassword(db, user.user_id, password);
+        user.password = password;
+      } else {
+        // If password is set but wrong → reject
+        return res.status(403).json({ error: 'Incorrect password.' });
+      }
     }
 
     return res.json({ user_id: user.user_id, username: user.username });
@@ -65,7 +97,7 @@ export async function loginUser(req, res) {
   }
 }
 
-// Explicit registration (kept separate)
+// Explicit create account endpoint (still available separately)
 export async function createUser(req, res) {
   const { username, password } = req.body;
   if (!username || !password) {
@@ -87,7 +119,7 @@ export async function createUser(req, res) {
   }
 }
 
-// Gets user-created rooms for Your Rooms UI
+// Gets user-created rooms and populates their localStorage with the array.
 export async function getMyCreatedRooms(req, res) {
   const user_id = parseInt(req.query.user_id);
   if (!user_id) {

@@ -111,15 +111,6 @@ function updateUIStrings(lang) {
   if (el('room-url-label')) el('room-url-label').innerText = strings.room_url_label;
   if (el('save-room-btn')) el('save-room-btn').innerText = strings.save_room_btn;
 
-  // modules/login
-  if (el('login-page-title')) el('login-page-title').innerText = strings.login_page_title;
-  if (el('login-header')) el('login-header').innerText = strings.login_header;
-  if (el('login-btn')) el('login-btn').innerText = strings.login_btn;
-  if (el('registerBtn')) el('registerBtn').innerText = strings.create_account_btn;
-
-  if (el('username')) el('username').placeholder = strings.username_placeholder;
-  if (el('password')) el('password').placeholder = strings.password_placeholder;
-
   // ---------------------------
   // Translate <option> elements with data-i18n-key
   // ---------------------------
