@@ -88,6 +88,7 @@ export async function createUser(req, res) {
 }
 
 // Gets user-created rooms for Your Rooms UI
+/*
 export async function getMyCreatedRooms(req, res) {
   const user_id = parseInt(req.query.user_id);
   if (!user_id) {
@@ -97,6 +98,53 @@ export async function getMyCreatedRooms(req, res) {
   try {
     const db = await getDB();
     const rows = await db.all('SELECT DISTINCT room FROM messages WHERE user_id = ?', user_id);
+    const rooms = rows.map(row => row.room);
+    res.json({ rooms });
+  } catch (err) {
+    console.error('❌ Error fetching user-created rooms:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+*/
+// Gets user-created rooms for Your Rooms UI 2nd one
+/*
+export async function getMyCreatedRooms(req, res) {
+  const user_id = parseInt(req.query.user_id);
+  if (!user_id) {
+    return res.status(400).json({ error: 'Missing or invalid user_id' });
+  }
+
+  try {
+    const db = await getDB();
+
+    // Look up username from user_id
+    const user = await db.get('SELECT username FROM users WHERE user_id = ?', user_id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    // Only return rooms actually created by this username
+    const rows = await db.all('SELECT room FROM created_rooms WHERE created_by = ?', user.username);
+    const rooms = rows.map(row => row.room);
+
+    res.json({ rooms });
+  } catch (err) {
+    console.error('❌ Error fetching user-created rooms:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+*/
+// modules/login/server/controller.js
+export async function getMyCreatedRooms(req, res) {
+  const user_id = parseInt(req.query.user_id);
+  if (!user_id) {
+    return res.status(400).json({ error: 'Missing or invalid user_id' });
+  }
+
+  try {
+    const db = await getDB();
+    // ✅ Only fetch rooms the user actually created
+    const rows = await db.all('SELECT room FROM created_rooms WHERE created_by = ?', user_id);
     const rooms = rows.map(row => row.room);
     res.json({ rooms });
   } catch (err) {

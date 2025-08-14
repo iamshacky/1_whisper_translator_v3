@@ -8,9 +8,6 @@ export function ROOM__checkIfDeletedAndBlockUI(messages, roomId) {
         ❌ This room was deleted and cannot be used again.
       </div>
     `;
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 2000); 
 
     // 🔒 Disable UI
     document.getElementById('textInput').disabled = true;
