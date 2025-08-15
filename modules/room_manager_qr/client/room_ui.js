@@ -130,29 +130,6 @@ export function setupQRRoomManager() {
     }
   }
 
-  /*
-  createBtn.addEventListener('click', () => {
-    currentRoomId = generateRoomId();
-    const roomUrl = `${window.location.origin}/?room=${currentRoomId}`;
-
-    urlSpan.textContent = roomUrl;
-    roomDetails.style.display = 'block';
-    nicknameInput.value = '';
-    roomQr.innerHTML = '';
-    generateQRCode(roomUrl, roomQr);
-
-    // ✅ Also mark this as a created room in localStorage
-    try {
-      const myRooms = JSON.parse(localStorage.getItem('my_created_rooms') || '[]');
-      if (!myRooms.includes(currentRoomId)) {
-        myRooms.push(currentRoomId);
-        localStorage.setItem('my_created_rooms', JSON.stringify(myRooms));
-      }
-    } catch (err) {
-      console.warn('⚠️ Failed to update my_created_rooms:', err);
-    }
-  });
-  */
   createBtn.addEventListener('click', async () => {
     currentRoomId = generateRoomId();
     const roomUrl = `${window.location.origin}/?room=${currentRoomId}`;
