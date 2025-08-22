@@ -103,6 +103,14 @@ app.get('/login/success', (_, res) => {
 });
 
 
+// Individual static pages
+app.get('/privacy', (_, res) => {
+  res.sendFile(path.join(rootDir, 'client', 'privacy.html'));
+});
+
+app.get('/terms', (_, res) => {
+  res.sendFile(path.join(rootDir, 'client', 'terms.html'));
+});
 
 
 // ui_language_selector module (static client-only)
