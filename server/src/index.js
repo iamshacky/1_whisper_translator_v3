@@ -91,6 +91,20 @@ app.use('/modules/login', express.static(
 ));
 
 
+
+import googleLoginRouter from '../../modules/login/google/controller.js';
+app.use('/api/login/google', googleLoginRouter);
+
+app.use('/modules/login/google/client', express.static(
+  path.join(rootDir, 'modules', 'login', 'google', 'client')
+));
+app.get('/login/success', (_, res) => {
+  res.sendFile(path.join(rootDir, 'modules', 'login', 'client', 'login_success.html'));
+});
+
+
+
+
 // ui_language_selector module (static client-only)
 app.use('/modules/ui_language_selector/client', express.static(
   path.join(rootDir, 'modules', 'ui_language_selector', 'client')
