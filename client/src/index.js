@@ -112,10 +112,10 @@ document.addEventListener("DOMContentLoaded", () => {
   micBtn.onclick = () => {
     if (!isRecording) {
       startRecording();
-      micBtn.textContent = '⏹️'; // Stop icon
+      micBtn.textContent = '⏹️';
     } else {
       stopRecording();
-      micBtn.textContent = '🎤'; // Mic icon
+      micBtn.textContent = '🎤';
     }
     isRecording = !isRecording;
   };

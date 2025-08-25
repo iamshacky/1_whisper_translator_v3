@@ -6,12 +6,13 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 |____.gitignorecls
 |____client
 | |____index.html
+| |____privacy.html
 | |____public
 | | |____favicon.ico
 | |____src
-| | |____index - Copy.js
 | | |____index.js
 | | |____style.css
+| |____terms.html
 |____config
 | |____languages.json
 |____directory_tree.txt
@@ -33,6 +34,7 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____login.js
 | | | |____login_button.css
 | | | |____login_button.js
+| | | |____login_success.html
 | | |____google
 | | | |____client
 | | | | |____google_login.js
@@ -41,7 +43,6 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | |____server
 | | | |____controller.js
 | | | |____index.js
-| | | |____routes copy.js
 | | | |____routes.js
 | |____moderation_engine
 | | |____client
@@ -62,7 +63,6 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____server
 | | | | |____controller.js
 | | | | |____init.js
-| | | | |____model copy.js
 | | | | |____model.js
 | | | | |____routes.js
 | | |____messages.db
@@ -71,7 +71,6 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | |____room_manager_qr
 | | |____client
 | | | |____helpers.js
-| | | |____init copy.js
 | | | |____init.js
 | | | |____panel.html
 | | | |____qr_utils.js

@@ -88,9 +88,7 @@ export async function SP_loadSettingsToForm() {
   });
 
   // Populate form
-  //document.getElementById('cfg-targetLang').value = cfg.targetLang;
   document.getElementById('cfg-inputLangMode').value = cfg.inputLangMode;
-  //document.getElementById('cfg-manualInputLang').value = cfg.manualInputLang;
   document.getElementById('cfg-speechMode').value = cfg.speechMode;
   document.getElementById('cfg-playAudioOn').value = cfg.playAudioOn;
 

@@ -1,4 +1,5 @@
-﻿import express from 'express';
+﻿/* Start 1_whisper_translator_v3\server\index.js__partial_1_of_2 */
+import express from 'express';
 import { readFile } from 'fs/promises';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
@@ -122,7 +123,9 @@ app.use('/modules/ui_language_selector', express.static(
 ));
 
 
+/* End 1_whisper_translator_v3\server\index.js__partial_1_of_2 */
 
+/* Start 1_whisper_translator_v3\server\index.js__partial_2_of_2 */
 import { shouldWarn } from '../../modules/settings_panel/server/helpers.js';
 
 //const clients = new Set();
@@ -269,3 +272,5 @@ app.post('/moderate-message', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Listening on port ${PORT}`));
+
+/* End 1_whisper_translator_v3\server\index.js__partial_2_of_2 */

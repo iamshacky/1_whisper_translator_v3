@@ -1,7 +1,7 @@
 {
-  "targetLang": "es",
+  "targetLang": "ar",
   "inputLangMode": "manual",
-  "manualInputLang": "sw",
+  "manualInputLang": "en",
   "speechMode": "synthesis",
   "playAudioOn": "both",
   "moderatorVoiceSpeed": 1,

@@ -1,6 +1,6 @@
-//import { populateLanguageSelect } from './languages.js';
+import { populateLanguageSelect } from './languages.js';
 import { supportedLanguages } from './languages.js';
-import { UILANG__STRINGS } from './translations.js';
+import { UI_TRANSLATIONS } from './translations.js';
 
 let currentLang = 'en';
 
@@ -9,10 +9,10 @@ let currentLang = 'en';
 // --------------------------------------------------
 function getPreferredLanguage() {
   const stored = localStorage.getItem('ui_language');
-  if (stored && UILANG__STRINGS[stored]) return stored;
+  if (stored && UI_TRANSLATIONS[stored]) return stored;
 
   const browserLang = navigator.language?.slice(0, 2);
-  return UILANG__STRINGS[browserLang] ? browserLang : 'en';
+  return UI_TRANSLATIONS[browserLang] ? browserLang : 'en';
 }
 
 function saveLanguagePreference(lang) {
@@ -24,7 +24,7 @@ function saveLanguagePreference(lang) {
 // Main Translation Updater
 // --------------------------------------------------
 function updateUIStrings(lang) {
-  const strings = UILANG__STRINGS[lang];
+  const strings = UI_TRANSLATIONS[lang];
   if (!strings) {
     console.warn(`⚠️ No UI translations found for "${lang}"`);
     return;
@@ -127,7 +127,7 @@ function renderSelector(lang) {
   const container = document.getElementById('ui-language-selector-container');
   if (!container) return;
 
-  const strings = UILANG__STRINGS[lang] || UILANG__STRINGS['en'];
+  const strings = UI_TRANSLATIONS[lang] || UI_TRANSLATIONS['en'];
 
   container.innerHTML = `
     <div id="ui-lang-toggle" style="cursor:pointer;">🌐</div>
