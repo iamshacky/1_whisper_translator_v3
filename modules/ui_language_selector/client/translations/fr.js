@@ -22,6 +22,7 @@ export default {
   lang_bn: 'Bengali',
   lang_ta: 'Tamoul',
   lang_auto: 'Détection automatique',
+  input_manual: "Sélection manuelle",
 
   // General UI
   logout: "Déconnexion",

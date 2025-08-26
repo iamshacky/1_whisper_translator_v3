@@ -22,6 +22,7 @@ export default {
   lang_bn: 'البنغالية',
   lang_ta: 'التاميلية',
   lang_auto: 'اكتشاف تلقائي',
+  input_manual: "اختيار يدوي",
 
   // General UI
   logout: "تسجيل الخروج",

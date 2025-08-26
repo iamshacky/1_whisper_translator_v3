@@ -28,6 +28,14 @@ const rootDir = path.resolve(__dirname, '../../');
 app.use(express.json());
 app.use(express.static(path.join(rootDir, 'client')));
 
+// Serve flag-icons flags from node_modules
+// Serve the whole flag-icons package
+app.use(
+  '/node_modules/flag-icons',
+  express.static(path.join(rootDir, 'node_modules/flag-icons'))
+);
+
+
 /** 🔌 Modules & Plugins **/
 
 // settings_panel

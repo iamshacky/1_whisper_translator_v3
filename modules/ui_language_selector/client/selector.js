@@ -1,4 +1,3 @@
-//import { populateLanguageSelect } from './languages.js';
 import { supportedLanguages } from './languages.js';
 import { UILANG__STRINGS } from './translations.js';
 
@@ -123,6 +122,7 @@ function updateUIStrings(lang) {
 // --------------------------------------------------
 // Language Selector UI
 // --------------------------------------------------
+/*
 function renderSelector(lang) {
   const container = document.getElementById('ui-language-selector-container');
   if (!container) return;
@@ -133,7 +133,7 @@ function renderSelector(lang) {
     <div id="ui-lang-toggle" style="cursor:pointer;">🌐</div>
     <div id="ui-lang-options" style="display:none; position:absolute; background:white; border:1px solid #ccc; padding:4px;">
       ${supportedLanguages.map(langObj => {
-        const label = strings[langObj.nameKey] || langObj.code;
+        const label = `${langObj.flag ? langObj.flag + ' ' : ''}${strings[langObj.nameKey] || langObj.code}`;
         return `<div class="ui-lang-option" data-lang="${langObj.code}" style="cursor:pointer;">${label}</div>`;
       }).join('')}
     </div>
@@ -156,6 +156,48 @@ function renderSelector(lang) {
       options.style.display = 'none';
     };
   });
+}
+*/
+function renderSelector(lang) {
+  const container = document.getElementById('ui-language-selector-container');
+  if (!container) return;
+
+  const strings = UILANG__STRINGS[lang] || UILANG__STRINGS['en'];
+
+  container.innerHTML = `
+    <div id="ui-lang-toggle" style="cursor:pointer;">🌐</div>
+    <div id="ui-lang-options" style="display:none; position:absolute; background:white; border:1px solid #ccc; padding:4px; z-index:9999;">
+      ${supportedLanguages.map(langObj => {
+        const labelText = strings[langObj.nameKey] || langObj.code;
+        const flag = langObj.flagCode
+          ? `<span class="fi fi-${langObj.flagCode}" style="margin-right:6px;"></span>`
+          : '';
+        return `<div class="ui-lang-option" data-lang="${langObj.code}" style="cursor:pointer; display:flex; align-items:center; gap:6px;">${flag}${labelText}</div>`;
+      }).join('')}
+    </div>
+  `;
+
+  const toggle = document.getElementById('ui-lang-toggle');
+  const options = document.getElementById('ui-lang-options');
+
+  toggle.onclick = () => {
+    const isOpen = options.style.display === 'block';
+    options.style.display = isOpen ? 'none' : 'block';
+  };
+
+  document.querySelectorAll('.ui-lang-option').forEach(option => {
+    option.onclick = () => {
+      const selectedLang = option.dataset.lang;
+      saveLanguagePreference(selectedLang);
+      updateUIStrings(selectedLang);
+      renderSelector(selectedLang);
+      options.style.display = 'none';
+    };
+  });
+}
+
+export function getCurrentUILang() {
+  return currentLang || 'en';
 }
 
 // --------------------------------------------------

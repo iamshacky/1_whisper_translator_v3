@@ -1,4 +1,5 @@
 import { populateLanguageSelect } from '/modules/ui_language_selector/client/languages.js';
+import { getCurrentUILang } from '/modules/ui_language_selector/client/selector.js';
 
 export function SP_bindSettingsPanelEvents() {
   const saveBtn = document.getElementById('cfg-save');
@@ -67,24 +68,26 @@ export async function SP_loadSettingsToForm() {
       console.warn("⚠️ Failed to load settings from server:", err);
       cfg = {
         targetLang: 'es',
-        inputLangMode: 'auto', // New
-        manualInputLang: 'en', // New
+        inputLangMode: 'auto',
+        manualInputLang: 'en',
         speechMode: 'synthesis',
         playAudioOn: 'both'
       };
     }
   }
 
+  // New: pass current UI language
+  const uiLang = getCurrentUILang();
 
-  // New
-  // Dynamically populate language dropdowns
   populateLanguageSelect(document.getElementById('cfg-targetLang'), {
     includeAuto: true,
-    preselected: cfg.targetLang
+    preselected: cfg.targetLang,
+    uiLang
   });
 
   populateLanguageSelect(document.getElementById('cfg-manualInputLang'), {
-    preselected: cfg.manualInputLang
+    preselected: cfg.manualInputLang,
+    uiLang
   });
 
   // Populate form

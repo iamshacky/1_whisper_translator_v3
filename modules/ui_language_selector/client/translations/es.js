@@ -22,6 +22,7 @@ export default {
   lang_bn: 'Bengalí',
   lang_ta: 'Tamil',
   lang_auto: 'Detección automática',
+  input_manual: "Selección manual",
 
   // General UI
   logout: "Cerrar sesión",

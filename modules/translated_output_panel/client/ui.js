@@ -1,4 +1,5 @@
 import { populateLanguageSelect } from '/modules/ui_language_selector/client/languages.js';
+import { getCurrentUILang } from '/modules/ui_language_selector/client/selector.js';
 
 export function bindTranslatedOutputUI() {
   const saveBtn = document.getElementById('translated-output-save');
@@ -9,11 +10,14 @@ export function bindTranslatedOutputUI() {
     return;
   }
 
-  // Populate language select with full names
+  const uiLang = getCurrentUILang();
+  const savedCfg = localStorage.getItem('translated-output-settings');
+  const preselected = savedCfg ? JSON.parse(savedCfg).lang : 'en';
+
+  // Populate language select with UI language
   populateLanguageSelect(langSelect, {
-    preselected: localStorage.getItem('translated-output-settings')
-      ? JSON.parse(localStorage.getItem('translated-output-settings')).lang
-      : 'en'
+    preselected,
+    uiLang
   });
 
   saveBtn.onclick = () => {
@@ -23,7 +27,6 @@ export function bindTranslatedOutputUI() {
     const newCfg = { enabled, lang };
     localStorage.setItem('translated-output-settings', JSON.stringify(newCfg));
 
-    // Visual feedback
     saveBtn.textContent = '✅ Saved!';
     saveBtn.disabled = true;
     setTimeout(() => {

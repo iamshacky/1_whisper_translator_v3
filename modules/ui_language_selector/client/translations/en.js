@@ -5,6 +5,7 @@ export default {
   lang_fr: 'French',
   lang_de: 'German',
   lang_zh: 'Chinese',
+  lang_zh_tw: 'Chinese simplified',
   lang_ja: 'Japanese',
   lang_ko: 'Korean',
   lang_hi: 'Hindi',
@@ -22,6 +23,7 @@ export default {
   lang_bn: 'Bengali',
   lang_ta: 'Tamil',
   lang_auto: 'Auto Detect',
+  input_manual: "Manual Select",
 
   // General UI
   logout: "Logout",
