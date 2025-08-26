@@ -5,6 +5,7 @@ export default {
   lang_fr: 'ፈረንሳይኛ',
   lang_de: 'ጀርመንኛ',
   lang_zh: 'ቻይንኛ',
+  lang_zh_tw: 'ባህላዊ ቻይንኛ',
   lang_ja: 'ጃፓንኛ',
   lang_ko: 'ኮሪያኛ',
   lang_hi: 'ሂንዲ',

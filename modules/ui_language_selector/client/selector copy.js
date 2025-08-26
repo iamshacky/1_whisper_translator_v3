@@ -130,13 +130,13 @@ function renderSelector(lang) {
 
   container.innerHTML = `
     <div id="ui-lang-toggle" style="cursor:pointer;">🌐</div>
-    <div id="ui-lang-options">
+    <div id="ui-lang-options" style="display:none; position:absolute; background:white; border:1px solid #ccc; padding:4px; z-index:9999;">
       ${supportedLanguages.map(langObj => {
         const labelText = strings[langObj.nameKey] || langObj.code;
         const flag = langObj.flagCode
           ? `<span class="fi fi-${langObj.flagCode}" style="margin-right:6px;"></span>`
           : '';
-        return `<div class="ui-lang-option" data-lang="${langObj.code}">${flag}${labelText}</div>`;
+        return `<div class="ui-lang-option" data-lang="${langObj.code}" style="cursor:pointer; display:flex; align-items:center; gap:6px;">${flag}${labelText}</div>`;
       }).join('')}
     </div>
   `;

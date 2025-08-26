@@ -42,7 +42,7 @@ export const UILANG__STRINGS = {
   'bn': bn,
   'ta': ta,
   'zh': zh,
-  'zh-tw': zh_tw,  // ✅ match languages.js code
+  'zh_tw': zh_tw,  // ✅ match languages.js code
   'ne': ne,
   'sw': sw
 };

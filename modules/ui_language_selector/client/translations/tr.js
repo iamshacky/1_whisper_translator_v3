@@ -5,6 +5,7 @@ export default {
   lang_fr: 'Fransızca',
   lang_de: 'Almanca',
   lang_zh: 'Çince',
+  lang_zh_tw: 'Geleneksel Çince',
   lang_ja: 'Japonca',
   lang_ko: 'Korece',
   lang_hi: 'Hintçe',

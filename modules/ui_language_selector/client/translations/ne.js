@@ -5,6 +5,7 @@ export default {
   lang_fr: 'फ्रेन्च',
   lang_de: 'जर्मन',
   lang_zh: 'चिनियाँ',
+  lang_zh_tw: 'परम्परागत चिनियाँ',
   lang_ja: 'जापानी',
   lang_ko: 'कोरियन',
   lang_hi: 'हिन्दी',

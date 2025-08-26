@@ -5,6 +5,7 @@ export default {
   lang_fr: 'Kifaransa',
   lang_de: 'Kijerumani',
   lang_zh: 'Kichina',
+  lang_zh_tw: 'Kichina cha Jadi',
   lang_ja: 'Kijapani',
   lang_ko: 'Kikorea',
   lang_hi: 'Kihindi',

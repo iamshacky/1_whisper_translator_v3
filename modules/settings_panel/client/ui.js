@@ -1,5 +1,4 @@
 import { populateLanguageSelect } from '/modules/ui_language_selector/client/languages.js';
-import { getCurrentUILang } from '/modules/ui_language_selector/client/selector.js';
 
 export function SP_bindSettingsPanelEvents() {
   const saveBtn = document.getElementById('cfg-save');
@@ -53,6 +52,22 @@ export function SP_bindSettingsPanelEvents() {
   };
 }
 
+// 🔹 helper to (re)populate language dropdowns
+function repopulateSettingsDropdowns(cfg) {
+  const uiLang = localStorage.getItem('ui_language') || 'en';
+
+  populateLanguageSelect(document.getElementById('cfg-targetLang'), {
+    includeAuto: true,
+    preselected: cfg.targetLang,
+    uiLang
+  });
+
+  populateLanguageSelect(document.getElementById('cfg-manualInputLang'), {
+    preselected: cfg.manualInputLang,
+    uiLang
+  });
+}
+
 export async function SP_loadSettingsToForm() {
   let cfg;
   const saved = localStorage.getItem('whisper-settings');
@@ -76,21 +91,15 @@ export async function SP_loadSettingsToForm() {
     }
   }
 
-  // New: pass current UI language
-  const uiLang = getCurrentUILang();
+  // dynamically populate dropdowns
+  repopulateSettingsDropdowns(cfg);
 
-  populateLanguageSelect(document.getElementById('cfg-targetLang'), {
-    includeAuto: true,
-    preselected: cfg.targetLang,
-    uiLang
+  // listen for UI language changes 🔔
+  document.addEventListener('ui-language-changed', () => {
+    repopulateSettingsDropdowns(cfg);
   });
 
-  populateLanguageSelect(document.getElementById('cfg-manualInputLang'), {
-    preselected: cfg.manualInputLang,
-    uiLang
-  });
-
-  // Populate form
+  // populate non-language fields
   document.getElementById('cfg-inputLangMode').value = cfg.inputLangMode;
   document.getElementById('cfg-speechMode').value = cfg.speechMode;
   document.getElementById('cfg-playAudioOn').value = cfg.playAudioOn;

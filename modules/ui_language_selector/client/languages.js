@@ -13,6 +13,7 @@ export const supportedLanguages = [
   // Asian
   { code: 'zh', nameKey: 'lang_zh', flagCode: 'cn' },     // Simplified Chinese
   { code: 'zh_tw', nameKey: 'lang_zh_tw', flagCode: 'tw' }, // Traditional Chinese
+  
   { code: 'ja', nameKey: 'lang_ja', flagCode: 'jp' },
   { code: 'ko', nameKey: 'lang_ko', flagCode: 'kr' },
   { code: 'hi', nameKey: 'lang_hi', flagCode: 'in' },
