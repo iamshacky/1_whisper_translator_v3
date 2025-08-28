@@ -373,8 +373,13 @@ button:hover {
 
   /* ✨ auto-size to the widest child */
   width: max-content;
-  min-width: 100%; /* fallback so it’s at least as wide as the toggle */
+  min-width: 100%;
   white-space: nowrap; /* prevent line breaks inside options */
+
+  /* ✨ Scroll only if tall */
+  max-height: 80vh;     /* adjust as desired */
+  overflow-y: auto;      /* enable vertical scroll when needed */
+  box-sizing: border-box;
 }
 
 .ui-lang-option {
