@@ -121,6 +121,50 @@ export function setupWebSocket(wss) {
 
           const parsed = JSON.parse(message);
 
+          /* Start wsHandler.js__insert_after_parsed_JSON */
+          // ⛑️ Harden WebRTC signaling (deleted or unregistered rooms get no relay)
+          if (parsed?.kind === 'webrtc-signal') {
+            // If the room is deleted or was never registered, drop the signal.
+            if (deletedRooms.has(ws.roomId) || !(await isRoomValid(ws.roomId))) {
+              console.warn(`🔒 Blocked signaling in room "${ws.roomId}" (deleted/unregistered)`);
+              return; // stop here; don't relay
+            }
+
+            // Relay only to other clients in the same room
+            const payload = {
+              kind: 'webrtc-signal',
+              room: ws.roomId,
+              from: ws.clientId,
+              payload: parsed.payload
+            };
+
+            for (const client of rooms.get(ws.roomId || 'default') || []) {
+              if (client !== ws && client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(payload));
+              }
+            }
+            return; // important: don't treat this as a chat message
+          }
+          /* End wsHandler.js__insert_after_parsed_JSON */
+
+
+          // ⬇️ Pass-through for WebRTC signaling (scoped by ws.roomId)
+          if (parsed?.kind === 'webrtc-signal') {
+            const payload = {
+              kind: 'webrtc-signal',
+              room: ws.roomId,
+              from: ws.clientId,
+              payload: parsed.payload
+            };
+
+            for (const client of rooms.get(ws.roomId || 'default') || []) {
+              if (client !== ws && client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(payload));
+              }
+            }
+            return; // do not treat as chat message
+          }
+
           if (parsed.room && deletedRooms.has(parsed.room)) {
             console.warn(`❌ Final message rejected — deleted room: "${parsed.room}"`);
             console.log(`🔒 Rejected message:`, parsed);
@@ -225,4 +269,3 @@ async function preloadDeletedRooms() {
     console.error('❌ Failed to preload deleted rooms:', err);
   }
 }
-

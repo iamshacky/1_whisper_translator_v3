@@ -1,40 +1,58 @@
 // modules/webrtc/client/signaling.js
-// Dedicated WebSocket for WebRTC signaling (scoped to room via query params)
+// Single WS for both signaling & presence
 
 export function RTC_setupSignaling(roomId) {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   const clientId = crypto.randomUUID();
   const ws = new WebSocket(`${protocol}://${location.host}/ws?room=${encodeURIComponent(roomId)}&clientId=${encodeURIComponent(clientId)}`);
 
-  const handlers = new Set(); // functions receiving { from, payload }
+  const signalHandlers = new Set();    // ({from, payload})
+  const presenceHandlers = new Set();  // ({participants})
 
   ws.onmessage = (ev) => {
-    // We expect server to echo { kind:'webrtc-signal', from, payload, room }
     try {
       const msg = JSON.parse(ev.data);
+
       if (msg?.kind === 'webrtc-signal' && msg.room === roomId && msg.from !== clientId) {
-        handlers.forEach(h => h({ from: msg.from, payload: msg.payload }));
+        signalHandlers.forEach(h => h({ from: msg.from, payload: msg.payload }));
+      }
+
+      if (msg?.kind === 'presence-sync' && msg.room === roomId) {
+        presenceHandlers.forEach(h => h({ participants: msg.participants || [] }));
       }
     } catch {}
   };
 
-  function sendSignal(payload) {
+  function send(kind, data = {}) {
+    const base = { kind, room: roomId, from: clientId, ...data };
     if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({
-        kind: 'webrtc-signal',
-        room: roomId,
-        from: clientId,
-        payload
-      }));
+      ws.send(JSON.stringify(base));
     } else {
-      ws.addEventListener('open', () => sendSignal(payload), { once: true });
+      ws.addEventListener('open', () => ws.send(JSON.stringify(base)), { once: true });
     }
   }
 
-  function onSignal(fn) {
-    handlers.add(fn);
-    return () => handlers.delete(fn);
+  function sendSignal(payload) {
+    send('webrtc-signal', { payload });
   }
 
-  return { sendSignal, onSignal, clientId, ws };
+  function sendPresenceJoin({ user_id = null, username = 'Someone' } = {}) {
+    send('presence-join', { user_id, username });
+  }
+
+  function requestPresenceSnapshot() {
+    send('presence-request', {});
+  }
+
+  function onSignal(fn) {
+    signalHandlers.add(fn);
+    return () => signalHandlers.delete(fn);
+  }
+
+  function onPresence(fn) {
+    presenceHandlers.add(fn);
+    return () => presenceHandlers.delete(fn);
+  }
+
+  return { sendSignal, onSignal, sendPresenceJoin, requestPresenceSnapshot, onPresence, clientId, ws };
 }

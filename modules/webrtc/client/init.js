@@ -1,5 +1,4 @@
 // modules/webrtc/client/init.js
-// Public surface
 import { RTC_setupSignaling } from './signaling.js';
 import {
   RTC_start,
@@ -13,6 +12,7 @@ import {
   RTC_bindActions,
   RTC_setButtons,
   RTC_setMicButton,
+  RTC_updateParticipants,
   RTC_showIncomingPrompt,
   RTC_hideIncomingPrompt
 } from './ui.js';
@@ -22,16 +22,28 @@ export async function RTC__initClient(roomId) {
     RTC_mountUI();
     RTC_setStatus('idle');
     RTC_setButtons({ canStart: true, canEnd: false });
-    RTC_setMicButton({ enabled: false, muted: false }); // disabled until call starts
+    RTC_setMicButton({ enabled: false, muted: false });
 
-    // Signaling can be ready before user starts the call
-    const { sendSignal, onSignal } = RTC_setupSignaling(roomId);
+    // Signaling (also handles presence)
+    const {
+      sendSignal, onSignal,
+      sendPresenceJoin, requestPresenceSnapshot, onPresence
+    } = RTC_setupSignaling(roomId);
 
-    // Buffer offers/candidates that may arrive before user clicks "Start"
+    // Subscribe to presence updates → render UI
+    onPresence(({ participants }) => {
+      RTC_updateParticipants(participants || []);
+    });
+
+    // Identify self (if logged in)
+    const me = safeReadLocalUser();
+    sendPresenceJoin({ user_id: me?.user_id ?? null, username: me?.username || 'Someone' });
+    requestPresenceSnapshot();
+
+    // Offers arriving before call starts → incoming prompt
     let pendingOffer = null;
     const pendingCandidates = [];
-
-    const unsubscribePreStart = onSignal(({ payload, from }) => {
+    onSignal(({ payload, from }) => {
       if (payload?.type === 'offer' && !RTC_isStarted()) {
         pendingOffer = payload;
         RTC_showIncomingPrompt({
@@ -60,7 +72,7 @@ export async function RTC__initClient(roomId) {
       await RTC_start({
         roomId,
         sendSignal,
-        onSignal, // connection layer will (re)subscribe with its own handler
+        onSignal,
         inboundOffer,
         pendingCandidates,
         onConnecting: () => RTC_setStatus('connecting'),
@@ -77,11 +89,8 @@ export async function RTC__initClient(roomId) {
       });
     }
 
-    // ✅ FIXED: toggle logic
     RTC_bindActions({
-      onStart: async () => {
-        await startCall();
-      },
+      onStart: async () => { await startCall(); },
       onEnd: () => {
         RTC_teardownAll();
         RTC_setStatus('idle');
@@ -89,10 +98,7 @@ export async function RTC__initClient(roomId) {
         RTC_setMicButton({ enabled: false, muted: false });
       },
       onToggleMic: (muted) => {
-        // If currently muted=true, we want to UNMUTE → set track.enabled = true.
-        // If currently muted=false, we want to MUTE   → set track.enabled = false.
-        // So pass the *current muted state* directly as the desired 'enabled' flag:
-        const enabled = RTC_setMicEnabled(muted); // <— this was the bug; previously used !muted
+        const enabled = RTC_setMicEnabled(muted); // fixed logic from earlier
         const nowMuted = !enabled;
         RTC_setMicButton({ enabled: true, muted: nowMuted });
       }
@@ -111,6 +117,11 @@ export async function RTC__initClient(roomId) {
     RTC_setButtons({ canStart: true, canEnd: false });
     RTC_setMicButton({ enabled: false, muted: false });
   }
+}
+
+function safeReadLocalUser() {
+  try { return JSON.parse(localStorage.getItem('whisper-user') || 'null'); }
+  catch { return null; }
 }
 
 window.addEventListener('DOMContentLoaded', async () => {

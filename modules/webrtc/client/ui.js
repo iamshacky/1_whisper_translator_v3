@@ -32,6 +32,13 @@ export function RTC_mountUI() {
       <canvas id="rtc-level-canvas" width="220" height="12" style="border:1px solid #ddd; border-radius:3px;"></canvas>
     </div>
 
+    <details id="rtc-participants" style="margin-top:10px;">
+      <summary>
+        Participants: <span id="rtc-part-count">0</span>
+      </summary>
+      <ul id="rtc-part-list" style="margin:8px 0 0 0; padding-left:18px;"></ul>
+    </details>
+
     <audio id="rtc-remote-audio" autoplay playsinline></audio>
   `;
 
@@ -96,6 +103,32 @@ export function RTC_setStatus(state) {
   el.textContent = state;
 }
 
+/** 🧑‍🤝‍🧑 Render participants into <details> */
+export function RTC_updateParticipants(list) {
+  const countEl = document.getElementById('rtc-part-count');
+  const ul = document.getElementById('rtc-part-list');
+  if (!countEl || !ul) return;
+
+  const me = safeReadLocalUser();
+  const meId = me?.user_id ?? null;
+
+  countEl.textContent = Array.isArray(list) ? String(list.length) : '0';
+  ul.innerHTML = '';
+
+  (list || []).forEach(p => {
+    const li = document.createElement('li');
+    const name = (p.username || 'Someone').trim();
+    const isMe = meId && p.user_id && String(meId) === String(p.user_id);
+    li.textContent = isMe ? `${name} (you)` : name;
+    ul.appendChild(li);
+  });
+}
+
+function safeReadLocalUser() {
+  try { return JSON.parse(localStorage.getItem('whisper-user') || 'null'); }
+  catch { return null; }
+}
+
 // Incoming call prompt UI
 export function RTC_showIncomingPrompt({ fromId, onAccept, onDecline }) {
   const box = document.getElementById('rtc-incoming');
@@ -105,7 +138,6 @@ export function RTC_showIncomingPrompt({ fromId, onAccept, onDecline }) {
   const acceptBtn = document.getElementById('rtc-accept-btn');
   const declineBtn = document.getElementById('rtc-decline-btn');
 
-  // Replace listener each time
   acceptBtn.onclick = () => onAccept?.();
   declineBtn.onclick = () => onDecline?.();
 }
