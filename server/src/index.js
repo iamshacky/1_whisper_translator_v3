@@ -79,7 +79,6 @@ app.use('/modules/room_manager_qr', express.static(
   path.join(rootDir, 'modules', 'room_manager_qr', 'client')
 ));
 
-
 // room_manager_qr server (new backend logic)
 import { ROOMQR__initServer } from '../../modules/room_manager_qr/server/init.js';
 ROOMQR__initServer(app);
@@ -98,6 +97,19 @@ app.use('/api/login', loginRoutes);
 app.use('/modules/login', express.static(
   path.join(rootDir, 'modules', 'login', 'client')
 ));
+
+
+// webrtc (client static)
+app.use('/modules/webrtc/client', express.static(
+  path.join(rootDir, 'modules', 'webrtc', 'client')
+));
+app.use('/modules/webrtc', express.static(
+  path.join(rootDir, 'modules', 'webrtc', 'client')
+));
+
+// webrtc server (optional)
+import { WEBRTC__initServer } from '../../modules/webrtc/server/init.js';
+WEBRTC__initServer(app);
 
 
 

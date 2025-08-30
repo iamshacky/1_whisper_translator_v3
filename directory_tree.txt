@@ -104,6 +104,29 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | |____client
 | | | |____languages.js
 | | | |____selector.js
+| | | |____translations
+| | | | |____am.js
+| | | | |____ar.js
+| | | | |____bn.js
+| | | | |____de.js
+| | | | |____en.js
+| | | | |____es.js
+| | | | |____fa.js
+| | | | |____fr.js
+| | | | |____hi.js
+| | | | |____it.js
+| | | | |____ja.js
+| | | | |____ko.js
+| | | | |____ne.js
+| | | | |____nl.js
+| | | | |____pl.js
+| | | | |____pt.js
+| | | | |____ru.js
+| | | | |____sw.js
+| | | | |____ta.js
+| | | | |____tr.js
+| | | | |____zh.js
+| | | | |____zh_tw.js
 | | | |____translations.js
 |____package-lock.json
 |____package.json

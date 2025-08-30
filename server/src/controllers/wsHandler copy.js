@@ -121,23 +121,6 @@ export function setupWebSocket(wss) {
 
           const parsed = JSON.parse(message);
 
-          // ⬇️ Pass-through for WebRTC signaling (scoped by ws.roomId)
-          if (parsed?.kind === 'webrtc-signal') {
-            const payload = {
-              kind: 'webrtc-signal',
-              room: ws.roomId,
-              from: ws.clientId,
-              payload: parsed.payload
-            };
-
-            for (const client of rooms.get(ws.roomId || 'default') || []) {
-              if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(payload));
-              }
-            }
-            return; // do not treat as chat message
-          }
-
           if (parsed.room && deletedRooms.has(parsed.room)) {
             console.warn(`❌ Final message rejected — deleted room: "${parsed.room}"`);
             console.log(`🔒 Rejected message:`, parsed);
