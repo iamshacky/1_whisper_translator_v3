@@ -4,7 +4,8 @@ import {
   RTC_start,
   RTC_teardownAll,
   RTC_setMicEnabled,
-  RTC_isStarted
+  RTC_isStarted,
+  RTC_setCameraEnabled
 } from './connection.js';
 import {
   RTC_mountUI,
@@ -12,7 +13,7 @@ import {
   RTC_bindActions,
   RTC_setButtons,
   RTC_setMicButton,
-  RTC_updateParticipants,
+  RTC_setCameraButton,
   RTC_showIncomingPrompt,
   RTC_hideIncomingPrompt
 } from './ui.js';
@@ -23,41 +24,25 @@ export async function RTC__initClient(roomId) {
     RTC_setStatus('idle');
     RTC_setButtons({ canStart: true, canEnd: false });
     RTC_setMicButton({ enabled: false, muted: false });
+    RTC_setCameraButton({ enabled: false, on: false });
 
-    // Signaling (also handles presence)
-    const {
-      sendSignal, onSignal,
-      sendPresenceJoin, requestPresenceSnapshot, onPresence
-    } = RTC_setupSignaling(roomId);
+    const { sendSignal, onSignal } = RTC_setupSignaling(roomId);
 
-    // Subscribe to presence updates → render UI
-    onPresence(({ participants }) => {
-      RTC_updateParticipants(participants || []);
-    });
-
-    // Identify self (if logged in)
-    const me = safeReadLocalUser();
-    sendPresenceJoin({ user_id: me?.user_id ?? null, username: me?.username || 'Someone' });
-    requestPresenceSnapshot();
-
-    // Offers arriving before call starts → incoming prompt
+    // Offers before start → prompt
     let pendingOffer = null;
     const pendingCandidates = [];
     onSignal(({ payload, from }) => {
       if (payload?.type === 'offer' && !RTC_isStarted()) {
         pendingOffer = payload;
         RTC_showIncomingPrompt({
-          fromId: from,
           onAccept: async () => {
             RTC_hideIncomingPrompt();
             await startCall({ inboundOffer: pendingOffer, pendingCandidates });
-            pendingOffer = null;
-            pendingCandidates.length = 0;
+            pendingOffer = null; pendingCandidates.length = 0;
           },
           onDecline: () => {
             RTC_hideIncomingPrompt();
-            pendingOffer = null;
-            pendingCandidates.length = 0;
+            pendingOffer = null; pendingCandidates.length = 0;
           }
         });
       } else if (payload?.candidate && !RTC_isStarted()) {
@@ -80,11 +65,13 @@ export async function RTC__initClient(roomId) {
           RTC_setStatus('connected');
           RTC_setButtons({ canStart: false, canEnd: true });
           RTC_setMicButton({ enabled: true, muted: false });
+          RTC_setCameraButton({ enabled: true, on: false });
         },
         onTeardown: () => {
           RTC_setStatus('idle');
           RTC_setButtons({ canStart: true, canEnd: false });
           RTC_setMicButton({ enabled: false, muted: false });
+          RTC_setCameraButton({ enabled: false, on: false });
         }
       });
     }
@@ -96,11 +83,17 @@ export async function RTC__initClient(roomId) {
         RTC_setStatus('idle');
         RTC_setButtons({ canStart: true, canEnd: false });
         RTC_setMicButton({ enabled: false, muted: false });
+        RTC_setCameraButton({ enabled: false, on: false });
       },
-      onToggleMic: (muted) => {
-        const enabled = RTC_setMicEnabled(muted); // fixed logic from earlier
+      onToggleMic: (isMuted) => {
+        const enabled = RTC_setMicEnabled(isMuted);
         const nowMuted = !enabled;
         RTC_setMicButton({ enabled: true, muted: nowMuted });
+      },
+      onToggleCamera: async (isOn) => {
+        // isOn=true means currently on → turn off; isOn=false → turn on
+        const newState = await RTC_setCameraEnabled(!isOn);
+        RTC_setCameraButton({ enabled: true, on: newState });
       }
     });
 
@@ -109,6 +102,7 @@ export async function RTC__initClient(roomId) {
       RTC_setStatus('deleted');
       RTC_setButtons({ canStart: false, canEnd: false });
       RTC_setMicButton({ enabled: false, muted: false });
+      RTC_setCameraButton({ enabled: false, on: false });
       RTC_hideIncomingPrompt();
     });
   } catch (err) {
@@ -116,12 +110,8 @@ export async function RTC__initClient(roomId) {
     RTC_setStatus('error');
     RTC_setButtons({ canStart: true, canEnd: false });
     RTC_setMicButton({ enabled: false, muted: false });
+    RTC_setCameraButton({ enabled: false, on: false });
   }
-}
-
-function safeReadLocalUser() {
-  try { return JSON.parse(localStorage.getItem('whisper-user') || 'null'); }
-  catch { return null; }
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -135,4 +125,5 @@ export function RTC__teardown() {
   RTC_setStatus('idle');
   RTC_setButtons({ canStart: true, canEnd: false });
   RTC_setMicButton({ enabled: false, muted: false });
+  RTC_setCameraButton({ enabled: false, on: false });
 }

@@ -10,13 +10,16 @@ export function RTC_mountUI() {
 
   container.innerHTML = `
     <h3>WebRTC</h3>
+
     <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
       <strong>Status:</strong> <span id="rtc-status">initializing</span>
     </div>
+
     <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
       <button id="rtc-start-btn">Start Call</button>
       <button id="rtc-end-btn" disabled>End Call</button>
       <button id="rtc-mic-btn" disabled>Mute</button>
+      <button id="rtc-cam-btn" disabled>Camera On</button>
     </div>
 
     <div id="rtc-incoming" style="display:none; background:#fff8e1; border-left:4px solid #ffcc00; padding:8px; border-radius:4px; margin-bottom:8px;">
@@ -32,12 +35,16 @@ export function RTC_mountUI() {
       <canvas id="rtc-level-canvas" width="220" height="12" style="border:1px solid #ddd; border-radius:3px;"></canvas>
     </div>
 
-    <details id="rtc-participants" style="margin-top:10px;">
-      <summary>
-        Participants: <span id="rtc-part-count">0</span>
-      </summary>
-      <ul id="rtc-part-list" style="margin:8px 0 0 0; padding-left:18px;"></ul>
-    </details>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start; margin-top:8px;">
+      <div>
+        <div style="font-size:0.9rem; color:#555; margin-bottom:4px;">Your camera</div>
+        <video id="rtc-local-video" autoplay playsinline muted style="width:220px; height:auto; background:#000; border-radius:4px;"></video>
+      </div>
+      <div>
+        <div style="font-size:0.9rem; color:#555; margin-bottom:4px;">Remote video</div>
+        <video id="rtc-remote-video" autoplay playsinline style="width:220px; height:auto; background:#000; border-radius:4px;"></video>
+      </div>
+    </div>
 
     <audio id="rtc-remote-audio" autoplay playsinline></audio>
   `;
@@ -50,10 +57,11 @@ export function RTC_mountUI() {
   }
 }
 
-export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
+export function RTC_bindActions({ onStart, onEnd, onToggleMic, onToggleCamera }) {
   const startBtn = document.getElementById('rtc-start-btn');
   const endBtn   = document.getElementById('rtc-end-btn');
   const micBtn   = document.getElementById('rtc-mic-btn');
+  const camBtn   = document.getElementById('rtc-cam-btn');
 
   if (startBtn) {
     startBtn.onclick = async () => {
@@ -67,16 +75,19 @@ export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
     };
   }
 
-  if (endBtn) {
-    endBtn.onclick = () => {
-      try { onEnd?.(); } catch {}
-    };
-  }
+  if (endBtn) endBtn.onclick = () => { try { onEnd?.(); } catch {} };
 
   if (micBtn) {
     micBtn.onclick = () => {
-      const isCurrentlyMuted = micBtn.dataset.muted === 'true';
-      onToggleMic?.(isCurrentlyMuted);
+      const isMuted = micBtn.dataset.muted === 'true';
+      onToggleMic?.(isMuted);
+    };
+  }
+
+  if (camBtn) {
+    camBtn.onclick = () => {
+      const isOn = camBtn.dataset.on === 'true';
+      onToggleCamera?.(isOn);
     };
   }
 }
@@ -91,10 +102,17 @@ export function RTC_setButtons({ canStart, canEnd }) {
 export function RTC_setMicButton({ enabled, muted }) {
   const micBtn = document.getElementById('rtc-mic-btn');
   if (!micBtn) return;
-
   micBtn.disabled = !enabled;
   micBtn.dataset.muted = muted ? 'true' : 'false';
   micBtn.textContent = muted ? 'Unmute' : 'Mute';
+}
+
+export function RTC_setCameraButton({ enabled, on }) {
+  const camBtn = document.getElementById('rtc-cam-btn');
+  if (!camBtn) return;
+  camBtn.disabled = !enabled;
+  camBtn.dataset.on = on ? 'true' : 'false';
+  camBtn.textContent = on ? 'Camera Off' : 'Camera On';
 }
 
 export function RTC_setStatus(state) {
@@ -103,45 +121,16 @@ export function RTC_setStatus(state) {
   el.textContent = state;
 }
 
-/** 🧑‍🤝‍🧑 Render participants into <details> */
-export function RTC_updateParticipants(list) {
-  const countEl = document.getElementById('rtc-part-count');
-  const ul = document.getElementById('rtc-part-list');
-  if (!countEl || !ul) return;
-
-  const me = safeReadLocalUser();
-  const meId = me?.user_id ?? null;
-
-  countEl.textContent = Array.isArray(list) ? String(list.length) : '0';
-  ul.innerHTML = '';
-
-  (list || []).forEach(p => {
-    const li = document.createElement('li');
-    const name = (p.username || 'Someone').trim();
-    const isMe = meId && p.user_id && String(meId) === String(p.user_id);
-    li.textContent = isMe ? `${name} (you)` : name;
-    ul.appendChild(li);
-  });
-}
-
-function safeReadLocalUser() {
-  try { return JSON.parse(localStorage.getItem('whisper-user') || 'null'); }
-  catch { return null; }
-}
-
 // Incoming call prompt UI
-export function RTC_showIncomingPrompt({ fromId, onAccept, onDecline }) {
+export function RTC_showIncomingPrompt({ onAccept, onDecline }) {
   const box = document.getElementById('rtc-incoming');
   if (!box) return;
-
   box.style.display = 'block';
   const acceptBtn = document.getElementById('rtc-accept-btn');
   const declineBtn = document.getElementById('rtc-decline-btn');
-
   acceptBtn.onclick = () => onAccept?.();
   declineBtn.onclick = () => onDecline?.();
 }
-
 export function RTC_hideIncomingPrompt() {
   const box = document.getElementById('rtc-incoming');
   if (!box) return;
