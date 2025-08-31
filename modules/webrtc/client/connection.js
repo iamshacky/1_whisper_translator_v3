@@ -1,19 +1,29 @@
 // modules/webrtc/client/connection.js
-// Audio call + video on/off + mic toggle + analyser meter + renegotiation
+// Mesh: one RTCPeerConnection per peerId. Audio-first; optional camera track shared to all peers.
 
-let pc = null;
-let localMicStream = null;        // audio-only stream
-let localVideoTrack = null;       // single video track (when camera on)
-let remoteStream = null;          // combined A/V
+import {
+  RTC_upsertLocalTile,
+  RTC_upsertRemoteTile,
+  RTC_removeRemoteTile,
+  RTC_clearVideoGrid
+} from './ui.js';
 
 let _sendSignal = null;
 let _onConnecting = () => {};
 let _onConnected = () => {};
 let _onTeardown = () => {};
-let _unsubscribeSignal = null;
-
 let _started = false;
-let _pendingICE = [];
+
+let _meId = null;
+let _roomId = null;
+
+// Local media
+let localMicStream = null;       // audio-only
+let localVideoTrack = null;      // optional
+let localPreviewStream = null;   // stream containing the video track for UI
+
+// Peers: peerId -> { pc, remoteStream, pendingICE:[], connected:boolean }
+const peers = new Map();
 
 // 🎚️ Meter
 let _audioCtx = null, _analyser = null, _srcNode = null, _rafId = null;
@@ -21,207 +31,221 @@ let _audioCtx = null, _analyser = null, _srcNode = null, _rafId = null;
 export function RTC_isStarted() { return _started; }
 
 export async function RTC_start({
+  meId,
   roomId,
   sendSignal,
-  onSignal,
   onConnecting,
   onConnected,
-  onTeardown,
-  inboundOffer = null,
-  pendingCandidates = []
+  onTeardown
 }) {
-  _sendSignal   = sendSignal;
+  _meId = meId;
+  _roomId = roomId;
+  _sendSignal = sendSignal;
   _onConnecting = onConnecting || (() => {});
   _onConnected  = onConnected  || (() => {});
   _onTeardown   = onTeardown   || (() => {});
   _started = true;
 
-  // Audio first; request camera only when user toggles camera on
+  // Audio first
   localMicStream = await navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
   });
 
-  pc = createPeer();
-
-  // add audio tracks
-  localMicStream.getTracks().forEach(t => pc.addTrack(t, localMicStream));
-
-  // level meter
   startLevelMeter(localMicStream);
-
-  _pendingICE = [];
-
-  // inbound signaling
-  _unsubscribeSignal = onSignal(async ({ payload }) => {
-    if (!pc) pc = createPeer();
-
-    if (payload?.type === 'offer') {
-      _onConnecting();
-      await pc.setRemoteDescription(payload);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      _sendSignal(pc.localDescription);
-    } else if (payload?.type === 'answer') {
-      await pc.setRemoteDescription(payload);
-    } else if (payload?.candidate) {
-      try { await pc.addIceCandidate(payload); }
-      catch { _pendingICE.push(payload); }
-    }
-  });
-
-  if (inboundOffer) {
-    _onConnecting();
-    await pc.setRemoteDescription(inboundOffer);
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    _sendSignal(pc.localDescription);
-
-    for (const cand of [...pendingCandidates, ..._pendingICE]) {
-      try { await pc.addIceCandidate(cand); } catch {}
-    }
-    _pendingICE = [];
-  } else {
-    _onConnecting();
-    const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-    await pc.setLocalDescription(offer);
-    _sendSignal(pc.localDescription);
-  }
-}
-
-function createPeer() {
-  const pc = new RTCPeerConnection({
-    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-  });
-
-  pc.onicecandidate = (e) => { if (e.candidate) _sendSignal(e.candidate.toJSON()); };
-
-  pc.ontrack = (e) => {
-    if (!remoteStream) remoteStream = new MediaStream();
-    remoteStream.addTrack(e.track);
-
-    const audioEl = document.getElementById('rtc-remote-audio');
-    if (audioEl && audioEl.srcObject !== remoteStream) audioEl.srcObject = remoteStream;
-
-    const remoteVideo = document.getElementById('rtc-remote-video');
-    if (remoteVideo && remoteVideo.srcObject !== remoteStream) remoteVideo.srcObject = remoteStream;
-  };
-
-  pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'connected') _onConnected();
-  };
-
-  pc.oniceconnectionstatechange = async () => {
-    if (pc.iceConnectionState === 'connected' && _pendingICE.length) {
-      for (const cand of _pendingICE.splice(0)) {
-        try { await pc.addIceCandidate(cand); } catch {}
-      }
-    }
-  };
-
-  return pc;
-}
-
-/** Mic mute: enabled=true = unmuted (track.enabled) */
-export function RTC_setMicEnabled(enabled) {
-  try {
-    const tracks = localMicStream?.getAudioTracks?.() || [];
-    tracks.forEach(t => { t.enabled = !!enabled; });
-    return tracks[0] ? tracks[0].enabled : false;
-  } catch {
-    return false;
-  }
-}
-
-/** Camera on/off with renegotiation */
-export async function RTC_setCameraEnabled(on) {
-  if (!_started || !pc) return false;
-
-  if (on) {
-    if (localVideoTrack) return true; // already on
-    // request camera
-    const vStream = await navigator.mediaDevices.getUserMedia({ video: true });
-    const [track] = vStream.getVideoTracks();
-    if (!track) return false;
-
-    localVideoTrack = track;
-
-    // local preview
-    try {
-      const localVideo = document.getElementById('rtc-local-video');
-      if (localVideo) {
-        const s = new MediaStream([track]);
-        localVideo.srcObject = s;
-      }
-    } catch {}
-
-    pc.addTrack(track, new MediaStream([track]));
-
-    // renegotiate
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    _sendSignal(pc.localDescription);
-    return true;
-  } else {
-    if (!localVideoTrack) return false;
-
-    // stop sending
-    const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-    try {
-      if (sender) pc.removeTrack(sender);
-    } catch {}
-    try { localVideoTrack.stop(); } catch {}
-    localVideoTrack = null;
-
-    // clear preview
-    try {
-      const localVideo = document.getElementById('rtc-local-video');
-      if (localVideo) localVideo.srcObject = null;
-    } catch {}
-
-    // renegotiate
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    _sendSignal(pc.localDescription);
-    return false;
-  }
 }
 
 export function RTC_teardownAll() {
-  try { if (_unsubscribeSignal) _unsubscribeSignal(); } catch {}
-  _unsubscribeSignal = null;
-
-  try {
-    if (pc) {
-      pc.getSenders().forEach(s => s.track && s.track.stop());
-      pc.close();
-    }
-  } catch {}
-  pc = null;
+  // close peers
+  for (const [peerId, p] of peers) {
+    try { p.pc.getSenders().forEach(s => s.track && s.track.stop()); } catch {}
+    try { p.pc.close(); } catch {}
+    RTC_removeRemoteTile(peerId);
+  }
+  peers.clear();
 
   stopLevelMeter();
 
   try { localMicStream?.getTracks()?.forEach(t => t.stop()); } catch {}
   localMicStream = null;
 
-  try { if (localVideoTrack) localVideoTrack.stop(); } catch {}
+  try { localVideoTrack?.stop(); } catch {}
   localVideoTrack = null;
 
   try {
-    const audioEl = document.getElementById('rtc-remote-audio');
-    if (audioEl) audioEl.srcObject = null;
-    const remoteVideo = document.getElementById('rtc-remote-video');
-    if (remoteVideo) remoteVideo.srcObject = null;
-    const localVideo = document.getElementById('rtc-local-video');
-    if (localVideo) localVideo.srcObject = null;
+    if (localPreviewStream) {
+      localPreviewStream.getTracks().forEach(t => t.stop());
+    }
   } catch {}
+  localPreviewStream = null;
+  RTC_clearVideoGrid();
 
   _started = false;
   _onTeardown();
 }
 
-/* =========================
-   🎚️ Level Meter (local)
-   ========================= */
+/** Called by init.js when presence updates; connects to new peers. */
+export async function RTC_connectToPeers(peerIds) {
+  if (!_started) return;
+  // Determine initiator to avoid glare: meId < peerId
+  for (const peerId of peerIds) {
+    if (peerId === _meId) continue;
+    if (peers.has(peerId)) continue;
+    const initiator = _meId < peerId;
+    await ensurePeer(peerId, { initiator });
+  }
+}
+
+/** Handle incoming signaling payload from a peer */
+export async function RTC_handleSignal(from, payload) {
+  if (!_started) return;
+
+  let p = peers.get(from);
+  if (!p) p = await ensurePeer(from, { initiator: false }); // if peer called us
+
+  if (payload?.type === 'offer') {
+    _onConnecting();
+    await p.pc.setRemoteDescription(payload);
+    const answer = await p.pc.createAnswer();
+    await p.pc.setLocalDescription(answer);
+    _sendSignal({ ...p.pc.localDescription.toJSON(), to: from });
+  } else if (payload?.type === 'answer') {
+    await p.pc.setRemoteDescription(payload);
+    _onConnected();
+  } else if (payload?.candidate) {
+    try { await p.pc.addIceCandidate(payload); }
+    catch { p.pendingICE.push(payload); }
+  }
+}
+
+/** Mic mute across all peers (track.enabled) */
+export function RTC_setMicEnabled(enabled) {
+  try {
+    const tracks = localMicStream?.getAudioTracks?.() || [];
+    tracks.forEach(t => t.enabled = !!enabled);
+    return tracks[0] ? tracks[0].enabled : false;
+  } catch { return false; }
+}
+
+/** Camera on/off: add/remove track to all peer connections + show local preview */
+export async function RTC_setCameraEnabled(on) {
+  if (!_started) return false;
+
+  if (on) {
+    if (localVideoTrack) return true;
+    const vStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const [track] = vStream.getVideoTracks();
+    if (!track) return false;
+
+    localVideoTrack = track;
+
+    // local preview stream
+    localPreviewStream = new MediaStream([track]);
+    RTC_upsertLocalTile(localPreviewStream);
+
+    for (const [, p] of peers) {
+      const sender = p.pc.addTrack(track, new MediaStream([track]));
+      p.videoSender = sender;
+      await renegotiate(p);
+    }
+    return true;
+  } else {
+    if (!localVideoTrack) return false;
+
+    // remove from all peers
+    for (const [, p] of peers) {
+      try {
+        const sender = p.videoSender || p.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender) p.pc.removeTrack(sender);
+      } catch {}
+      await renegotiate(p);
+    }
+
+    try { localVideoTrack.stop(); } catch {}
+    localVideoTrack = null;
+
+    try {
+      if (localPreviewStream) localPreviewStream.getTracks().forEach(t => t.stop());
+    } catch {}
+    localPreviewStream = null;
+    RTC_upsertLocalTile(null);
+
+    return false;
+  }
+}
+
+/* ------------------ internals ------------------ */
+
+/* Start connection.js__ensurePeer_onnegstate */
+async function ensurePeer(peerId, { initiator }) {
+  // If already have a peer, just return it
+  if (peers.has(peerId)) return peers.get(peerId);
+
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  const remoteStream = new MediaStream();
+  const pendingICE = [];
+  const record = { pc, remoteStream, pendingICE, connected: false, videoSender: null };
+
+  // local tracks
+  localMicStream.getTracks().forEach(t => pc.addTrack(t, localMicStream));
+  if (localVideoTrack) {
+    const sender = pc.addTrack(localVideoTrack, new MediaStream([localVideoTrack]));
+    record.videoSender = sender;
+  }
+
+  pc.onicecandidate = (e) => { if (e.candidate) _sendSignal({ ...e.candidate.toJSON(), to: peerId }); };
+
+  pc.onnegotiationneeded = async () => {
+    // Renegotiate when local tracks change (e.g., camera on/off) and we initiated this peer
+    if (!peers.get(peerId)) return;
+    if (!initiator) return; // prevent glare
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      _sendSignal({ ...pc.localDescription.toJSON(), to: peerId });
+    } catch {}
+  };
+
+  pc.ontrack = (e) => {
+    if (e.streams && e.streams[0]) e.streams[0].getTracks().forEach(t => remoteStream.addTrack(t));
+    else remoteStream.addTrack(e.track);
+    // label comes from presence map in UI
+    RTC_upsertRemoteTile(peerId, null, remoteStream);
+  };
+
+  pc.oniceconnectionstatechange = async () => {
+    if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'closed') {
+      RTC_hangupPeer(peerId);
+    } else if (pc.iceConnectionState === 'connected' && pendingICE.length) {
+      for (const cand of pendingICE.splice(0)) { try { await pc.addIceCandidate(cand); } catch {} }
+    }
+  };
+
+  peers.set(peerId, record);
+
+  if (initiator) {
+    try {
+      const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+      await pc.setLocalDescription(offer);
+      _sendSignal({ ...pc.localDescription.toJSON(), to: peerId });
+    } catch {}
+  }
+
+  return record;
+}
+/* End connection.js__ensurePeer_onnegstate */
+
+async function renegotiate(p) {
+  const offer = await p.pc.createOffer();
+  await p.pc.setLocalDescription(offer);
+  _sendSignal({ ...p.pc.localDescription.toJSON(), to: findPeerIdByPc(p.pc) });
+}
+
+function findPeerIdByPc(pc) {
+  for (const [id, obj] of peers) if (obj.pc === pc) return id;
+  return null;
+}
+
+/* ====== Meter (local) ====== */
 function startLevelMeter(stream) {
   stopLevelMeter();
   try {
@@ -261,8 +285,21 @@ function stopLevelMeter() {
   _srcNode = _analyser = null;
   try { _audioCtx?.close(); } catch {}
   _audioCtx = null;
-  try {
-    const canvas = document.getElementById('rtc-level-canvas');
-    if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-  } catch {}
 }
+
+/* Start connection.js__peer_helpers */
+// Return current peer ids (used to send 'bye' to each peer on End Call)
+export function RTC_getPeerIds() {
+  return Array.from(peers.keys());
+}
+
+// Close a single peer (used on remote/local hangup + presence shrink)
+export function RTC_hangupPeer(peerId) {
+  const p = peers.get(peerId);
+  if (!p) return;
+  try { p.pc.getSenders().forEach(s => s.track && s.track.stop()); } catch {}
+  try { p.pc.close(); } catch {}
+  peers.delete(peerId);
+  RTC_removeRemoteTile(peerId);
+}
+/* End connection.js__peer_helpers */

@@ -1,5 +1,5 @@
 // modules/webrtc/client/signaling.js
-// Single WS for both signaling & presence
+// Shared WS for signaling + presence. Server relays to room; we filter by 'to' on the client.
 
 export function RTC_setupSignaling(roomId) {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -13,8 +13,12 @@ export function RTC_setupSignaling(roomId) {
     try {
       const msg = JSON.parse(ev.data);
 
-      if (msg?.kind === 'webrtc-signal' && msg.room === roomId && msg.from !== clientId) {
-        signalHandlers.forEach(h => h({ from: msg.from, payload: msg.payload }));
+      if (msg?.kind === 'webrtc-signal' && msg.room === roomId) {
+        // Broadcast style; payload may include 'to'. Deliver if no 'to' or 'to' is me.
+        const to = msg.payload?.to;
+        if (!to || to === clientId) {
+          signalHandlers.forEach(h => h({ from: msg.from, payload: msg.payload }));
+        }
       }
 
       if (msg?.kind === 'presence-sync' && msg.room === roomId) {
@@ -32,27 +36,12 @@ export function RTC_setupSignaling(roomId) {
     }
   }
 
-  function sendSignal(payload) {
-    send('webrtc-signal', { payload });
-  }
+  function sendSignal(payload) { send('webrtc-signal', { payload }); }
+  function sendPresenceJoin({ user_id = null, username = 'Someone' } = {}) { send('presence-join', { user_id, username }); }
+  function requestPresenceSnapshot() { send('presence-request', {}); }
 
-  function sendPresenceJoin({ user_id = null, username = 'Someone' } = {}) {
-    send('presence-join', { user_id, username });
-  }
-
-  function requestPresenceSnapshot() {
-    send('presence-request', {});
-  }
-
-  function onSignal(fn) {
-    signalHandlers.add(fn);
-    return () => signalHandlers.delete(fn);
-  }
-
-  function onPresence(fn) {
-    presenceHandlers.add(fn);
-    return () => presenceHandlers.delete(fn);
-  }
+  function onSignal(fn)   { signalHandlers.add(fn);   return () => signalHandlers.delete(fn); }
+  function onPresence(fn) { presenceHandlers.add(fn); return () => presenceHandlers.delete(fn); }
 
   return { sendSignal, onSignal, sendPresenceJoin, requestPresenceSnapshot, onPresence, clientId, ws };
 }
