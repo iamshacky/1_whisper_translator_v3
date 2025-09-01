@@ -1,4 +1,3 @@
-c/xampp/htdocs/project1/1_whisper_translator_v3
 .
 |____.env
 |____.env.example
@@ -128,6 +127,14 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | | |____zh.js
 | | | | |____zh_tw.js
 | | | |____translations.js
+| |____webrtc
+| | |____client
+| | | |____connection.js
+| | | |____init.js
+| | | |____signaling.js
+| | | |____ui.js
+| | |____server
+| | | |____init.js
 |____package-lock.json
 |____package.json
 |____README.md
@@ -137,6 +144,7 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____settings.js
 | | |____controllers
 | | | |____translate.js
+| | | |____wsHandler copy.js
 | | | |____wsHandler.js
 | | |____index.js
 | | |____lib
