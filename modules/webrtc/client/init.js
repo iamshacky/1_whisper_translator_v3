@@ -120,10 +120,17 @@ export async function RTC__initClient(roomId) {
         RTC_setMicButton({ enabled: false, muted: false });
         RTC_setVideoButton({ enabled: false, on: false });
       },
-      onToggleMic: (muted) => {
-        const enabled = RTC_setMicEnabled(muted);
-        const nowMuted = !enabled;
-        RTC_setMicButton({ enabled: true, muted: nowMuted });
+      onToggleMic: (currentlyMuted) => {
+        // If currently muted, we want to enable. If not muted, we want to disable.
+        const targetEnabled = currentlyMuted ? true : false;
+
+        const isEnabledNow = RTC_setMicEnabled(targetEnabled);
+        console.log(`🎛️ Toggling mic: currentlyMuted=${currentlyMuted}, targetEnabled=${targetEnabled}, isEnabledNow=${isEnabledNow}`);
+
+        RTC_setMicButton({
+          enabled: true,
+          muted: !isEnabledNow // muted if the track is disabled
+        });
       }
     });
 
