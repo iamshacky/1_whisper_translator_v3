@@ -177,13 +177,26 @@ export async function RTC_start({
         const t = _audioSender?.track;
         if (!t || t.readyState === 'ended') {
           console.warn('🩺 Audio track ended — reacquiring mic…');
+
           const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
           const [micTrack] = micStream.getAudioTracks();
           if (micTrack) {
-            // Preserve current mute state
+            // Preserve previous enabled (mute) state if we had a prior track
             const wantEnabled = t ? t.enabled : true;
             micTrack.enabled = wantEnabled;
+
+            // Replace the sender's track
             await _audioSender?.replaceTrack(micTrack);
+
+            // 🔄 Keep localStream in sync with the NEW mic track
+            try {
+              if (!localStream) localStream = new MediaStream();
+              // Remove any existing local audio tracks and insert the new one
+              const olds = localStream.getAudioTracks();
+              olds.forEach(a => localStream.removeTrack(a));
+              localStream.addTrack(micTrack);
+            } catch {}
+
             console.log(`🎙️ Replaced mic track (preserve enabled=${wantEnabled})`);
           }
         }
@@ -345,16 +358,27 @@ export async function RTC_setCameraEnabled(enabled) {
    🎙 Mic mute/unmute
 -----------------------------*/
 export function RTC_setMicEnabled(enabled) {
-  console.log(`🎙️ Mic track set to enabled=${enabled}`);
   try {
-    const tracks = localStream?.getAudioTracks?.() || [];
-    tracks.forEach(t => { t.enabled = !!enabled; });
-    return tracks[0] ? tracks[0].enabled : false;
+    // Always drive the SENDER's current track first
+    const senderTrack = _audioSender?.track || null;
+    if (senderTrack) {
+      senderTrack.enabled = !!enabled;
+    }
+
+    // Keep local preview stream in sync (if present)
+    const localAudioTracks = localStream?.getAudioTracks?.() || [];
+    for (const t of localAudioTracks) t.enabled = !!enabled;
+
+    const finalEnabled =
+      (senderTrack && senderTrack.enabled) ||
+      (localAudioTracks[0] ? localAudioTracks[0].enabled : false);
+
+    console.log(`🎙️ Mic track set to enabled=${finalEnabled}`);
+    return finalEnabled;
   } catch {
     return false;
   }
 }
-
 
 /* ----------------------------
    🧹 Teardown
@@ -393,6 +417,10 @@ export function RTC_teardownAll() {
   _makingOffer = false;
   _ignoreOffer = false;
   _isSettingRemoteAnswerPending = false;
+  
+    // Clear audio watchdog
+  try { clearInterval(window.__rtcAudioWatchdog); } catch {}
+  window.__rtcAudioWatchdog = null;
 
   _started = false;
   _onTeardown?.();

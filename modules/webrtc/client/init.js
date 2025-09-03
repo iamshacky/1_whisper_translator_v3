@@ -71,7 +71,7 @@ export async function RTC__initClient(roomId) {
         pendingCandidates.push(payload);
       }
     });
-
+    /*
     async function startCall({ inboundOffer = null, pendingCandidates = [] } = {}) {
       RTC_setButtons({ canStart: false, canEnd: false });
       RTC_setStatus('connecting');
@@ -110,6 +110,54 @@ export async function RTC__initClient(roomId) {
         }
       });
     }
+    */
+    // start__function startCall replacement (enables End immediately for caller)
+    async function startCall({ inboundOffer = null, pendingCandidates = [] } = {}) {
+      // Immediately reflect “calling” state in UI
+      RTC_setStatus('connecting');
+      RTC_setButtons({ canStart: false, canEnd: true });   // ⬅️ End is active right away
+      RTC_setMicButton({ enabled: false, muted: false });
+      RTC_setVideoButton({ enabled: false, on: false });
+
+      await RTC_start({
+        roomId,
+        sendSignal,
+        onSignal,
+        inboundOffer,
+        pendingCandidates,
+        onConnecting: () => {
+          // already set above; no change needed
+        },
+        onConnected: () => {
+          RTC_setStatus('connected');
+          // End stays enabled; now enable mic/video controls for this peer
+          RTC_setButtons({ canStart: false, canEnd: true });
+          RTC_setMicButton({ enabled: true, muted: false });
+          RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
+
+          // Bind Start/Stop Video after button exists
+          const vidBtn = document.getElementById('rtc-video-btn');
+          if (vidBtn) {
+            vidBtn.onclick = async () => {
+              const next = !RTC_isCameraOn();
+              try {
+                await RTC_setCameraEnabled(next);
+                RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
+              } catch (e) {
+                console.warn('Camera toggle failed:', e);
+              }
+            };
+          }
+        },
+        onTeardown: () => {
+          RTC_setStatus('idle');
+          RTC_setButtons({ canStart: true, canEnd: false });
+          RTC_setMicButton({ enabled: false, muted: false });
+          RTC_setVideoButton({ enabled: false, on: false });
+        }
+      });
+    }
+    // end__function startCall replacement
 
     RTC_bindActions({
       onStart: async () => { await startCall(); },
