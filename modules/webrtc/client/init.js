@@ -21,6 +21,11 @@ import {
   RTC_isCameraOn
 } from './connection.js';
 
+// start__add_import_setRemoteLabel
+import { RTC_setRemoteLabel } from './connection.js';
+// end__add_import_setRemoteLabel
+
+
 // ✅ Add this import for signaling
 import { RTC_setupSignaling } from './signaling.js';
 // end__fix_import_signaling
@@ -40,9 +45,33 @@ export async function RTC__initClient(roomId) {
     } = RTC_setupSignaling(roomId);
 
     // presence → UI list
+    /*
     onPresence(({ participants }) => {
       RTC_updateParticipants(participants || []);
     });
+    */
+
+    // start__presence → UI list + derive remote video label
+    onPresence(({ participants }) => {
+      RTC_updateParticipants(participants || []);
+
+      // Derive a friendly remote label for the primary remote tile.
+      const me = safeReadLocalUser();
+      const myId = me?.user_id != null ? String(me.user_id) : null;
+      const others = (participants || []).filter(p => !myId || String(p.user_id) !== myId);
+
+      let label = 'Remote';
+      if (others.length === 1) {
+        label = (others[0].username || 'Remote').trim();
+      } else if (others.length > 1) {
+        const first = (others[0].username || 'Remote').trim();
+        label = `${first} +${others.length - 1}`;
+      }
+
+      RTC_setRemoteLabel(label);
+    });
+    // end__presence → UI list + derive remote video label
+
 
     const me = safeReadLocalUser();
     sendPresenceJoin({ user_id: me?.user_id ?? null, username: me?.username || 'Someone' });
@@ -71,46 +100,7 @@ export async function RTC__initClient(roomId) {
         pendingCandidates.push(payload);
       }
     });
-    /*
-    async function startCall({ inboundOffer = null, pendingCandidates = [] } = {}) {
-      RTC_setButtons({ canStart: false, canEnd: false });
-      RTC_setStatus('connecting');
 
-      await RTC_start({
-        roomId,
-        sendSignal,
-        onSignal,
-        inboundOffer,
-        pendingCandidates,
-        onConnecting: () => RTC_setStatus('connecting'),
-        onConnected: () => {
-          RTC_setStatus('connected');
-          RTC_setButtons({ canStart: false, canEnd: true });
-          RTC_setMicButton({ enabled: true, muted: false });
-          RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
-
-          const vidBtn = document.getElementById('rtc-video-btn');
-          if (vidBtn) {
-            vidBtn.onclick = async () => {
-              const next = !RTC_isCameraOn();
-              try {
-                await RTC_setCameraEnabled(next);
-                RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
-              } catch (e) {
-                console.warn('Camera toggle failed:', e);
-              }
-            };
-          }
-        },
-        onTeardown: () => {
-          RTC_setStatus('idle');
-          RTC_setButtons({ canStart: true, canEnd: false });
-          RTC_setMicButton({ enabled: false, muted: false });
-          RTC_setVideoButton({ enabled: false, on: false });
-        }
-      });
-    }
-    */
     // start__function startCall replacement (enables End immediately for caller)
     async function startCall({ inboundOffer = null, pendingCandidates = [] } = {}) {
       // Immediately reflect “calling” state in UI

@@ -284,3 +284,14 @@ export function RTC_setVideoButton({ enabled, on }) {
   btn.textContent = on ? 'Stop Video' : 'Start Video';
 }
 // end__UI_video_grid_mount_and_tile_helpers
+
+// start__UI_setVideoTileLabel
+export function UI_setVideoTileLabel(tileId, label) {
+  try {
+    const tile = document.querySelector(`[data-tile-id="${tileId}"]`);
+    if (!tile) return;
+    const cap = tile.querySelector('.rtc-tile-label') || tile.querySelector('[data-role="rtc-tile-label"]');
+    if (cap) cap.textContent = label;
+  } catch {}
+}
+// end__UI_setVideoTileLabel

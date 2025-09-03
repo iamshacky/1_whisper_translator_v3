@@ -38,6 +38,20 @@ let _cameraOn = false;
 export function RTC_isStarted() { return _started; }
 export function RTC_isCameraOn() { return _cameraOn; }
 
+// start__remote_label_helpers
+let _remoteLabel = 'Remote';
+
+export function RTC_setRemoteLabel(name) {
+  _remoteLabel = (name && String(name).trim()) || 'Remote';
+  try {
+    // Live update current tile label if present (safe no-op if helper/DOM not present)
+    if (typeof UI_setVideoTileLabel === 'function') {
+      UI_setVideoTileLabel('remote', _remoteLabel);
+    }
+  } catch {}
+}
+// end__remote_label_helpers
+
 /* ----------------------------
    🧱 PeerConnection factory
 -----------------------------*/
@@ -64,10 +78,19 @@ function createPeer() {
         audioEl.play?.().catch(()=>{});
       }
     }
-
+    /*
     if (e.track.kind === 'video') {
       console.log('🎥 [remote] ontrack video — remote is receiving frames');
       try { UI_addVideoTile?.('remote', remoteStream, { label: 'Remote', muted: false }); } catch {}
+    }
+    */
+    if (e.track.kind === 'video') {
+      console.log('🎥 [remote] ontrack video — remote is receiving frames');
+      try {
+        if (typeof UI_addVideoTile === 'function') {
+          UI_addVideoTile('remote', remoteStream, { label: _remoteLabel, muted: false }); // ← use current label
+        }
+      } catch {}
     }
   };
 
