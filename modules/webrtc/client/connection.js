@@ -65,32 +65,24 @@ function createPeer() {
   };
 
   pc.ontrack = (e) => {
-    console.log(`🎧 [remote] ontrack kind=${e.track.kind}, readyState=${e.track.readyState}`);
+    const { kind, readyState } = e.track || {};
+    console.log(`🎧 [remote] ontrack kind=${kind}, readyState=${readyState}`);
 
     if (!remoteStream) remoteStream = new MediaStream();
+    // Keep a single stream object that accumulates remote tracks
     remoteStream.addTrack(e.track);
 
-    if (e.track.kind === 'audio') {
-      const audioEl = document.getElementById('rtc-remote-audio');
-      if (audioEl && audioEl.srcObject !== remoteStream) {
-        audioEl.srcObject = remoteStream;
-        // attempt autoplay (helps on some platforms)
-        audioEl.play?.().catch(()=>{});
-      }
-    }
-    /*
-    if (e.track.kind === 'video') {
-      console.log('🎥 [remote] ontrack video — remote is receiving frames');
-      try { UI_addVideoTile?.('remote', remoteStream, { label: 'Remote', muted: false }); } catch {}
-    }
-    */
-    if (e.track.kind === 'video') {
-      console.log('🎥 [remote] ontrack video — remote is receiving frames');
-      try {
-        if (typeof UI_addVideoTile === 'function') {
-          UI_addVideoTile('remote', remoteStream, { label: _remoteLabel, muted: false }); // ← use current label
-        }
-      } catch {}
+    // Ensure a tile exists for the primary remote (future: use clientId)
+    // The tile will host both <video> and <audio>, allowing per-user controls.
+    try {
+      UI_addVideoTile('remote', remoteStream, { label: _remoteLabel || 'Remote', muted: false });
+    } catch {}
+
+    // (Optional) You can still keep the legacy audio element if you want,
+    // but the tile's <audio> is where mute/volume controls are applied now.
+    const audioEl = document.getElementById('rtc-remote-audio');
+    if (audioEl && audioEl.srcObject !== remoteStream) {
+      audioEl.srcObject = remoteStream;
     }
   };
 

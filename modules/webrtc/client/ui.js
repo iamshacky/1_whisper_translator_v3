@@ -170,90 +170,164 @@ function UI_getOrCreateVideoGrid() {
   return grid;
 }
 
+
+// start__UI_addVideoTile
 /** Create (or update) a tile keyed by peerKey (e.g., 'local' or remote clientId) */
-export function UI_addVideoTile(peerKey, stream, opts = {}) {
-  const grid = UI_getOrCreateVideoGrid();
-  if (!grid) return;
-
-  const id = `rtc-tile-${peerKey}`;
-  let tile = document.getElementById(id);
-  if (!tile) {
-    tile = document.createElement('div');
-    tile.id = id;
-    tile.className = 'rtc-tile';
-    tile.style.position = 'relative';
-    tile.style.background = '#000';
-    tile.style.borderRadius = '6px';
-    tile.style.overflow = 'hidden';
-    tile.style.minHeight = '140px';
-    tile.style.display = 'flex';
-    tile.style.flexDirection = 'column';
-
-    const video = document.createElement('video');
-    video.id = `${id}-video`;
-    video.autoplay = true;
-    video.playsInline = true;
-    video.muted = opts.muted === true; // local tile should be muted
-    video.style.width = '100%';
-    video.style.height = 'auto';
-    video.style.flex = '1 1 auto';
-    video.style.objectFit = 'cover';
-
-    const footer = document.createElement('div');
-    footer.style.display = 'flex';
-    footer.style.alignItems = 'center';
-    footer.style.justifyContent = 'space-between';
-    footer.style.gap = '6px';
-    footer.style.padding = '6px 8px';
-    footer.style.background = 'rgba(255,255,255,0.9)';
-
-    const name = document.createElement('div');
-    name.id = `${id}-name`;
-    name.textContent = opts.label || (peerKey === 'local' ? 'You' : 'Remote');
-
-    const fsBtn = document.createElement('button');
-    fsBtn.textContent = '⛶';
-    fsBtn.title = 'Fullscreen';
-    fsBtn.style.padding = '4px 8px';
-    fsBtn.onclick = () => {
-      if (!document.fullscreenElement) {
-        tile.requestFullscreen?.();
-      } else {
-        document.exitFullscreen?.();
-      }
-    };
-
-    footer.appendChild(name);
-    footer.appendChild(fsBtn);
-
-    tile.appendChild(video);
-    tile.appendChild(footer);
-    grid.appendChild(tile);
+export function UI_addVideoTile(tileId, mediaStream, { label = 'Remote', muted = false } = {}) {
+  // --- helpers for per-room persistence ---
+  function LS_key(id) {
+    const room = new URLSearchParams(location.search).get('room') || 'default';
+    return `rtc-audio-prefs::${room}::${id}`;
+  }
+  function loadPrefs(id) {
+    try { return JSON.parse(localStorage.getItem(LS_key(id)) || '{}'); } catch { return {}; }
+  }
+  function savePrefs(id, prefs) {
+    try { localStorage.setItem(LS_key(id), JSON.stringify(prefs)); } catch {}
   }
 
-  // attach/refresh stream
-  const videoEl = document.getElementById(`${id}-video`);
-  if (videoEl && videoEl.srcObject !== stream) {
-    videoEl.srcObject = stream;
+  // Ensure tiles container exists inside the WebRTC panel
+  let grid = document.getElementById('rtc-video-tiles');
+  if (!grid) {
+    const host = document.getElementById('webrtc-area') || document.body;
+    grid = document.createElement('div');
+    grid.id = 'rtc-video-tiles';
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(220px, 1fr))';
+    grid.style.gap = '8px';
+    grid.style.marginTop = '8px';
+    host.appendChild(grid);
   }
 
-  if (opts.label) {
-    const nameEl = document.getElementById(`${id}-name`);
-    if (nameEl) nameEl.textContent = opts.label;
+  // If a tile with this id already exists, update it instead of duplicating
+  const existing = document.getElementById(`rtc-tile-${tileId}`);
+  if (existing) {
+    const v = existing.querySelector('video');
+    if (v && v.srcObject !== mediaStream) v.srcObject = mediaStream;
+    const nameEl = existing.querySelector('.rtc-tile-name');
+    if (nameEl) nameEl.textContent = tileId === 'local' ? 'You' : label;
+    return existing;
   }
+
+  // Wrapper
+  const tile = document.createElement('div');
+  tile.id = `rtc-tile-${tileId}`;
+  tile.style.border = '1px solid #ddd';
+  tile.style.borderRadius = '6px';
+  tile.style.padding = '6px';
+  tile.style.background = '#fff';
+  tile.style.display = 'flex';
+  tile.style.flexDirection = 'column';
+  tile.style.gap = '6px';
+
+  // Header (name + controls)
+  const header = document.createElement('div');
+  header.style.display = 'flex';
+  header.style.alignItems = 'center';
+  header.style.justifyContent = 'space-between';
+  header.style.gap = '8px';
+
+  const name = document.createElement('div');
+  name.className = 'rtc-tile-name';
+  name.textContent = tileId === 'local' ? 'You' : label;
+  name.style.fontWeight = '600';
+
+  const controls = document.createElement('div');
+  controls.style.display = 'flex';
+  controls.style.alignItems = 'center';
+  controls.style.gap = '6px';
+
+  const muteBtn = document.createElement('button');
+  muteBtn.type = 'button';
+  muteBtn.style.padding = '4px 8px';
+  muteBtn.style.fontSize = '0.85rem';
+
+  const volSlider = document.createElement('input');
+  volSlider.type = 'range';
+  volSlider.min = '0';
+  volSlider.max = '1';
+  volSlider.step = '0.01';
+  volSlider.value = '1';
+  volSlider.style.verticalAlign = 'middle';
+  volSlider.style.width = '80px';
+
+  controls.appendChild(muteBtn);
+  controls.appendChild(volSlider);
+  header.appendChild(name);
+  header.appendChild(controls);
+
+  // Video element
+  const video = document.createElement('video');
+  video.autoplay = true;
+  video.playsInline = true;
+  video.style.width = '100%';
+  video.style.maxHeight = '180px';
+  video.style.objectFit = 'cover';
+  video.srcObject = mediaStream;
+
+  // Local tile should never play back to the same device
+  if (tileId === 'local') muted = true;
+  video.muted = !!muted;
+
+  // Restore saved prefs (per-room, per-tile)
+  const prefs = loadPrefs(tileId);
+  if (typeof prefs.volume === 'number') {
+    video.volume = Math.max(0, Math.min(1, Number(prefs.volume)));
+    volSlider.value = String(video.volume);
+  }
+  if (typeof prefs.muted === 'boolean') {
+    video.muted = !!prefs.muted;
+  }
+
+  // Wire controls
+  const setMuteButtonText = () => {
+    muteBtn.textContent = video.muted ? 'Unmute' : 'Mute';
+  };
+  setMuteButtonText();
+
+  muteBtn.onclick = () => {
+    video.muted = !video.muted;
+    setMuteButtonText();
+    savePrefs(tileId, { muted: video.muted, volume: Number(volSlider.value || video.volume || 1) });
+  };
+
+  volSlider.oninput = () => {
+    const val = Number(volSlider.value || 1);
+    video.volume = Math.max(0, Math.min(1, val));
+    // If the user moves volume from 0, implicitly unmute (common UX)
+    if (video.volume > 0 && video.muted && tileId !== 'local') {
+      video.muted = false;
+      setMuteButtonText();
+    }
+    savePrefs(tileId, { muted: video.muted, volume: video.volume });
+  };
+
+  // Assemble
+  tile.appendChild(header);
+  tile.appendChild(video);
+  grid.appendChild(tile);
+
+  return tile;
 }
+// end__UI_addVideoTile
 
+// start__UI_removeVideoTile
 /** Remove a tile completely */
-export function UI_removeVideoTile(peerKey) {
-  const id = `rtc-tile-${peerKey}`;
-  const el = document.getElementById(id);
-  if (el && el.parentNode) {
-    // stop any streams attached
-    const video = el.querySelector('video');
-    try { video?.srcObject?.getTracks?.().forEach(t => t.stop()); } catch {}
-    el.parentNode.removeChild(el);
-  }
+export function UI_removeVideoTile(tileId) {
+  const tile = document.getElementById(`rtc-tile-${tileId}`);
+  if (!tile) return;
+  try {
+    // Stop any attached video tracks on the element (defensive)
+    const v = tile.querySelector('video');
+    if (v?.srcObject) {
+      const tracks = v.srcObject.getTracks?.() || [];
+      tracks.forEach(t => { /* do not stop remote tracks here; peer controls that */ });
+      v.srcObject = null;
+    }
+  } catch {}
+  tile.remove();
 }
+// end__UI_removeVideoTile
 
 /** Update the name/label of a tile without touching the video stream */
 export function UI_updateVideoLabel(peerKey, label) {
@@ -295,3 +369,51 @@ export function UI_setVideoTileLabel(tileId, label) {
   } catch {}
 }
 // end__UI_setVideoTileLabel
+
+// start__video_tiles_with_audio_controls
+const TILE_MAP = new Map(); // tileId -> { root, videoEl, audioEl, muteBtn, volSlider, labelEl }
+
+
+function RTC_ensureVideoGrid() {
+  let grid = document.getElementById('rtc-video-grid');
+  if (grid) return grid;
+
+  const area = document.getElementById('webrtc-area') || document.body;
+  grid = document.createElement('div');
+  grid.id = 'rtc-video-grid';
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
+  grid.style.gap = '8px';
+  grid.style.marginTop = '8px';
+  area.appendChild(grid);
+  return grid;
+}
+
+/**
+ * Create (or replace) a tile for a participant.
+ * @param {string} tileId - stable id ('local', 'remote', or future clientId)
+ * @param {MediaStream} stream
+ * @param {{label?: string, muted?: boolean}} opts
+ */
+
+/** External setters (for programmatic control if needed) */
+export function UI_setTileAudioMuted(tileId, muted) {
+  const rec = TILE_MAP.get(tileId);
+  if (!rec) return;
+  rec.audioEl.muted = !!muted;
+  rec.muteBtn.dataset.muted = rec.audioEl.muted ? 'true' : 'false';
+  rec.muteBtn.textContent = rec.audioEl.muted ? 'Unmute' : 'Mute';
+}
+
+export function UI_setTileAudioVolume(tileId, volume01) {
+  const rec = TILE_MAP.get(tileId);
+  if (!rec) return;
+  const v = Math.max(0, Math.min(1, Number(volume01) || 0));
+  rec.audioEl.volume = v;
+  rec.volSlider.value = String(v);
+  if (rec.audioEl.muted && v > 0) {
+    rec.audioEl.muted = false;
+    rec.muteBtn.dataset.muted = 'false';
+    rec.muteBtn.textContent = 'Mute';
+  }
+}
