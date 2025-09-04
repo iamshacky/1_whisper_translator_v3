@@ -1,3 +1,4 @@
+c/xampp/htdocs/project1/1_whisper_translator_v3
 .
 |____.env
 |____.env.example
@@ -129,6 +130,8 @@
 | | | |____translations.js
 | |____webrtc
 | | |____client
+| | | |____connection copy 2.js
+| | | |____connection copy.js
 | | | |____connection.js
 | | | |____init.js
 | | | |____signaling.js
