@@ -115,31 +115,42 @@ export async function RTC__initClient(roomId) {
 
     // Wrap signaling: only process offers/candidates for me; if offer arrives with no target set, adopt caller.
     const filteredOnSignal = (fn) => onSignal(({ payload, from }) => {
-      // If an offer arrives and we are not in a call yet…
+      // 🔔 Incoming targeted offer (callee path: we are NOT started yet)
       if (payload?.type === 'offer' && !RTC_isStarted()) {
-        // 🔧 If we don't have a target yet, ADOPT the caller immediately (no presence needed)
-        if (!__targetClientId) {
-          const who = __findByClientId(from);
-          __targetClientId = from;
-          __targetUsername = (who?.username || 'Remote').trim();
-          RTC_setRemoteLabel(__targetUsername);
+        console.log('[RTC] OFFER received from', from, '— showing Accept prompt');
+        let pendingOffer = payload;
+        const pendingCandidates = [];
 
-          // 🧭 DEBUG: we just adopted this caller as our target
-          console.log('[RTC] adopt target from incoming offer:', { from, username: __targetUsername });
-          
-          // (Optional) status cue
-          RTC_setStatus(`incoming call from ${__targetUsername}`);
-        }
-        // After adoption, drop non-target callers
-        if (from !== __targetClientId) return;
+        RTC_showIncomingPrompt({
+          fromId: from,
+          onAccept: async () => {
+            try {
+              console.log('[RTC] Accept clicked — starting as polite callee');
+              RTC_hideIncomingPrompt();
+              await startCall({ inboundOffer: pendingOffer, pendingCandidates });
+            } catch (e) {
+              console.warn('[RTC] Accept failed:', e);
+            } finally {
+              pendingOffer = null;
+              pendingCandidates.length = 0;
+            }
+          },
+          onDecline: () => {
+            console.log('[RTC] Declined incoming call from', from);
+            RTC_hideIncomingPrompt();
+            pendingOffer = null;
+            pendingCandidates.length = 0;
+          }
+        });
+
+        const unsub = onSignal(({ payload: p2 }) => {
+          if (p2?.candidate && pendingOffer) pendingCandidates.push(p2);
+        });
+        // Small safety: once we Accept/Decline, the pendingOffer is nulled and the
+        return;
       }
 
-      // Candidates: ignore non-target when not started
-      if (payload?.candidate && !RTC_isStarted()) {
-        if (__targetClientId && from !== __targetClientId) return;
-      }
-
-      fn({ payload, from });
+      // (keep your other branches: 'answer', 'candidate' when RTC_isStarted(), etc.)
     });
 
     let pendingOffer = null;

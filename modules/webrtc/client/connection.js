@@ -120,7 +120,14 @@ function createPeer() {
   // ✅ perfect-negotiation-friendly
   pc.onnegotiationneeded = async () => {
     if (!pc) return;
-    if (_makingOffer) return; // guard against re-entrancy
+
+    // 🧯 NEW: only negotiate when truly stable (prevents "have-remote-offer" crashes on the callee)
+    if (_makingOffer || _isSettingRemoteAnswerPending || pc.signalingState !== 'stable') {
+      console.log('📡 negotiationneeded → skipped; state =', pc.signalingState,
+                  ' makingOffer=', _makingOffer, ' settingRemoteAnswerPending=', _isSettingRemoteAnswerPending);
+      return;
+    }
+
     try {
       _makingOffer = true;
       console.log('📡 negotiationneeded → creating and sending offer');
