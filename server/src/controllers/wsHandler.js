@@ -152,7 +152,6 @@ export function setupWebSocket(wss) {
 
 
           // ⬇️ Pass-through for WebRTC signaling (scoped by ws.roomId)
-          /* Commented out 9/4 at 2:35 am per GPTs suggestion at the beginning of a new conversation.
           if (parsed?.kind === 'webrtc-signal') {
             const payload = {
               kind: 'webrtc-signal',
@@ -168,7 +167,6 @@ export function setupWebSocket(wss) {
             }
             return; // do not treat as chat message
           }
-          */
 
           /* Start wsHandler.js__presence_after_parsed */
           // 🧭 Presence: join/leave/snapshot (blocked for deleted/unregistered rooms)
@@ -275,6 +273,15 @@ export function setupWebSocket(wss) {
       }
     });
 
+    /*
+    ws.on('close', () => {
+      const room = rooms.get(roomId);
+      if (room) {
+        room.delete(ws);
+        if (room.size === 0) rooms.delete(roomId);
+      }
+    });
+    */
     ws.on('close', () => {
       const room = rooms.get(roomId);
       if (room) {

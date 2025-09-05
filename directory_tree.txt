@@ -1,4 +1,4 @@
-c/xampp/htdocs/project1/1_whisper_translator_v3
+c/xampp/htdocs/project1/1_whisper_translator_v3 
 .
 |____.env
 |____.env.example
@@ -147,7 +147,6 @@ c/xampp/htdocs/project1/1_whisper_translator_v3
 | | | |____settings.js
 | | |____controllers
 | | | |____translate.js
-| | | |____wsHandler copy.js
 | | | |____wsHandler.js
 | | |____index.js
 | | |____lib

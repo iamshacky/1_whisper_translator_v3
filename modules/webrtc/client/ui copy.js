@@ -286,7 +286,6 @@ export function RTC_setVideoButton({ enabled, on }) {
 // end__UI_video_grid_mount_and_tile_helpers
 
 // start__UI_setVideoTileLabel
-/* Commented out on 9/4 at 2:35 am
 export function UI_setVideoTileLabel(tileId, label) {
   try {
     const tile = document.querySelector(`[data-tile-id="${tileId}"]`);
@@ -295,5 +294,4 @@ export function UI_setVideoTileLabel(tileId, label) {
     if (cap) cap.textContent = label;
   } catch {}
 }
-*/
 // end__UI_setVideoTileLabel

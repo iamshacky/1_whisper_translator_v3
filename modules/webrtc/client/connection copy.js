@@ -78,8 +78,12 @@ function createPeer() {
         audioEl.play?.().catch(()=>{});
       }
     }
-
     /*
+    if (e.track.kind === 'video') {
+      console.log('🎥 [remote] ontrack video — remote is receiving frames');
+      try { UI_addVideoTile?.('remote', remoteStream, { label: 'Remote', muted: false }); } catch {}
+    }
+    */
     if (e.track.kind === 'video') {
       console.log('🎥 [remote] ontrack video — remote is receiving frames');
       try {
@@ -88,19 +92,6 @@ function createPeer() {
         }
       } catch {}
     }
-    */
-
-    /* Start__remote_video_should_be_muted_to_avoid_double_audio */
-    if (e.track.kind === 'video') {
-      console.log('🎥 [remote] ontrack video — remote is receiving frames');
-      try {
-        if (typeof UI_addVideoTile === 'function') {
-          // Ensure tile's video element stays muted; <audio id="rtc-remote-audio"> handles sound.
-          UI_addVideoTile('remote', remoteStream, { label: _remoteLabel, muted: true });
-        }
-      } catch {}
-    }
-    /* End__remote_video_should_be_muted_to_avoid_double_audio */
   };
 
   pc.onconnectionstatechange = () => {

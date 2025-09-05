@@ -170,40 +170,33 @@ function UI_getOrCreateVideoGrid() {
   return grid;
 }
 
+/* Start__peer_audio_state_helpers */
+// Simple in-memory state per peer (1:1 for now → key 'remote')
+const _peerAudioState = new Map(); // key -> { volume: 0..1, muted: boolean }
+
+function __getRemoteAudioEl() {
+  return document.getElementById('rtc-remote-audio') || null;
+}
+
+function __applyPeerAudioState(peerKey) {
+  const { volume = 1, muted = false } = _peerAudioState.get(peerKey) || {};
+  const audioEl = __getRemoteAudioEl();
+  if (audioEl) {
+    audioEl.volume = volume;
+    audioEl.muted = muted;
+    audioEl.play?.().catch(() => {});
+  }
+}
+/* End__peer_audio_state_helpers */
+
+/* Start__UI_addVideoTile_with_per_peer_volume_and_mute */
 /** Create (or update) a tile keyed by peerKey (e.g., 'local' or remote clientId) */
-// === Per-tile audio persistence ===
-const AUDIO_STORE_KEY = 'webrtc_tile_audio';
-
-function readAudioPrefs() {
-  try { return JSON.parse(localStorage.getItem(AUDIO_STORE_KEY) || '{}'); }
-  catch { return {}; }
-}
-function writeAudioPrefs(map) {
-  try { localStorage.setItem(AUDIO_STORE_KEY, JSON.stringify(map)); } catch {}
-}
-function getTilePrefs(peerKey) {
-  const map = readAudioPrefs();
-  const raw = map[peerKey] || {};
-  return {
-    muted: peerKey === 'local' ? true : !!raw.muted,      // local tile always starts muted
-    volume: typeof raw.volume === 'number' ? raw.volume : 1
-  };
-}
-function saveTilePrefs(peerKey, next) {
-  const map = readAudioPrefs();
-  map[peerKey] = { ...map[peerKey], ...next };
-  writeAudioPrefs(map);
-}
-
-// (inside UI_addVideoTile)
 export function UI_addVideoTile(peerKey, stream, opts = {}) {
   const grid = UI_getOrCreateVideoGrid();
   if (!grid) return;
 
   const id = `rtc-tile-${peerKey}`;
   let tile = document.getElementById(id);
-  const prefs = getTilePrefs(peerKey);
-
   if (!tile) {
     tile = document.createElement('div');
     tile.id = id;
@@ -220,11 +213,9 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     video.id = `${id}-video`;
     video.autoplay = true;
     video.playsInline = true;
-    // local tile should be muted; remote uses persisted setting
-    const wantMuted = peerKey === 'local' ? true : prefs.muted;
+    // Local tile can be unmuted for preview; remote tile stays muted to avoid double audio.
+    const wantMuted = opts.muted === true || peerKey !== 'local';
     video.muted = wantMuted;
-    // volume is ignored by browsers when muted, but keep in sync
-    video.volume = prefs.volume;
     video.style.width = '100%';
     video.style.height = 'auto';
     video.style.flex = '1 1 auto';
@@ -238,38 +229,15 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     footer.style.padding = '6px 8px';
     footer.style.background = 'rgba(255,255,255,0.9)';
 
-    const left = document.createElement('div');
-    left.style.display = 'flex';
-    left.style.alignItems = 'center';
-    left.style.gap = '8px';
-
-    const right = document.createElement('div');
-    right.style.display = 'flex';
-    right.style.alignItems = 'center';
-    right.style.gap = '8px';
-
     const name = document.createElement('div');
     name.id = `${id}-name`;
     name.textContent = opts.label || (peerKey === 'local' ? 'You' : 'Remote');
 
-    // 🔇 Mute toggle
-    const muteBtn = document.createElement('button');
-    muteBtn.id = `${id}-mute`;
-    muteBtn.textContent = (peerKey === 'local' || wantMuted) ? 'Unmute' : 'Mute';
-    muteBtn.disabled = peerKey === 'local'; // local always muted to avoid feedback
+    const rightControls = document.createElement('div');
+    rightControls.style.display = 'flex';
+    rightControls.style.alignItems = 'center';
+    rightControls.style.gap = '6px';
 
-    // 🔊 Volume slider (0.0 – 1.0)
-    const vol = document.createElement('input');
-    vol.type = 'range';
-    vol.min = '0';
-    vol.max = '1';
-    vol.step = '0.01';
-    vol.value = String(prefs.volume);
-    vol.id = `${id}-vol`;
-    vol.style.width = '120px';
-    vol.disabled = peerKey === 'local';
-
-    // ⛶ Fullscreen
     const fsBtn = document.createElement('button');
     fsBtn.textContent = '⛶';
     fsBtn.title = 'Fullscreen';
@@ -279,57 +247,87 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
       else document.exitFullscreen?.();
     };
 
-    left.appendChild(name);
-    right.appendChild(muteBtn);
-    right.appendChild(vol);
-    right.appendChild(fsBtn);
-
-    footer.appendChild(left);
-    footer.appendChild(right);
+    rightControls.appendChild(fsBtn);
+    footer.appendChild(name);
+    footer.appendChild(rightControls);
 
     tile.appendChild(video);
     tile.appendChild(footer);
     grid.appendChild(tile);
 
-    // 🎛 Wire controls
-    muteBtn.onclick = () => {
-      const v = document.getElementById(`${id}-video`);
-      if (!v) return;
-      const nextMuted = !v.muted;
-      v.muted = nextMuted;
-      muteBtn.textContent = nextMuted ? 'Unmute' : 'Mute';
-      saveTilePrefs(peerKey, { muted: nextMuted });
-      // If unmuting, try to play in case autoplay was blocked
-      if (!nextMuted) v.play?.().catch(()=>{});
-    };
+    // 🔊 Per-remote controls (remote peers only)
+    if (peerKey !== 'local') {
+      let controls = tile.querySelector('[data-role="peer-audio-controls"]');
+      if (!controls) {
+        controls = document.createElement('div');
+        controls.dataset.role = 'peer-audio-controls';
+        controls.style.display = 'flex';
+        controls.style.alignItems = 'center';
+        controls.style.gap = '6px';
 
-    vol.oninput = () => {
-      const v = document.getElementById(`${id}-video`);
-      if (!v) return;
-      const val = Number(vol.value);
-      v.volume = val;
-      saveTilePrefs(peerKey, { volume: val });
-    };
+        const vol = document.createElement('input');
+        vol.type = 'range';
+        vol.min = '0';
+        vol.max = '100';
+        vol.value = '100';
+        vol.title = 'Volume';
+        vol.style.width = '100px';
+        vol.id = `${id}-volume`;
+
+        const muteBtn = document.createElement('button');
+        muteBtn.textContent = 'Mute';
+        muteBtn.title = 'Mute this participant';
+        muteBtn.id = `${id}-mute`;
+
+        controls.appendChild(vol);
+        controls.appendChild(muteBtn);
+        rightControls.insertBefore(controls, fsBtn);
+
+        // Initialize or restore state
+        const state = _peerAudioState.get(peerKey) || { volume: 1, muted: false };
+        _peerAudioState.set(peerKey, state);
+        vol.value = String(Math.round(state.volume * 100));
+        muteBtn.textContent = state.muted ? 'Unmute' : 'Mute';
+        __applyPeerAudioState(peerKey);
+
+        // Wire up events
+        vol.addEventListener('input', () => {
+          const v = Math.max(0, Math.min(1, Number(vol.value) / 100));
+          const curr = _peerAudioState.get(peerKey) || { volume: 1, muted: false };
+          const next = { ...curr, volume: v };
+          _peerAudioState.set(peerKey, next);
+          __applyPeerAudioState(peerKey);
+        });
+
+        muteBtn.addEventListener('click', () => {
+          const curr = _peerAudioState.get(peerKey) || { volume: 1, muted: false };
+          const next = { ...curr, muted: !curr.muted };
+          _peerAudioState.set(peerKey, next);
+          muteBtn.textContent = next.muted ? 'Unmute' : 'Mute';
+          __applyPeerAudioState(peerKey);
+        });
+      }
+    }
   }
 
   // attach/refresh stream
   const videoEl = document.getElementById(`${id}-video`);
   if (videoEl && videoEl.srcObject !== stream) {
     videoEl.srcObject = stream;
-    // Ensure persisted state is applied even when an element already existed
-    const current = getTilePrefs(peerKey);
-    if (peerKey !== 'local') {
-      videoEl.muted = !!current.muted;
-      videoEl.volume = current.volume;
-      if (!videoEl.muted) videoEl.play?.().catch(()=>{});
-    }
   }
 
   if (opts.label) {
     const nameEl = document.getElementById(`${id}-name`);
     if (nameEl) nameEl.textContent = opts.label;
   }
+
+  // Final safety: keep remote video element muted
+  if (peerKey !== 'local') {
+    const v = document.getElementById(`${id}-video`);
+    if (v) v.muted = true;
+  }
 }
+/* End__UI_addVideoTile_with_per_peer_volume_and_mute */
 
 /** Remove a tile completely */
 export function UI_removeVideoTile(peerKey) {
@@ -374,7 +372,6 @@ export function RTC_setVideoButton({ enabled, on }) {
 // end__UI_video_grid_mount_and_tile_helpers
 
 // start__UI_setVideoTileLabel
-/* Commented out on 9/4 at 2:35 am
 export function UI_setVideoTileLabel(tileId, label) {
   try {
     const tile = document.querySelector(`[data-tile-id="${tileId}"]`);
@@ -383,6 +380,5 @@ export function UI_setVideoTileLabel(tileId, label) {
     if (cap) cap.textContent = label;
   } catch {}
 }
-*/
 // end__UI_setVideoTileLabel
 
