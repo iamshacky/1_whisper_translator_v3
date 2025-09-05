@@ -114,20 +114,32 @@ export async function RTC__initClient(roomId) {
     requestPresenceSnapshot();
 
     // Wrap signaling: only process offers/candidates for me; if offer arrives with no target set, adopt caller.
-    const filteredOnSignal = (fn) => onSignal(({ payload, from, to }) => {
+    const filteredOnSignal = (fn) => onSignal(({ payload, from }) => {
+      // If an offer arrives and we are not in a call yet…
       if (payload?.type === 'offer' && !RTC_isStarted()) {
+        // 🔧 If we don't have a target yet, ADOPT the caller immediately (no presence needed)
         if (!__targetClientId) {
-          // Adopt the caller as target (incoming call)
           const who = __findByClientId(from);
           __targetClientId = from;
           __targetUsername = (who?.username || 'Remote').trim();
           RTC_setRemoteLabel(__targetUsername);
+
+          // 🧭 DEBUG: we just adopted this caller as our target
+          console.log('[RTC] adopt target from incoming offer:', { from, username: __targetUsername });
+          
+          // (Optional) status cue
+          RTC_setStatus(`incoming call from ${__targetUsername}`);
         }
-        if (from !== __targetClientId) return; // ignore non-target peers
-      } else if (payload?.candidate && !RTC_isStarted()) {
+        // After adoption, drop non-target callers
+        if (from !== __targetClientId) return;
+      }
+
+      // Candidates: ignore non-target when not started
+      if (payload?.candidate && !RTC_isStarted()) {
         if (__targetClientId && from !== __targetClientId) return;
       }
-      fn({ payload, from, to });
+
+      fn({ payload, from });
     });
 
     let pendingOffer = null;
@@ -157,9 +169,22 @@ export async function RTC__initClient(roomId) {
 
     // Send signaling addressed to the selected peer
     const sendSignalToTarget = (payload) => {
-      // If no explicit selection but exactly one other, ensure target
+      // If exactly one other is present but target hasn't been set, set it now.
       if (!__targetClientId) __ensureTargetForOneOther();
-      sendSignal(payload, __targetClientId || null);
+
+      if (__targetClientId) {
+        // 🧭 DEBUG: targeted send
+        console.log('[RTC] sendSignalToTarget → targeted', { to: __targetClientId, type: payload?.type });
+
+        // 🎯 targeted signaling (tunneled as __to inside payload by signaling.js)
+        sendSignal(payload, __targetClientId);
+      } else {
+        // 🧭 DEBUG: first-offer broadcast (no target yet)
+        console.log('[RTC] sendSignalToTarget → broadcast first offer', { type: payload?.type });
+        
+        // 📣 first-offer broadcast (callee will adopt)
+        sendSignal(payload); // no `to` → no __to injected
+      }
     };
 
     async function startCall({ inboundOffer = null, pendingCandidates = [] } = {}) {
@@ -213,14 +238,34 @@ export async function RTC__initClient(roomId) {
       onEnd: () => {
         RTC_teardownAll();
         RTC_setStatus('idle');
-        RTC_setButtons({ canStart: !!__targetClientId, canEnd: false });
+        RTC_setButtons({ canStart: true, canEnd: false });
         RTC_setMicButton({ enabled: false, muted: false });
         RTC_setVideoButton({ enabled: false, on: false });
+        // optional: keep current target or clear it; I’ll leave as-is
       },
       onToggleMic: (currentlyMuted) => {
         const targetEnabled = currentlyMuted ? true : false;
         const isEnabledNow = RTC_setMicEnabled(targetEnabled);
         RTC_setMicButton({ enabled: true, muted: !isEnabledNow });
+      },
+
+      // ⬇️ NEW: targeted call when you click "Call" next to a participant
+      onCallPeer: ({ clientId, username }) => {
+        if (!clientId) return;
+
+        // If already on a call, avoid auto-switching to prevent surprises.
+        if (RTC_isStarted()) {
+          alert('Already on a call. End it first, then call someone else.');
+          return;
+        }
+
+        __targetClientId = clientId;
+        __targetUsername = (username || 'Remote').trim();
+        RTC_setRemoteLabel(__targetUsername);
+        console.log('[RTC] onCallPeer → target set', { clientId, username: __targetUsername });
+
+        // Now start a targeted call (first offer will be addressed to __targetClientId)
+        startCall();
       }
     });
 

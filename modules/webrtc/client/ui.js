@@ -1,5 +1,7 @@
 // modules/webrtc/client/ui.js
 
+let __onCallPeer = null;
+
 export function RTC_mountUI() {
   if (document.getElementById('webrtc-area')) return;
 
@@ -50,7 +52,9 @@ export function RTC_mountUI() {
   }
 }
 
-export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
+export function RTC_bindActions({ onStart, onEnd, onToggleMic, onCallPeer }) {
+  __onCallPeer = onCallPeer || null;
+
   const startBtn = document.getElementById('rtc-start-btn');
   const endBtn   = document.getElementById('rtc-end-btn');
   const micBtn   = document.getElementById('rtc-mic-btn');
@@ -118,27 +122,27 @@ export function RTC_updateParticipants(list) {
 
   (list || []).forEach(p => {
     const li = document.createElement('li');
-    const name = (p.username || 'Someone').trim();
-    const isMe = meId && p.user_id && String(meId) === String(p.user_id);
     li.style.display = 'flex';
     li.style.alignItems = 'center';
-    li.style.gap = '8px';
+    li.style.gap = '6px';
 
-    const label = document.createElement('span');
-    label.textContent = isMe ? `${name} (you)` : name;
-    li.appendChild(label);
+    const name = (p.username || 'Someone').trim();
+    const isMe = meId && p.user_id && String(meId) === String(p.user_id);
 
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = isMe ? `${name} (you)` : name;
+    li.appendChild(nameSpan);
+
+    // Add a Call button for other people (needs clientId from presence)
     if (!isMe && p.clientId) {
       const callBtn = document.createElement('button');
-      callBtn.textContent = '📞 Call';
+      callBtn.textContent = 'Call';
       callBtn.style.padding = '2px 8px';
-      callBtn.dataset.clientId = p.clientId;
-      callBtn.dataset.username = name;
-      callBtn.addEventListener('click', () => {
-        document.dispatchEvent(new CustomEvent('rtc-select-target', {
-          detail: { clientId: p.clientId, username: name }
-        }));
-      });
+      callBtn.style.fontSize = '0.9rem';
+      callBtn.onclick = () => {
+        console.log('[RTC UI] Call clicked →', p.clientId, name);
+        __onCallPeer?.({ clientId: p.clientId, username: name });
+      };
       li.appendChild(callBtn);
     }
 
