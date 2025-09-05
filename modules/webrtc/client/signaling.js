@@ -1,12 +1,12 @@
-// modules/webrtc/client/signaling.js
-// Single WS for both signaling & presence
+/* Start__targeted_signaling_support */
+// Allow addressing a specific peer (to) and ignore signals not meant for me.
 
 export function RTC_setupSignaling(roomId) {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   const clientId = crypto.randomUUID();
   const ws = new WebSocket(`${protocol}://${location.host}/ws?room=${encodeURIComponent(roomId)}&clientId=${encodeURIComponent(clientId)}`);
 
-  const signalHandlers = new Set();    // ({from, payload})
+  const signalHandlers = new Set();    // ({from, to, payload})
   const presenceHandlers = new Set();  // ({participants})
 
   ws.onmessage = (ev) => {
@@ -14,7 +14,9 @@ export function RTC_setupSignaling(roomId) {
       const msg = JSON.parse(ev.data);
 
       if (msg?.kind === 'webrtc-signal' && msg.room === roomId && msg.from !== clientId) {
-        signalHandlers.forEach(h => h({ from: msg.from, payload: msg.payload }));
+        // If a specific recipient is indicated, drop if it's not me.
+        if (msg.to && msg.to !== clientId) return;
+        signalHandlers.forEach(h => h({ from: msg.from, to: msg.to || null, payload: msg.payload }));
       }
 
       if (msg?.kind === 'presence-sync' && msg.room === roomId) {
@@ -32,8 +34,9 @@ export function RTC_setupSignaling(roomId) {
     }
   }
 
-  function sendSignal(payload) {
-    send('webrtc-signal', { payload });
+  // ⬇️ New: optional `to` for targeted signaling
+  function sendSignal(payload, to = null) {
+    send('webrtc-signal', { payload, to });
   }
 
   function sendPresenceJoin({ user_id = null, username = 'Someone' } = {}) {
@@ -56,3 +59,4 @@ export function RTC_setupSignaling(roomId) {
 
   return { sendSignal, onSignal, sendPresenceJoin, requestPresenceSnapshot, onPresence, clientId, ws };
 }
+/* End__targeted_signaling_support */

@@ -103,7 +103,8 @@ export function RTC_setStatus(state) {
   el.textContent = state;
 }
 
-/** 🧑‍🤝‍🧑 Render participants into <details> */
+/* Start__participants_with_call_buttons */
+/** 🧑‍🤝‍🧑 Render participants and expose a "Call" button for others. */
 export function RTC_updateParticipants(list) {
   const countEl = document.getElementById('rtc-part-count');
   const ul = document.getElementById('rtc-part-list');
@@ -119,10 +120,32 @@ export function RTC_updateParticipants(list) {
     const li = document.createElement('li');
     const name = (p.username || 'Someone').trim();
     const isMe = meId && p.user_id && String(meId) === String(p.user_id);
-    li.textContent = isMe ? `${name} (you)` : name;
+    li.style.display = 'flex';
+    li.style.alignItems = 'center';
+    li.style.gap = '8px';
+
+    const label = document.createElement('span');
+    label.textContent = isMe ? `${name} (you)` : name;
+    li.appendChild(label);
+
+    if (!isMe && p.clientId) {
+      const callBtn = document.createElement('button');
+      callBtn.textContent = '📞 Call';
+      callBtn.style.padding = '2px 8px';
+      callBtn.dataset.clientId = p.clientId;
+      callBtn.dataset.username = name;
+      callBtn.addEventListener('click', () => {
+        document.dispatchEvent(new CustomEvent('rtc-select-target', {
+          detail: { clientId: p.clientId, username: name }
+        }));
+      });
+      li.appendChild(callBtn);
+    }
+
     ul.appendChild(li);
   });
 }
+/* End__participants_with_call_buttons */
 
 function safeReadLocalUser() {
   try { return JSON.parse(localStorage.getItem('whisper-user') || 'null'); }
