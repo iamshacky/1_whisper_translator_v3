@@ -33,9 +33,11 @@ export function RTC_setupSignaling(roomId) {
   ws.onmessage = (ev) => {
     try {
       const msg = JSON.parse(ev.data);
-
       if (msg?.kind === 'webrtc-signal' && msg.room === roomId && msg.from !== clientId) {
-        signalHandlers.forEach(h => h({ from: msg.from, payload: msg.payload || {} }));
+        const p = msg.payload || {};
+        const toId = p.__to || null;
+        if (toId && toId !== clientId) return;   // 👈 ignore, not for me
+        signalHandlers.forEach(h => h({ from: msg.from, payload: p }));
       }
 
       if (msg?.kind === 'presence-sync' && msg.room === roomId) {
@@ -53,8 +55,10 @@ export function RTC_setupSignaling(roomId) {
     }
   }
 
-  function sendSignal(payload) {
-    send('webrtc-signal', { payload });
+  function sendSignal(payload, to = null) {
+    const out = { ...(payload || {}) };
+    if (to) out.__to = to;           // 👈 tunnel target
+    ws.send(JSON.stringify({ kind: 'webrtc-signal', room: roomId, from: clientId, payload: out }));
   }
 
   function sendPresenceJoin({ user_id = null, username = 'Someone' } = {}) {

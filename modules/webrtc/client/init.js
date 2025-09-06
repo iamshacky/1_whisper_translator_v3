@@ -1,6 +1,6 @@
+// start__bind_video_actions_and_presence_labels
 import { UI_updateVideoLabel } from './ui.js';
 
-// start__bind_video_actions_and_presence_labels
 import {
   RTC_mountUI,
   RTC_setStatus,
@@ -26,16 +26,100 @@ import {
 // Use this to label the single remote tile nicely
 import { RTC_setRemoteLabel } from './connection.js';
 
-// Signaling (broadcast)
+// Signaling (has targeted send with __to and receive-side filter)
 import { RTC_setupSignaling } from './signaling.js';
+
+/* -----------------------------
+   🔒 Active peer + presence
+------------------------------*/
+let __presence = { participants: [] };   // last presence snapshot
+let __activePeerId = null;               // who I'm currently talking to (clientId)
+let __activePeerName = null;             // label for the remote tile
 
 function safeReadLocalUser() {
   try { return JSON.parse(localStorage.getItem('whisper-user') || 'null'); }
   catch { return null; }
 }
 
+/* -----------------------------
+   🧰 Helper: derive label
+------------------------------*/
+function deriveRemoteLabel(participants) {
+  const me = safeReadLocalUser();
+  const myId = me?.user_id != null ? String(me.user_id) : null;
+  const others = (participants || []).filter(p => !myId || String(p.user_id) !== myId);
+
+  if (others.length === 0) return 'Remote';
+  if (others.length === 1) return (others[0].username || 'Remote').trim();
+
+  const first = (others[0].username || 'Remote').trim();
+  return `${first} +${others.length - 1}`;
+}
+
+/* -----------------------------
+   🧰 Filter incoming signals
+   - Adopt caller on first inbound offer if idle
+   - Ignore messages not from active peer
+------------------------------*/
+function makeFilteredOnSignal(onSignal, startCallRef) {
+  return (innerHandler) =>
+    onSignal(({ payload, from }) => {
+      // If we already have a partner, ignore anyone else
+      if (__activePeerId && from !== __activePeerId) return;
+
+      // No partner yet & not started → adopt caller on inbound offer
+      if (!__activePeerId && !RTC_isStarted() && payload?.type === 'offer') {
+        __activePeerId = from;
+
+        // Best-effort friendly name
+        const p = (__presence.participants || []).find(pp => pp.clientId === from);
+        __activePeerName = (p?.username || 'Remote').trim();
+        RTC_setRemoteLabel(__activePeerName);
+
+        let pendingOffer = payload;
+        const pendingCandidates = [];
+
+        RTC_showIncomingPrompt({
+          fromId: from,
+          onAccept: async () => {
+            RTC_hideIncomingPrompt();
+            try {
+              await startCallRef({ inboundOffer: pendingOffer, pendingCandidates });
+            } finally {
+              pendingOffer = null;
+              pendingCandidates.length = 0;
+            }
+          },
+          onDecline: () => {
+            RTC_hideIncomingPrompt();
+            // Clear partner so we can adopt someone else later.
+            __activePeerId = null;
+            __activePeerName = null;
+            pendingOffer = null;
+            pendingCandidates.length = 0;
+          }
+        });
+
+        // While waiting for accept, collect ICE candidates ONLY from this same sender
+        const unsub = onSignal(({ payload: p2, from: f2 }) => {
+          if (f2 !== from) return;
+          if (p2?.candidate && pendingOffer) pendingCandidates.push(p2);
+        });
+
+        return; // don't forward this initial offer to connection.js
+      }
+
+      // If still no partner (e.g., ICE prior to adoption), ignore
+      if (!__activePeerId) return;
+
+      // Forward allowed messages to the underlying connection logic
+      innerHandler?.({ payload, from });
+    });
+}
+
 export async function RTC__initClient(roomId) {
   try {
+    /* UI bootstrap */
     RTC_mountUI();
     RTC_ensureVideoButton();
     RTC_setStatus('idle');
@@ -43,87 +127,62 @@ export async function RTC__initClient(roomId) {
     RTC_setMicButton({ enabled: false, muted: false });
     RTC_setVideoButton({ enabled: false, on: false });
 
+    /* Signaling */
     const {
       sendSignal, onSignal,
       sendPresenceJoin, requestPresenceSnapshot, onPresence
     } = RTC_setupSignaling(roomId);
 
-    // Presence: enable Start when there is at least one other participant in the room
+    /* Presence: render + enable/disable Start + keep a nice label */
     onPresence(({ participants }) => {
-      RTC_updateParticipants(participants || []);
+      __presence.participants = participants || [];
+      RTC_updateParticipants(__presence.participants);
 
-      // Derive a friendly remote label and push it through
-      const me = safeReadLocalUser();
-      const myId = me?.user_id != null ? String(me.user_id) : null;
-      const others = (participants || []).filter(p => !myId || String(p.user_id) !== myId);
-
-      let label = 'Remote';
-      if (others.length === 1) {
-        label = (others[0].username || 'Remote').trim();
-      } else if (others.length > 1) {
-        const first = (others[0].username || 'Remote').trim();
-        label = `${first} +${others.length - 1}`;
-      }
-
-      RTC_setRemoteLabel(label);         // used by connection.js when adding the remote tile
-      try { UI_updateVideoLabel('remote', label); } catch {}  // live-update if tile already exists
+      const label = deriveRemoteLabel(__presence.participants);
+      RTC_setRemoteLabel(label);
+      try { UI_updateVideoLabel('remote', label); } catch {}
 
       if (!RTC_isStarted()) {
-        const canStart = others.length >= 1;
-        RTC_setButtons({ canStart, canEnd: false });
+        const me = safeReadLocalUser();
+        const myId = me?.user_id != null ? String(me.user_id) : null;
+        const others = (__presence.participants || []).filter(p => !myId || String(p.user_id) !== myId);
+        RTC_setButtons({ canStart: others.length >= 1, canEnd: false });
       }
     });
 
+    /* Identify myself for presence */
     const me = safeReadLocalUser();
     sendPresenceJoin({ user_id: me?.user_id ?? null, username: me?.username || 'Someone' });
     requestPresenceSnapshot();
 
-    // Incoming offers/candidates when we are not started yet
-    let pendingOffer = null;
-    const pendingCandidates = [];
-
-    const unsubscribeSignal = onSignal(async ({ payload, from }) => {
-      try {
-        if (payload?.type === 'offer' && !RTC_isStarted()) {
-          pendingOffer = payload;
-
-          RTC_showIncomingPrompt({
-            fromId: from,
-            onAccept: async () => {
-              RTC_hideIncomingPrompt();
-              await startCall({ inboundOffer: pendingOffer, pendingCandidates });
-              pendingOffer = null;
-              pendingCandidates.length = 0;
-            },
-            onDecline: () => {
-              RTC_hideIncomingPrompt();
-              pendingOffer = null;
-              pendingCandidates.length = 0;
-            }
-          });
-        } else if (payload?.candidate && !RTC_isStarted()) {
-          pendingCandidates.push(payload);
-        }
-      } catch (e) {
-        console.warn('[RTC] signaling error:', e);
+    /* 🎯 Targeted signaling: always send only to active peer */
+    const sendSignalToActive = (payload) => {
+      if (!__activePeerId) {
+        console.warn('[RTC] No active peer; dropping signal', payload?.type);
+        return;
       }
-    });
+      // signaling.js will embed __to automatically when `to` is provided
+      sendSignal(payload, __activePeerId);
+    };
 
-    async function startCall({ inboundOffer = null, pendingCandidates = [] } = {}) {
+    /* Start call (caller or callee path) */
+    const startCall = async ({ inboundOffer = null, pendingCandidates = [] } = {}) => {
       RTC_setStatus('connecting');
       RTC_setButtons({ canStart: false, canEnd: true });
       RTC_setMicButton({ enabled: false, muted: false });
       RTC_setVideoButton({ enabled: false, on: false });
 
+      const filteredOnSignal = makeFilteredOnSignal(onSignal, startCall);
+
       await RTC_start({
         roomId,
-        sendSignal,            // ← broadcast; server fan-outs to room
-        onSignal,              // ← plain subscription
+        sendSignal: sendSignalToActive,   // 🎯 ONLY to the active peer
+        onSignal: filteredOnSignal,       // 🚦 ignore non-partner traffic
         inboundOffer,
         pendingCandidates,
         onConnecting: () => {},
         onConnected: () => {
-          RTC_setStatus('connected');
+          RTC_setStatus(`connected with ${__activePeerName || 'peer'}`);
           RTC_setButtons({ canStart: false, canEnd: true });
           RTC_setMicButton({ enabled: true, muted: false });
           RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
@@ -143,26 +202,52 @@ export async function RTC__initClient(roomId) {
         },
         onTeardown: () => {
           RTC_setStatus('idle');
-          RTC_setButtons({ canStart: true, canEnd: false }); // will be disabled by presence if alone
+          // Keep selection so caller can re-dial quickly (optional to clear)
+          RTC_setButtons({ canStart: !!__activePeerId, canEnd: false });
           RTC_setMicButton({ enabled: false, muted: false });
           RTC_setVideoButton({ enabled: false, on: false });
         }
       });
-    }
+    };
 
+    /* Top-level button wiring */
     RTC_bindActions({
-      onStart: async () => { await startCall(); },
+      onStart: async () => {
+        if (RTC_isStarted()) return;
+
+        // Pick one other deterministically (first in presence list)
+        const me = safeReadLocalUser();
+        const myId = me?.user_id != null ? String(me.user_id) : null;
+        const others = (__presence.participants || []).filter(p => !myId || String(p.user_id) !== myId);
+
+        if (!others.length) {
+          alert('No one else is here to call.');
+          return;
+        }
+
+        const chosen = others[0];
+        __activePeerId = chosen.clientId || null;
+        __activePeerName = (chosen.username || 'Remote').trim();
+        RTC_setRemoteLabel(__activePeerName);
+
+        await startCall();
+      },
+
       onEnd: () => {
         RTC_teardownAll();
         RTC_setStatus('idle');
-        RTC_setButtons({ canStart: true, canEnd: false });
+        // You can clear the active peer if you prefer:
+        // __activePeerId = null;
+        // __activePeerName = null;
+        RTC_setButtons({ canStart: !!__activePeerId, canEnd: false });
         RTC_setMicButton({ enabled: false, muted: false });
         RTC_setVideoButton({ enabled: false, on: false });
       },
+
       onToggleMic: (currentlyMuted) => {
-        const targetEnabled = currentlyMuted ? true : false;
-        const isEnabledNow = RTC_setMicEnabled(targetEnabled);
-        RTC_setMicButton({ enabled: true, muted: !isEnabledNow });
+        const wantEnabled = currentlyMuted ? true : false;
+        const nowEnabled = RTC_setMicEnabled(wantEnabled);
+        RTC_setMicButton({ enabled: true, muted: !nowEnabled });
       }
     });
 
