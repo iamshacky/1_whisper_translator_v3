@@ -26,10 +26,11 @@ export function RTC_setupSignaling(roomId) {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   const clientId = crypto.randomUUID();
 
-  // 🧭 DEBUG: who am I?
   console.log('[RTC] signaling clientId =', clientId, 'room =', roomId);
 
-  const ws = new WebSocket(`${protocol}://${location.host}/ws?room=${encodeURIComponent(roomId)}&clientId=${encodeURIComponent(clientId)}`);
+  const ws = new WebSocket(
+    `${protocol}://${location.host}/ws?room=${encodeURIComponent(roomId)}&clientId=${encodeURIComponent(clientId)}`
+  );
 
   const signalHandlers = new Set();    // ({from, payload})
   const presenceHandlers = new Set();  // ({participants})
@@ -39,20 +40,16 @@ export function RTC_setupSignaling(roomId) {
       const msg = JSON.parse(ev.data);
 
       if (msg?.kind === 'webrtc-signal' && msg.room === roomId && msg.from !== clientId) {
-        const p = msg.payload || {};
-        const toId = p.__to || null;
-
-        // 🧭 DEBUG: what did we receive and who is it for?
-        console.log('[RTC] onmessage: webrtc-signal from=', msg.from, 'to=', toId || '(broadcast)', 'type=', p?.type || Object.keys(p));
-
-        if (toId && toId !== clientId) return;  // not for me → ignore
-        signalHandlers.forEach(h => h({ from: msg.from, payload: p }));
+        // Broadcast mode: deliver everything (offer/answer/candidates) to everyone else.
+        signalHandlers.forEach(h => h({ from: msg.from, payload: msg.payload || {} }));
       }
 
       if (msg?.kind === 'presence-sync' && msg.room === roomId) {
         presenceHandlers.forEach(h => h({ participants: msg.participants || [] }));
       }
-    } catch {}
+    } catch (e) {
+      console.warn('[RTC] signaling onmessage parse error:', e);
+    }
   };
 
   function send(kind, data = {}) {
@@ -64,15 +61,10 @@ export function RTC_setupSignaling(roomId) {
     }
   }
 
-  // 🎯 embed target into payload (__to) — server relays as-is
-  function sendSignal(payload, to = null) {
-    // ⬇️ NEW: make sure we keep type/sdp/candidate properties
-    const base = normalizeSignalPayload(payload);
-    if (to) base.__to = to;
-
-    console.log('[RTC] sendSignal:', base?.type || Object.keys(base), '→ to:', to || '(broadcast)');
-
-    send('webrtc-signal', { payload: base });
+  function sendSignal(payload) {
+    // Broadcast to room (server relays to everyone except me)
+    console.log('[RTC] sendSignal:', payload?.type || Object.keys(payload || {}));
+    send('webrtc-signal', { payload });
   }
 
   function sendPresenceJoin({ user_id = null, username = 'Someone' } = {}) {
@@ -96,4 +88,3 @@ export function RTC_setupSignaling(roomId) {
   return { sendSignal, onSignal, sendPresenceJoin, requestPresenceSnapshot, onPresence, clientId, ws };
 }
 /* End__tunnel_target_inside_payload_and_filter_on_receive */
-

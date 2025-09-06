@@ -74,8 +74,11 @@ function createPeer() {
       const audioEl = document.getElementById('rtc-remote-audio');
       if (audioEl && audioEl.srcObject !== remoteStream) {
         audioEl.srcObject = remoteStream;
-        // attempt autoplay (helps on some platforms)
-        audioEl.play?.().catch(()=>{});
+        audioEl.muted = false;
+        audioEl.volume = 1;
+        audioEl.play?.().then(() => {
+          console.log('🔊 Remote audio attached + playing');
+        }).catch(err => console.log('🔇 Audio play() was blocked:', err));
       }
     }
 
@@ -120,14 +123,12 @@ function createPeer() {
   // ✅ perfect-negotiation-friendly
   pc.onnegotiationneeded = async () => {
     if (!pc) return;
-
-    // 🧯 NEW: only negotiate when truly stable (prevents "have-remote-offer" crashes on the callee)
-    if (_makingOffer || _isSettingRemoteAnswerPending || pc.signalingState !== 'stable') {
-      console.log('📡 negotiationneeded → skipped; state =', pc.signalingState,
-                  ' makingOffer=', _makingOffer, ' settingRemoteAnswerPending=', _isSettingRemoteAnswerPending);
+    if (pc.signalingState !== 'stable') {
+      console.log('⏭️ negotiationneeded skipped — signalingState =', pc.signalingState);
       return;
     }
 
+    if (_makingOffer) return; // guard against re-entrancy
     try {
       _makingOffer = true;
       console.log('📡 negotiationneeded → creating and sending offer');

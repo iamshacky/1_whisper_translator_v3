@@ -1,7 +1,3 @@
-// modules/webrtc/client/ui.js
-
-let __onCallPeer = null;
-
 export function RTC_mountUI() {
   if (document.getElementById('webrtc-area')) return;
 
@@ -52,8 +48,7 @@ export function RTC_mountUI() {
   }
 }
 
-export function RTC_bindActions({ onStart, onEnd, onToggleMic, onCallPeer }) {
-  __onCallPeer = onCallPeer || null;
+export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
 
   const startBtn = document.getElementById('rtc-start-btn');
   const endBtn   = document.getElementById('rtc-end-btn');
@@ -134,6 +129,7 @@ export function RTC_updateParticipants(list) {
     li.appendChild(nameSpan);
 
     // Add a Call button for other people (needs clientId from presence)
+    /*
     if (!isMe && p.clientId) {
       const callBtn = document.createElement('button');
       callBtn.textContent = 'Call';
@@ -145,6 +141,7 @@ export function RTC_updateParticipants(list) {
       };
       li.appendChild(callBtn);
     }
+    */
 
     ul.appendChild(li);
   });
