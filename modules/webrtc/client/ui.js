@@ -49,7 +49,6 @@ export function RTC_mountUI() {
 }
 
 export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
-
   const startBtn = document.getElementById('rtc-start-btn');
   const endBtn   = document.getElementById('rtc-end-btn');
   const micBtn   = document.getElementById('rtc-mic-btn');
@@ -102,8 +101,6 @@ export function RTC_setStatus(state) {
   el.textContent = state;
 }
 
-/* Start__participants_with_call_buttons */
-/** 🧑‍🤝‍🧑 Render participants and expose a "Call" button for others. */
 export function RTC_updateParticipants(list) {
   const countEl = document.getElementById('rtc-part-count');
   const ul = document.getElementById('rtc-part-list');
@@ -128,25 +125,9 @@ export function RTC_updateParticipants(list) {
     nameSpan.textContent = isMe ? `${name} (you)` : name;
     li.appendChild(nameSpan);
 
-    // Add a Call button for other people (needs clientId from presence)
-    /*
-    if (!isMe && p.clientId) {
-      const callBtn = document.createElement('button');
-      callBtn.textContent = 'Call';
-      callBtn.style.padding = '2px 8px';
-      callBtn.style.fontSize = '0.9rem';
-      callBtn.onclick = () => {
-        console.log('[RTC UI] Call clicked →', p.clientId, name);
-        __onCallPeer?.({ clientId: p.clientId, username: name });
-      };
-      li.appendChild(callBtn);
-    }
-    */
-
     ul.appendChild(li);
   });
 }
-/* End__participants_with_call_buttons */
 
 function safeReadLocalUser() {
   try { return JSON.parse(localStorage.getItem('whisper-user') || 'null'); }
@@ -398,6 +379,11 @@ export function RTC_setVideoButton({ enabled, on }) {
 // start__UI_setVideoTileLabel
 export function UI_setVideoTileLabel(tileId, label) {
   try {
+    // Preferred: id-based (matches UI_addVideoTile)
+    const byId = document.getElementById(`rtc-tile-${tileId}-name`);
+    if (byId) { byId.textContent = label; return; }
+
+    // Fallback: data-attribute selector (if you ever add it)
     const tile = document.querySelector(`[data-tile-id="${tileId}"]`);
     if (!tile) return;
     const cap = tile.querySelector('.rtc-tile-label') || tile.querySelector('[data-role="rtc-tile-label"]');

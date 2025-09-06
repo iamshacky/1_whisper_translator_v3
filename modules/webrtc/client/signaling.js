@@ -25,31 +25,23 @@ function normalizeSignalPayload(p) {
 export function RTC_setupSignaling(roomId) {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   const clientId = crypto.randomUUID();
+  const ws = new WebSocket(`${protocol}://${location.host}/ws?room=${encodeURIComponent(roomId)}&clientId=${encodeURIComponent(clientId)}`);
 
-  console.log('[RTC] signaling clientId =', clientId, 'room =', roomId);
-
-  const ws = new WebSocket(
-    `${protocol}://${location.host}/ws?room=${encodeURIComponent(roomId)}&clientId=${encodeURIComponent(clientId)}`
-  );
-
-  const signalHandlers = new Set();    // ({from, payload})
-  const presenceHandlers = new Set();  // ({participants})
+  const signalHandlers = new Set();
+  const presenceHandlers = new Set();
 
   ws.onmessage = (ev) => {
     try {
       const msg = JSON.parse(ev.data);
 
       if (msg?.kind === 'webrtc-signal' && msg.room === roomId && msg.from !== clientId) {
-        // Broadcast mode: deliver everything (offer/answer/candidates) to everyone else.
         signalHandlers.forEach(h => h({ from: msg.from, payload: msg.payload || {} }));
       }
 
       if (msg?.kind === 'presence-sync' && msg.room === roomId) {
         presenceHandlers.forEach(h => h({ participants: msg.participants || [] }));
       }
-    } catch (e) {
-      console.warn('[RTC] signaling onmessage parse error:', e);
-    }
+    } catch {}
   };
 
   function send(kind, data = {}) {
@@ -62,8 +54,6 @@ export function RTC_setupSignaling(roomId) {
   }
 
   function sendSignal(payload) {
-    // Broadcast to room (server relays to everyone except me)
-    console.log('[RTC] sendSignal:', payload?.type || Object.keys(payload || {}));
     send('webrtc-signal', { payload });
   }
 

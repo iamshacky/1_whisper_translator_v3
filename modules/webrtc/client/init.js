@@ -1,3 +1,5 @@
+import { UI_updateVideoLabel } from './ui.js';
+
 // start__bind_video_actions_and_presence_labels
 import {
   RTC_mountUI,
@@ -34,24 +36,23 @@ function safeReadLocalUser() {
 
 export async function RTC__initClient(roomId) {
   try {
-    // Basic UI state
     RTC_mountUI();
     RTC_ensureVideoButton();
     RTC_setStatus('idle');
-    RTC_setButtons({ canStart: true, canEnd: false });
+    RTC_setButtons({ canStart: false, canEnd: false }); // enabled when ≥2 participants
     RTC_setMicButton({ enabled: false, muted: false });
     RTC_setVideoButton({ enabled: false, on: false });
 
-    // Wire signaling
     const {
       sendSignal, onSignal,
       sendPresenceJoin, requestPresenceSnapshot, onPresence
     } = RTC_setupSignaling(roomId);
 
-    // Presence → list + nice remote label (for the single “remote” tile)
+    // Presence: enable Start when there is at least one other participant in the room
     onPresence(({ participants }) => {
       RTC_updateParticipants(participants || []);
 
+      // Derive a friendly remote label and push it through
       const me = safeReadLocalUser();
       const myId = me?.user_id != null ? String(me.user_id) : null;
       const others = (participants || []).filter(p => !myId || String(p.user_id) !== myId);
@@ -63,55 +64,51 @@ export async function RTC__initClient(roomId) {
         const first = (others[0].username || 'Remote').trim();
         label = `${first} +${others.length - 1}`;
       }
-      RTC_setRemoteLabel(label);
+
+      RTC_setRemoteLabel(label);         // used by connection.js when adding the remote tile
+      try { UI_updateVideoLabel('remote', label); } catch {}  // live-update if tile already exists
+
+      if (!RTC_isStarted()) {
+        const canStart = others.length >= 1;
+        RTC_setButtons({ canStart, canEnd: false });
+      }
     });
 
-    // Join presence and ask for a snapshot
     const me = safeReadLocalUser();
     sendPresenceJoin({ user_id: me?.user_id ?? null, username: me?.username || 'Someone' });
     requestPresenceSnapshot();
 
-    // 👉 Only intercept offers when we are NOT in a call to show Accept/Decline.
-    // Once the call starts, we let RTC_start's internal onSignal handler manage everything.
+    // Incoming offers/candidates when we are not started yet
     let pendingOffer = null;
     const pendingCandidates = [];
 
-    const unsubscribe = onSignal(({ payload, from }) => {
-      if (!payload) return;
+    const unsubscribeSignal = onSignal(async ({ payload, from }) => {
+      try {
+        if (payload?.type === 'offer' && !RTC_isStarted()) {
+          pendingOffer = payload;
 
-      if (payload.type === 'offer' && !RTC_isStarted()) {
-        console.log('[RTC] OFFER received from', from, '— showing Accept prompt');
-        pendingOffer = payload;
-
-        RTC_showIncomingPrompt({
-          fromId: from,
-          onAccept: async () => {
-            try {
-              console.log('[RTC] Accept clicked — starting as polite callee');
+          RTC_showIncomingPrompt({
+            fromId: from,
+            onAccept: async () => {
               RTC_hideIncomingPrompt();
               await startCall({ inboundOffer: pendingOffer, pendingCandidates });
-            } catch (e) {
-              console.warn('[RTC] Accept failed:', e);
-            } finally {
+              pendingOffer = null;
+              pendingCandidates.length = 0;
+            },
+            onDecline: () => {
+              RTC_hideIncomingPrompt();
               pendingOffer = null;
               pendingCandidates.length = 0;
             }
-          },
-          onDecline: () => {
-            console.log('[RTC] Declined incoming call from', from);
-            RTC_hideIncomingPrompt();
-            pendingOffer = null;
-            pendingCandidates.length = 0;
-          }
-        });
-      } else if (payload.candidate && !RTC_isStarted()) {
-        // Pre-call ICE that arrives after the offer, queue it until Accept
-        if (pendingOffer) pendingCandidates.push(payload);
+          });
+        } else if (payload?.candidate && !RTC_isStarted()) {
+          pendingCandidates.push(payload);
+        }
+      } catch (e) {
+        console.warn('[RTC] signaling error:', e);
       }
-      // NOTE: When a call is running, RTC_start handles offer/answer/candidates.
     });
 
-    // Call starter
     async function startCall({ inboundOffer = null, pendingCandidates = [] } = {}) {
       RTC_setStatus('connecting');
       RTC_setButtons({ canStart: false, canEnd: true });
@@ -120,21 +117,17 @@ export async function RTC__initClient(roomId) {
 
       await RTC_start({
         roomId,
-        // IMPORTANT: broadcast-only signaling (no targeting)
-        sendSignal,
-        onSignal,
+        sendSignal,            // ← broadcast; server fan-outs to room
+        onSignal,              // ← plain subscription
         inboundOffer,
         pendingCandidates,
-        onConnecting: () => {
-          // UI already set above
-        },
+        onConnecting: () => {},
         onConnected: () => {
           RTC_setStatus('connected');
           RTC_setButtons({ canStart: false, canEnd: true });
           RTC_setMicButton({ enabled: true, muted: false });
           RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
 
-          // Wire the Start/Stop Video toggle
           const vidBtn = document.getElementById('rtc-video-btn');
           if (vidBtn) {
             vidBtn.onclick = async () => {
@@ -150,14 +143,13 @@ export async function RTC__initClient(roomId) {
         },
         onTeardown: () => {
           RTC_setStatus('idle');
-          RTC_setButtons({ canStart: true, canEnd: false });
+          RTC_setButtons({ canStart: true, canEnd: false }); // will be disabled by presence if alone
           RTC_setMicButton({ enabled: false, muted: false });
           RTC_setVideoButton({ enabled: false, on: false });
         }
       });
     }
 
-    // Top-level UI bindings
     RTC_bindActions({
       onStart: async () => { await startCall(); },
       onEnd: () => {
@@ -171,18 +163,13 @@ export async function RTC__initClient(roomId) {
         const targetEnabled = currentlyMuted ? true : false;
         const isEnabledNow = RTC_setMicEnabled(targetEnabled);
         RTC_setMicButton({ enabled: true, muted: !isEnabledNow });
-      },
-      // If your UI exposes per-participant “Call” buttons, we ignore them now
-      // because we’re back to broadcast-only. You can keep the button but it’ll no-op.
-      onCallPeer: () => {
-        alert('Direct calling is disabled in this build. Use “Start Call”.');
       }
     });
 
   } catch (err) {
     console.warn('RTC init failed:', err);
     RTC_setStatus('error');
-    RTC_setButtons({ canStart: true, canEnd: false });
+    RTC_setButtons({ canStart: false, canEnd: false });
     RTC_setMicButton({ enabled: false, muted: false });
     RTC_setVideoButton({ enabled: false, on: false });
   }
