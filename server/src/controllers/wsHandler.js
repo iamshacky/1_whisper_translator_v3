@@ -151,7 +151,8 @@ export function setupWebSocket(wss) {
           /* End wsHandler.js__insert_after_parsed_JSON */
 
 
-          // ⬇️ Pass-through for WebRTC signaling (scoped by ws.roomId)
+          /* Start wsHandler.js__selective_relay_by_to */
+          // If a 'to' is provided, relay ONLY to that client; else broadcast to room.
           if (parsed?.kind === 'webrtc-signal') {
             const payload = {
               kind: 'webrtc-signal',
@@ -160,13 +161,17 @@ export function setupWebSocket(wss) {
               payload: parsed.payload
             };
 
-            for (const client of rooms.get(ws.roomId || 'default') || []) {
-              if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(payload));
-              }
+            const targetId = parsed?.payload?.to || null;
+            const roomSet = rooms.get(ws.roomId || 'default') || new Set();
+
+            for (const client of roomSet) {
+              if (client === ws || client.readyState !== WebSocket.OPEN) continue;
+              if (targetId && client.clientId !== targetId) continue; // 👈 selective
+              client.send(JSON.stringify(payload));
             }
             return; // do not treat as chat message
           }
+          /* End wsHandler.js__selective_relay_by_to */
 
           /* Start wsHandler.js__presence_after_parsed */
           // 🧭 Presence: join/leave/snapshot (blocked for deleted/unregistered rooms)

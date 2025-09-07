@@ -35,12 +35,168 @@ let _videoSender = null;
 let _localVideoTrack = null;
 let _cameraOn = false;
 
+// Remote label helpers
+let _remoteLabel = 'Remote';
+
 export function RTC_isStarted() { return _started; }
 export function RTC_isCameraOn() { return _cameraOn; }
 
-// start__remote_label_helpers
-let _remoteLabel = 'Remote';
+// start__multi_peer_top_level_state
+// 🔢 Multi-peer state
+const pcByPeer = new Map();              // peerId -> RTCPeerConnection
+const remoteStreamByPeer = new Map();    // peerId -> MediaStream
+const pendingICEByPeer = new Map();      // peerId -> RTCIceCandidateInit[]
+const politeByPeer = new Map();          // peerId -> boolean (perfect negotiation)
 
+// Reuse your existing sendSignal; we’ll call it with {from,to}
+function sendTo(peerId, payload) {
+  _sendSignal?.({ ...payload, to: peerId });
+}
+
+function ensurePending(peerId) {
+  if (!pendingICEByPeer.has(peerId)) pendingICEByPeer.set(peerId, []);
+  return pendingICEByPeer.get(peerId);
+}
+
+function ensurePeerConnection(peerId) {
+  if (pcByPeer.has(peerId)) return pcByPeer.get(peerId);
+
+  const pcX = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+
+  pcX.onicecandidate = (e) => {
+    if (e.candidate) sendTo(peerId, e.candidate.toJSON());
+  };
+
+  pcX.ontrack = (e) => {
+    let stream = remoteStreamByPeer.get(peerId);
+    if (!stream) {
+      stream = new MediaStream();
+      remoteStreamByPeer.set(peerId, stream);
+    }
+    stream.addTrack(e.track);
+
+    if (e.track.kind === 'audio') {
+      const audioEl = document.getElementById('rtc-remote-audio');
+      if (audioEl && audioEl.srcObject !== stream) audioEl.srcObject = stream;
+    }
+    if (e.track.kind === 'video') {
+      UI_addVideoTile(peerId, stream, { label: _remoteLabel, muted: true });
+    }
+  };
+
+  pcX.onconnectionstatechange = () => {
+    if (pcX.connectionState === 'connected') _onConnected?.();
+    if (pcX.connectionState === 'failed' || pcX.connectionState === 'closed') {
+      try { UI_removeVideoTile?.(peerId); } catch {}
+    }
+  };
+
+  // Negotiation needed per peer
+  pcX.onnegotiationneeded = async () => {
+    try {
+      const offer = await pcX.createOffer();
+      await pcX.setLocalDescription(offer);
+      sendTo(peerId, pcX.localDescription);
+    } catch (e) { console.warn('negotiationneeded failed:', e); }
+  };
+
+  // Attach local senders/transceivers baseline
+  (async () => {
+    await ensureBaseTransceivers(); // your existing function
+    // Add local tracks to this pc
+    localStream?.getTracks?.().forEach(t => pcX.addTrack(t, localStream));
+  })().catch(()=>{});
+
+  pcByPeer.set(peerId, pcX);
+  return pcX;
+}
+
+function closePeer(peerId) {
+  const pcX = pcByPeer.get(peerId);
+  try { pcX?.getSenders?.().forEach(s => s.track && s.track.stop?.()); } catch {}
+  try { pcX?.close?.(); } catch {}
+  pcByPeer.delete(peerId);
+  remoteStreamByPeer.delete(peerId);
+  pendingICEByPeer.delete(peerId);
+  politeByPeer.delete(peerId);
+  try { UI_removeVideoTile?.(peerId); } catch {}
+}
+// end__multi_peer_top_level_state
+
+// start__RTC_startPeer
+// doesn’t remove your existing RTC_start; init.js will use this
+export async function RTC_startPeer(peerId, { inboundOffer = null, pendingCandidates = [] } = {}) {
+  _started = true;                 // global “we have at least one call” flag
+  _onConnecting?.();
+
+  const pcX = ensurePeerConnection(peerId);
+  politeByPeer.set(peerId, !!inboundOffer);
+
+  // If we already have an offer (callee path)
+  if (inboundOffer) {
+    await pcX.setRemoteDescription(inboundOffer);
+    const answer = await pcX.createAnswer();
+    await pcX.setLocalDescription(answer);
+    sendTo(peerId, pcX.localDescription);
+
+    const bucket = ensurePending(peerId);
+    for (const cand of [...pendingCandidates, ...bucket]) {
+      try { await pcX.addIceCandidate(cand); } catch {}
+    }
+    bucket.length = 0;
+  } else {
+    // caller path → onnegotiationneeded will send the offer
+    // but we kick it if stable and no LD yet (safety)
+    if (!pcX.localDescription && pcX.signalingState === 'stable') {
+      const offer = await pcX.createOffer();
+      await pcX.setLocalDescription(offer);
+      sendTo(peerId, pcX.localDescription);
+    }
+  }
+}
+// end__RTC_startPeer
+
+// start__RTC_handleSignal_for_peer
+// init.js will call it from onSignal
+export async function RTC_handleSignal({ from, to, payload }) {
+  if (!payload) return;
+  const peerId = from; // signals *from* the remote
+
+  const pcX = ensurePeerConnection(peerId);
+  const polite = !!politeByPeer.get(peerId);
+
+  if (payload?.type === 'offer') {
+    const offerCollision = pcX.signalingState !== 'stable';
+    const ignore = !polite && offerCollision;
+    if (ignore) return;
+
+    if (offerCollision) {
+      try { await pcX.setLocalDescription({ type: 'rollback' }); } catch {}
+    }
+
+    await pcX.setRemoteDescription(payload);
+    const answer = await pcX.createAnswer();
+    await pcX.setLocalDescription(answer);
+    sendTo(peerId, pcX.localDescription);
+    return;
+  }
+
+  if (payload?.type === 'answer') {
+    await pcX.setRemoteDescription(payload);
+    return;
+  }
+
+  if (payload?.candidate) {
+    try {
+      await pcX.addIceCandidate(payload);
+    } catch {
+      ensurePending(peerId).push(payload);
+    }
+  }
+}
+// end__RTC_handleSignal_for_peer
+
+// start__remote_label_helpers
 export function RTC_setRemoteLabel(name) {
   _remoteLabel = (name && String(name).trim()) || 'Remote';
   try {
@@ -74,11 +230,8 @@ function createPeer() {
       const audioEl = document.getElementById('rtc-remote-audio');
       if (audioEl && audioEl.srcObject !== remoteStream) {
         audioEl.srcObject = remoteStream;
-        audioEl.muted = false;
-        audioEl.volume = 1;
-        audioEl.play?.().then(() => {
-          console.log('🔊 Remote audio attached + playing');
-        }).catch(err => console.log('🔇 Audio play() was blocked:', err));
+        // attempt autoplay (helps on some platforms)
+        audioEl.play?.().catch(()=>{});
       }
     }
 
@@ -123,11 +276,6 @@ function createPeer() {
   // ✅ perfect-negotiation-friendly
   pc.onnegotiationneeded = async () => {
     if (!pc) return;
-    if (pc.signalingState !== 'stable') {
-      console.log('⏭️ negotiationneeded skipped — signalingState =', pc.signalingState);
-      return;
-    }
-
     if (_makingOffer) return; // guard against re-entrancy
     try {
       _makingOffer = true;
@@ -427,17 +575,10 @@ export function RTC_teardownAll() {
   try { _unsubscribeSignal?.(); } catch {}
   _unsubscribeSignal = null;
 
-  try {
-    if (pc) {
-      pc.getSenders().forEach(s => s.track && s.track.stop());
-      pc.close();
-    }
-  } catch {}
-  pc = null;
+  for (const id of Array.from(pcByPeer.keys())) closePeer(id);
 
   stopLevelMeter();
-
-  try { localStream?.getTracks()?.forEach(t => t.stop()); } catch {}
+  try { localStream?.getTracks?.().forEach(t => t.stop()); } catch {}
   localStream = null;
 
   try {
@@ -445,8 +586,8 @@ export function RTC_teardownAll() {
     if (audioEl) audioEl.srcObject = null;
   } catch {}
 
+  // Clear single-tile remnants if any
   UI_removeVideoTile?.('local');
-  UI_removeVideoTile?.('remote');
 
   _cameraOn = false;
   _localVideoTrack = null;
@@ -454,11 +595,6 @@ export function RTC_teardownAll() {
   _videoTx = null;
   _audioSender = null;
 
-  _makingOffer = false;
-  _ignoreOffer = false;
-  _isSettingRemoteAnswerPending = false;
-  
-    // Clear audio watchdog
   try { clearInterval(window.__rtcAudioWatchdog); } catch {}
   window.__rtcAudioWatchdog = null;
 

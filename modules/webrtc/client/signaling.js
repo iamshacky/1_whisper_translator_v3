@@ -1,43 +1,25 @@
-/* Start__targeted_signaling_support */
-// Allow addressing a specific peer (to) and ignore signals not meant for me.
+// start__targeted_signaling_with_to
+// modules/webrtc/client/signaling.js
+// Single WS for signaling + presence, now with {from,to} routing.
 
-// Put this above RTC_setupSignaling (or inside, above sendSignal)
-function normalizeSignalPayload(p) {
-  if (!p) return {};
-  // SDP offer/answer (RTCSessionDescription or init-like)
-  if (typeof p === 'object' && ('sdp' in p || 'type' in p)) {
-    return { type: p.type, sdp: p.sdp };
-  }
-  // ICE candidate (ensure plain init shape)
-  if (typeof p === 'object' && ('candidate' in p || 'sdpMid' in p || 'sdpMLineIndex' in p || 'usernameFragment' in p)) {
-    return {
-      candidate: p.candidate ?? null,
-      sdpMid: p.sdpMid ?? null,
-      sdpMLineIndex: p.sdpMLineIndex ?? null,
-      usernameFragment: p.usernameFragment ?? null
-    };
-  }
-  // Last resort: deep-clone to strip prototypes/non-enumerables where possible
-  try { return JSON.parse(JSON.stringify(p)); } catch { return { ...p }; }
-}
-
-/* Start__tunnel_target_inside_payload_and_filter_on_receive */
 export function RTC_setupSignaling(roomId) {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
   const clientId = crypto.randomUUID();
   const ws = new WebSocket(`${protocol}://${location.host}/ws?room=${encodeURIComponent(roomId)}&clientId=${encodeURIComponent(clientId)}`);
 
-  const signalHandlers = new Set();
-  const presenceHandlers = new Set();
+  const signalHandlers = new Set();    // ({from, to, payload})
+  const presenceHandlers = new Set();  // ({participants})
 
   ws.onmessage = (ev) => {
     try {
       const msg = JSON.parse(ev.data);
-      if (msg?.kind === 'webrtc-signal' && msg.room === roomId && msg.from !== clientId) {
-        const p = msg.payload || {};
-        const toId = p.__to || null;
-        if (toId && toId !== clientId) return;   // 👈 ignore, not for me
-        signalHandlers.forEach(h => h({ from: msg.from, payload: p }));
+
+      if (msg?.kind === 'webrtc-signal' && msg.room === roomId) {
+        // deliver only if targeted to me (or broadcast with no 'to')
+        const to = msg.payload?.to || null;
+        if (!to || to === clientId) {
+          signalHandlers.forEach(h => h({ from: msg.from, to, payload: msg.payload }));
+        }
       }
 
       if (msg?.kind === 'presence-sync' && msg.room === roomId) {
@@ -48,17 +30,14 @@ export function RTC_setupSignaling(roomId) {
 
   function send(kind, data = {}) {
     const base = { kind, room: roomId, from: clientId, ...data };
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(base));
-    } else {
-      ws.addEventListener('open', () => ws.send(JSON.stringify(base)), { once: true });
-    }
+    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(base));
+    else ws.addEventListener('open', () => ws.send(JSON.stringify(base)), { once: true });
   }
 
+  // 👉 Now supports optional 'to'
   function sendSignal(payload, to = null) {
-    const out = { ...(payload || {}) };
-    if (to) out.__to = to;           // 👈 tunnel target
-    ws.send(JSON.stringify({ kind: 'webrtc-signal', room: roomId, from: clientId, payload: out }));
+    const enriched = to ? { ...payload, to } : payload;
+    send('webrtc-signal', { payload: enriched });
   }
 
   function sendPresenceJoin({ user_id = null, username = 'Someone' } = {}) {
@@ -81,4 +60,4 @@ export function RTC_setupSignaling(roomId) {
 
   return { sendSignal, onSignal, sendPresenceJoin, requestPresenceSnapshot, onPresence, clientId, ws };
 }
-/* End__tunnel_target_inside_payload_and_filter_on_receive */
+// end__targeted_signaling_with_to

@@ -1,3 +1,5 @@
+// modules/webrtc/client/ui.js
+
 export function RTC_mountUI() {
   if (document.getElementById('webrtc-area')) return;
 
@@ -101,6 +103,7 @@ export function RTC_setStatus(state) {
   el.textContent = state;
 }
 
+// start__ui_expose_last_presence
 export function RTC_updateParticipants(list) {
   const countEl = document.getElementById('rtc-part-count');
   const ul = document.getElementById('rtc-part-list');
@@ -114,20 +117,16 @@ export function RTC_updateParticipants(list) {
 
   (list || []).forEach(p => {
     const li = document.createElement('li');
-    li.style.display = 'flex';
-    li.style.alignItems = 'center';
-    li.style.gap = '6px';
-
     const name = (p.username || 'Someone').trim();
     const isMe = meId && p.user_id && String(meId) === String(p.user_id);
-
-    const nameSpan = document.createElement('span');
-    nameSpan.textContent = isMe ? `${name} (you)` : name;
-    li.appendChild(nameSpan);
-
+    li.textContent = isMe ? `${name} (you)` : name;
     ul.appendChild(li);
   });
+
+  // 👇 expose for fan-out
+  window.__lastPresence = list || [];
 }
+// end__ui_expose_last_presence
 
 function safeReadLocalUser() {
   try { return JSON.parse(localStorage.getItem('whisper-user') || 'null'); }
@@ -379,11 +378,6 @@ export function RTC_setVideoButton({ enabled, on }) {
 // start__UI_setVideoTileLabel
 export function UI_setVideoTileLabel(tileId, label) {
   try {
-    // Preferred: id-based (matches UI_addVideoTile)
-    const byId = document.getElementById(`rtc-tile-${tileId}-name`);
-    if (byId) { byId.textContent = label; return; }
-
-    // Fallback: data-attribute selector (if you ever add it)
     const tile = document.querySelector(`[data-tile-id="${tileId}"]`);
     if (!tile) return;
     const cap = tile.querySelector('.rtc-tile-label') || tile.querySelector('[data-role="rtc-tile-label"]');
