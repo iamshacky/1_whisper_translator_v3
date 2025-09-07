@@ -40,7 +40,7 @@ export function RTC_mountUI() {
     </details>
 
     <audio id="rtc-remote-audio" autoplay playsinline></audio>
-  `;
+  `; // ✅ backtick, not a double-quote
 
   const settingsContainer = document.getElementById('settings-container');
   if (settingsContainer) {
@@ -50,6 +50,7 @@ export function RTC_mountUI() {
   }
 }
 
+// start__RTC_bindActions_debug_and_delegate
 export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
   const startBtn = document.getElementById('rtc-start-btn');
   const endBtn   = document.getElementById('rtc-end-btn');
@@ -96,6 +97,7 @@ export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
     }
   }, true);
 }
+// end__RTC_bindActions_debug_and_delegate
 
 export function RTC_setButtons({ canStart, canEnd }) {
   const startBtn = document.getElementById('rtc-start-btn');
@@ -123,11 +125,13 @@ export function RTC_setStatus(state) {
 export function RTC_setStartActive(active) {
   const startBtn = document.getElementById('rtc-start-btn');
   if (!startBtn) return;
+  // Blue default
   const blue = '#007bff';
   const green = '#28a745';
   startBtn.style.background = active ? green : blue;
 }
 
+// start__ui_expose_last_presence
 export function RTC_updateParticipants(list) {
   const countEl = document.getElementById('rtc-part-count');
   const ul = document.getElementById('rtc-part-list');
@@ -150,6 +154,7 @@ export function RTC_updateParticipants(list) {
   // expose for other modules (connection.js can label tiles ontrack)
   window.__lastPresence = list || [];
 }
+// end__ui_expose_last_presence
 
 function safeReadLocalUser() {
   try { return JSON.parse(localStorage.getItem('whisper-user') || 'null'); }
@@ -175,7 +180,9 @@ export function RTC_hideIncomingPrompt() {
   box.style.display = 'none';
 }
 
-// ---------- Video grid ----------
+
+// start__UI_video_grid_mount_and_tile_helpers
+/** Mount (or get) a responsive video grid inside the WebRTC panel */
 function UI_getOrCreateVideoGrid() {
   const host = document.getElementById('webrtc-area');
   if (!host) return null;
@@ -195,6 +202,7 @@ function UI_getOrCreateVideoGrid() {
   return grid;
 }
 
+/* Start__peer_audio_state_helpers */
 const _peerAudioState = new Map(); // key -> { volume: 0..1, muted: boolean }
 
 function __getRemoteAudioEl() {
@@ -210,7 +218,9 @@ function __applyPeerAudioState(peerKey) {
     audioEl.play?.().catch(() => {});
   }
 }
+/* End__peer_audio_state_helpers */
 
+/* Start__UI_addVideoTile_with_per_peer_volume_and_mute */
 export function UI_addVideoTile(peerKey, stream, opts = {}) {
   const grid = UI_getOrCreateVideoGrid();
   if (!grid) return;
@@ -346,6 +356,7 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     if (v) v.muted = true;
   }
 }
+/* End__UI_addVideoTile_with_per_peer_volume_and_mute */
 
 export function UI_removeVideoTile(peerKey) {
   const id = `rtc-tile-${peerKey}`;
@@ -383,7 +394,7 @@ export function RTC_setVideoButton({ enabled, on }) {
   btn.textContent = on ? 'Stop Video' : 'Start Video';
 }
 
-// Optional helper kept for compatibility with earlier code paths
+// start__UI_setVideoTileLabel
 export function UI_setVideoTileLabel(tileId, label) {
   try {
     const tile = document.querySelector(`[data-tile-id="${tileId}"]`);
@@ -392,3 +403,4 @@ export function UI_setVideoTileLabel(tileId, label) {
     if (cap) cap.textContent = label;
   } catch {}
 }
+// end__UI_setVideoTileLabel
