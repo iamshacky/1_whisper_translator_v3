@@ -1,6 +1,6 @@
 // modules/webrtc/client/connection.js
 // Multi-peer WebRTC mesh with stable m-line order, perfect negotiation,
-// and lazy camera toggle. One RTCPeerConnection per peerId.
+// auto-rejoin hooks, and lazy camera toggle. One RTCPeerConnection per peerId.
 
 import { UI_addVideoTile, UI_removeVideoTile, RTC_setStartActive } from './ui.js';
 
@@ -19,6 +19,7 @@ let _cameraOn = false;
 
 let _sendSignal = null;
 let _started = false;
+let _selfId = null; // used for deterministic “polite” selection
 
 // 🔔 external subscriber for “mesh went idle”
 let _onMeshIdle = null;
@@ -39,14 +40,19 @@ function anyPeerConnected() {
   return Array.from(pcByPeer.values()).some(pc => pc.connectionState === 'connected');
 }
 
-function recomputeStartActive() {
-  const anyConnected = anyPeerConnected();
-  RTC_setStartActive(anyConnected);
+function anyPeerConnecting() {
+  return Array.from(pcByPeer.values()).some(pc =>
+    pc.connectionState === 'connecting' || pc.connectionState === 'new'
+  );
+}
 
-  // If no one is connected AND no one is even trying, tell UI to go idle.
-  const hasConnecting = Array.from(pcByPeer.values())
-    .some(pc => pc.connectionState === 'connecting' || pc.connectionState === 'new');
-  if (!anyConnected && !hasConnecting) {
+function recomputeStartActive() {
+  const connected = anyPeerConnected();
+  RTC_setStartActive(connected);
+
+  // If literally nothing connected/connecting, we’re idle.
+  if (!connected && !anyPeerConnecting()) {
+    _started = false; // ← important so future offers will show Accept, and Join will dial.
     _onMeshIdle?.();
   }
 }
@@ -59,6 +65,13 @@ function labelForPeer(peerId) {
   } catch {
     return 'Remote';
   }
+}
+
+function computePolite(peerId, inboundOffer = false) {
+  if (inboundOffer) return true;            // callee is polite for perfect negotiation
+  if (!_selfId) return false;
+  // Deterministic tie-break: the lexicographically larger id is polite
+  return String(_selfId) > String(peerId);
 }
 
 // --------------------------------------------
@@ -102,9 +115,6 @@ function ensurePeerConnection(peerId) {
   // --- State
   pc.onconnectionstatechange = () => {
     console.log(`[mesh] ${peerId} state:`, pc.connectionState);
-    // Update “Start” button and maybe trigger idle callback
-    recomputeStartActive();
-
     if (
       pc.connectionState === 'failed' ||
       pc.connectionState === 'closed' ||
@@ -112,6 +122,7 @@ function ensurePeerConnection(peerId) {
     ) {
       try { UI_removeVideoTile?.(peerId); } catch {}
     }
+    recomputeStartActive();
   };
 
   // --- Negotiation
@@ -141,7 +152,6 @@ function closePeer(peerId) {
   pendingICEByPeer.delete(peerId);
   politeByPeer.delete(peerId);
   try { UI_removeVideoTile?.(peerId); } catch {}
-  // Recompute button state after teardown (and possibly fire idle)
   recomputeStartActive();
 }
 
@@ -150,6 +160,10 @@ function closePeer(peerId) {
 // --------------------------------------------
 export function RTC_setSignalSender(fn) {
   _sendSignal = typeof fn === 'function' ? fn : null;
+}
+
+export function RTC_setSelfId(id) {
+  _selfId = id || null;
 }
 
 export function RTC_onMeshIdle(cb) {
@@ -165,7 +179,7 @@ export async function RTC_startPeer(peerId, { inboundOffer = null, pendingCandid
   _started = true;
 
   const pc = ensurePeerConnection(peerId);
-  politeByPeer.set(peerId, !!inboundOffer);
+  politeByPeer.set(peerId, computePolite(peerId, !!inboundOffer));
 
   if (inboundOffer) {
     await pc.setRemoteDescription(inboundOffer);
@@ -232,7 +246,6 @@ export function RTC_teardownAll() {
   _videoTx = null;
   _audioSender = null;
   _started = false;
-  // After everything is gone, ensure the Start button is blue and UI can reset on idle
   RTC_setStartActive(false);
 }
 

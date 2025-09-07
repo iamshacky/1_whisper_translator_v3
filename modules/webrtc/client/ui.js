@@ -50,13 +50,15 @@ export function RTC_mountUI() {
   }
 }
 
+// ── Main buttons ──────────────────────────────────────────────────────────────
 export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
   const startBtn = document.getElementById('rtc-start-btn');
   const endBtn   = document.getElementById('rtc-end-btn');
   const micBtn   = document.getElementById('rtc-mic-btn');
 
-  console.log('[webrtc/ui] binding actions:',
-    { hasStart: !!startBtn, hasEnd: !!endBtn, hasMic: !!micBtn });
+  console.log('[webrtc/ui] binding actions:', {
+    hasStart: !!startBtn, hasEnd: !!endBtn, hasMic: !!micBtn
+  });
 
   if (startBtn) {
     startBtn.onclick = async () => {
@@ -67,7 +69,7 @@ export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
       } catch (e) {
         console.warn('[webrtc/ui] Start failed:', e);
       } finally {
-        setTimeout(() => { try { startBtn.disabled = false; } catch {} }, 3000);
+        setTimeout(() => { try { startBtn.disabled = false; } catch {} }, 1500);
       }
     };
   }
@@ -87,7 +89,7 @@ export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
     };
   }
 
-  // 🔁 Safety net: if some UI re-render drops handlers, keep a delegated listener
+  // Fallback delegated listener
   document.addEventListener('click', (ev) => {
     const t = ev.target;
     if (t && t.id === 'rtc-start-btn' && !t.onclick) {
@@ -107,7 +109,6 @@ export function RTC_setButtons({ canStart, canEnd }) {
 export function RTC_setMicButton({ enabled, muted }) {
   const micBtn = document.getElementById('rtc-mic-btn');
   if (!micBtn) return;
-
   micBtn.disabled = !enabled;
   micBtn.dataset.muted = muted ? 'true' : 'false';
   micBtn.textContent = muted ? 'Unmute' : 'Mute';
@@ -119,30 +120,61 @@ export function RTC_setStatus(state) {
   el.textContent = state;
 }
 
-/** Make the Start button green when any peer is connected (local “in-call” indicator) */
-export function RTC_setStartActive(active) {
-  const startBtn = document.getElementById('rtc-start-btn');
-  if (!startBtn) return;
-  const blue = '#007bff';
-  const green = '#28a745';
-  startBtn.style.background = active ? green : blue;
+// ── Start/Video button helpers (kept for init.js compatibility) ───────────────
+function setBtnColor(btn, variant) {
+  if (!btn) return;
+  btn.style.background = (variant === 'green') ? '#28a745' : '#007bff';
 }
 
+export function RTC_setStartActive(active) {
+  const startBtn = document.getElementById('rtc-start-btn');
+  setBtnColor(startBtn, active ? 'green' : 'blue');
+}
+
+export function RTC_setStartLabel(text) {
+  const startBtn = document.getElementById('rtc-start-btn');
+  if (startBtn) startBtn.textContent = text;
+}
+
+// ✅ (Restored) Ensure a Start/Stop Video button exists next to Mute
+export function RTC_ensureVideoButton() {
+  const micBtn = document.getElementById('rtc-mic-btn');
+  if (!micBtn) return;
+
+  let vidBtn = document.getElementById('rtc-video-btn');
+  if (!vidBtn) {
+    vidBtn = document.createElement('button');
+    vidBtn.id = 'rtc-video-btn';
+    vidBtn.textContent = 'Start Video';
+    vidBtn.disabled = true;
+    micBtn.parentElement?.insertBefore(vidBtn, micBtn.nextSibling);
+  }
+}
+
+// ✅ (Restored) Control the state/label of the Start/Stop Video button
+export function RTC_setVideoButton({ enabled, on }) {
+  const btn = document.getElementById('rtc-video-btn');
+  if (!btn) return;
+  btn.disabled = !enabled;
+  btn.textContent = on ? 'Stop Video' : 'Start Video';
+}
+
+// ── Participants list ─────────────────────────────────────────────────────────
 export function RTC_updateParticipants(list) {
   const countEl = document.getElementById('rtc-part-count');
   const ul = document.getElementById('rtc-part-list');
   if (!countEl || !ul) return;
 
   const me = safeReadLocalUser();
-  const meId = me?.user_id ?? null;
+  const myId = me?.user_id ?? null;
 
   countEl.textContent = Array.isArray(list) ? String(list.length) : '0';
   ul.innerHTML = '';
 
   (list || []).forEach(p => {
     const li = document.createElement('li');
-    const displayName = (p.username || 'Someone').trim();
-    const isMe = meId && p.user_id && String(meId) === String(p.user_id);
+    const displayName = String(p?.username ?? 'Someone').trim();
+    const isMe = myId && p?.user_id && String(myId) === String(p.user_id);
     li.textContent = isMe ? `${displayName} (you)` : displayName;
     ul.appendChild(li);
   });
@@ -156,7 +188,7 @@ function safeReadLocalUser() {
   catch { return null; }
 }
 
-// Incoming call prompt UI
+// ── Incoming call prompt ──────────────────────────────────────────────────────
 export function RTC_showIncomingPrompt({ fromId, onAccept, onDecline }) {
   const box = document.getElementById('rtc-incoming');
   if (!box) return;
@@ -175,7 +207,8 @@ export function RTC_hideIncomingPrompt() {
   box.style.display = 'none';
 }
 
-// ---------- Video grid ----------
+// ── Video grid / tiles ───────────────────────────────────────────────────────
+
 function UI_getOrCreateVideoGrid() {
   const host = document.getElementById('webrtc-area');
   if (!host) return null;
@@ -248,9 +281,9 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     footer.style.padding = '6px 8px';
     footer.style.background = 'rgba(255,255,255,0.9)';
 
-    const labelEl = document.createElement('div');
-    labelEl.id = `${id}-name`;
-    labelEl.textContent = opts.label || (peerKey === 'local' ? 'You' : 'Remote');
+    const nameEl = document.createElement('div');
+    nameEl.id = `${id}-name`;
+    nameEl.textContent = opts.label || (peerKey === 'local' ? 'You' : 'Remote');
 
     const rightControls = document.createElement('div');
     rightControls.style.display = 'flex';
@@ -267,14 +300,14 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     };
 
     rightControls.appendChild(fsBtn);
-    footer.appendChild(labelEl);
+    footer.appendChild(nameEl);
     footer.appendChild(rightControls);
 
     tile.appendChild(video);
     tile.appendChild(footer);
     grid.appendChild(tile);
 
-    // 🔊 Per-remote controls (remote peers only)
+    // Per-remote controls
     if (peerKey !== 'local') {
       let controls = tile.querySelector('[data-role="peer-audio-controls"]');
       if (!controls) {
@@ -302,14 +335,12 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
         controls.appendChild(muteBtn);
         rightControls.insertBefore(controls, fsBtn);
 
-        // Initialize or restore state
         const state = _peerAudioState.get(peerKey) || { volume: 1, muted: false };
         _peerAudioState.set(peerKey, state);
         vol.value = String(Math.round(state.volume * 100));
         muteBtn.textContent = state.muted ? 'Unmute' : 'Mute';
         __applyPeerAudioState(peerKey);
 
-        // Wire up events
         vol.addEventListener('input', () => {
           const v = Math.max(0, Math.min(1, Number(vol.value) / 100));
           const curr = _peerAudioState.get(peerKey) || { volume: 1, muted: false };
@@ -329,18 +360,16 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     }
   }
 
-  // attach/refresh stream
   const videoEl = document.getElementById(`${id}-video`);
   if (videoEl && videoEl.srcObject !== stream) {
     videoEl.srcObject = stream;
   }
 
   if (opts.label) {
-    const labelEl = document.getElementById(`${id}-name`);
-    if (labelEl) labelEl.textContent = opts.label;
+    const nameEl = document.getElementById(`${id}-name`);
+    if (nameEl) nameEl.textContent = opts.label;
   }
 
-  // Final safety: keep remote video element muted
   if (peerKey !== 'local') {
     const v = document.getElementById(`${id}-video`);
     if (v) v.muted = true;
@@ -358,37 +387,6 @@ export function UI_removeVideoTile(peerKey) {
 }
 
 export function UI_updateVideoLabel(peerKey, label) {
-  const labelEl = document.getElementById(`rtc-tile-${peerKey}-name`);
-  if (labelEl) labelEl.textContent = label;
-}
-
-export function RTC_ensureVideoButton() {
-  const micBtn = document.getElementById('rtc-mic-btn');
-  if (!micBtn) return;
-
-  let vidBtn = document.getElementById('rtc-video-btn');
-  if (!vidBtn) {
-    vidBtn = document.createElement('button');
-    vidBtn.id = 'rtc-video-btn';
-    vidBtn.textContent = 'Start Video';
-    vidBtn.disabled = true;
-    micBtn.parentElement?.insertBefore(vidBtn, micBtn.nextSibling);
-  }
-}
-
-export function RTC_setVideoButton({ enabled, on }) {
-  const btn = document.getElementById('rtc-video-btn');
-  if (!btn) return;
-  btn.disabled = !enabled;
-  btn.textContent = on ? 'Stop Video' : 'Start Video';
-}
-
-// Optional helper kept for compatibility with earlier code paths
-export function UI_setVideoTileLabel(tileId, label) {
-  try {
-    const tile = document.querySelector(`[data-tile-id="${tileId}"]`);
-    if (!tile) return;
-    const cap = tile.querySelector('.rtc-tile-label') || tile.querySelector('[data-role="rtc-tile-label"]');
-    if (cap) cap.textContent = label;
-  } catch {}
+  const nameEl = document.getElementById(`rtc-tile-${peerKey}-name`);
+  if (nameEl) nameEl.textContent = label;
 }
