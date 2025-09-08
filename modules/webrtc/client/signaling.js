@@ -1,6 +1,6 @@
 // modules/webrtc/client/signaling.js
 // Single WS for both signaling & presence, with safe send and correct server protocol.
-// FIX: flatten webrtc-signal payload (no nested {payload:{...}}) and filter by 'to'.
+// Flattened webrtc payloads + onOpen helper.
 
 export function RTC_setupSignaling(roomId) {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -19,7 +19,8 @@ export function RTC_setupSignaling(roomId) {
     const base = { kind, room: roomId, from: clientId, ...data };
     const sendNow = () => {
       try { ws.send(JSON.stringify(base)); }
-      catch (e) { console.warn('[webrtc/signaling] send failed:', e); }
+      catch (e) { console.warn('[webrtc/signaling] send failed:', e);
+      }
     };
     if (ws.readyState === WebSocket.OPEN) sendNow();
     else ws.addEventListener('open', sendNow, { once: true });
@@ -27,29 +28,25 @@ export function RTC_setupSignaling(roomId) {
 
   ws.onopen = () => {
     console.log('[webrtc/signaling] WS open. clientId =', clientId);
-    // Advertise presence immediately (caller may re-send later with real user info)
+    // Advertise presence immediately; init.js may re-send with real user info
     safeSend('presence-join', { user_id: null, username: 'Someone' });
   };
 
   ws.onmessage = (ev) => {
     let msg;
     try { msg = JSON.parse(ev.data); } catch { return; }
-
     if (msg?.room !== roomId) return;
 
     if (msg?.kind === 'webrtc-signal') {
-      // Filter out self + hard-target mismatches
-      if (msg.from === clientId) return;
-      if (msg.to && msg.to !== clientId) return;
+      if (msg.from === clientId) return;           // ignore self
+      if (msg.to && msg.to !== clientId) return;   // not for me
 
-      // Accept both shapes:
-      // A) flattened: { kind:'webrtc-signal', to?, type, sdp?, candidate? }
-      // B) legacy:    { kind:'webrtc-signal', to?, payload:{ type|candidate ... } }
+      // Accept flattened or legacy shapes
       const payload = msg.payload ?? (
         msg.type ? { type: msg.type, sdp: msg.sdp, candidate: msg.candidate } : null
       );
-
       if (!payload) return;
+
       signalHandlers.forEach(h => h({ from: msg.from, to: msg.to, payload }));
       return;
     }
@@ -65,7 +62,7 @@ export function RTC_setupSignaling(roomId) {
 
   // Public API used by init.js / connection.js
   function sendSignal(obj) {
-    // Expect a *flattened* payload already (e.g., { to, type:'offer', sdp } or { to, type:'candidate', candidate })
+    // Expect a flattened payload: { to, type:'offer'|'answer'|'candidate', sdp?, candidate? }
     safeSend('webrtc-signal', obj);
   }
   function onSignal(fn) { signalHandlers.add(fn); return () => signalHandlers.delete(fn); }
@@ -73,5 +70,19 @@ export function RTC_setupSignaling(roomId) {
   function requestPresenceSnapshot() { safeSend('presence-request', {}); }
   function onPresence(fn) { presenceHandlers.add(fn); return () => presenceHandlers.delete(fn); }
 
-  return { sendSignal, onSignal, sendPresenceJoin, requestPresenceSnapshot, onPresence, clientId, ws };
+  // ✅ Helper expected by your current init.js
+  function onOpen(fn) {
+    if (typeof fn !== 'function') return () => {};
+    if (ws.readyState === WebSocket.OPEN) { try { fn(); } catch {} return () => {}; }
+    const handler = () => { try { fn(); } catch {} };
+    ws.addEventListener('open', handler, { once: true });
+    return () => ws.removeEventListener('open', handler);
+  }
+
+  return {
+    sendSignal, onSignal,
+    sendPresenceJoin, requestPresenceSnapshot, onPresence,
+    onOpen, // <-- added
+    clientId, ws
+  };
 }
