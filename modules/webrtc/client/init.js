@@ -42,33 +42,47 @@ export async function RTC__initClient(roomId) {
     const {
       sendSignal, onSignal,
       sendPresenceJoin, requestPresenceSnapshot,
-      onPresence, clientId, ws
+      onPresence, onOpen, onClose, clientId
     } = RTC_setupSignaling(roomId);
 
     RTC_setSignalSender(sendSignal);
 
-    // Track who we're connected to
     const connectedPeers = new Set();
-    let callActive = false; // when you press Start or accept an offer
+    let callActive = false;
+    let wsAlive = false;
 
-    // Presence -> update UI & auto-dial newcomers if callActive
+    onOpen(() => { wsAlive = true; });
+    onClose(() => {
+      wsAlive = false;
+      // Pause auto-dial if socket dropped (prevents piling up stale ids)
+      console.log('[webrtc/init] socket closed → pausing autodial, keeping UI enabled');
+    });
+
+    // Presence: dedupe by user (prefer last seen id)
     onPresence(({ participants }) => {
       RTC_updateParticipants(participants || []);
       window.__lastPresence = participants || [];
 
-      const presentIds = new Set((participants || []).map(p => p.clientId).filter(id => id && id !== clientId));
+      // Build a unique set of dialable peerIds
+      const mapByUser = new Map(); // key: user_id || username -> clientId
+      for (const p of (participants || [])) {
+        if (!p?.clientId || p.clientId === clientId) continue;
+        const key = (p.user_id != null) ? `u:${p.user_id}` : `n:${p.username || 'Someone'}`;
+        mapByUser.set(key, p.clientId); // last one wins
+      }
+      const wanted = new Set(mapByUser.values());
 
-      // prune
+      // prune peers that are no longer present
       for (const id of Array.from(connectedPeers)) {
-        if (!presentIds.has(id)) {
+        if (!wanted.has(id)) {
           RTC_hangUpPeer(id);
           connectedPeers.delete(id);
         }
       }
 
-      // dial newcomers if we are currently in a call
-      if (callActive) {
-        for (const id of presentIds) {
+      // auto-dial newcomers iff we're in-call and socket is alive
+      if (callActive && wsAlive) {
+        for (const id of wanted) {
           if (!connectedPeers.has(id)) {
             startPeer(id).catch(e => console.warn('autodial failed for', id, e));
           }
@@ -76,12 +90,12 @@ export async function RTC__initClient(roomId) {
       }
     });
 
-    // Identify self then request snapshot
+    // Identify self + snapshot
     const me = safeReadLocalUser();
     sendPresenceJoin({ user_id: me?.user_id ?? null, username: me?.username || 'Someone' });
     requestPresenceSnapshot();
 
-    // Signaling
+    // Handle incoming signaling
     onSignal(async ({ from, payload }) => {
       console.log('[webrtc/init] signal:', payload?.type || 'candidate', 'from', from);
 
@@ -97,7 +111,6 @@ export async function RTC__initClient(roomId) {
             RTC_setButtons({ canStart: false, canEnd: true });
             RTC_setStartActive(true);
             RTC_setStartLabel('In Call');
-            // enable mic/video buttons when we are in a call
             RTC_setMicButton({ enabled: true, muted: false });
             RTC_setVideoButton({ enabled: true, on: false });
           },
@@ -118,6 +131,7 @@ export async function RTC__initClient(roomId) {
     });
 
     async function startPeer(peerId) {
+      if (connectedPeers.has(peerId)) return;
       await RTC_startPeer(peerId);
       connectedPeers.add(peerId);
       callActive = true;
@@ -141,16 +155,18 @@ export async function RTC__initClient(roomId) {
 
       requestPresenceSnapshot();
       setTimeout(() => {
-        const peerIds = (window.__lastPresence || [])
-          .map(p => p.clientId)
-          .filter(id => id && id !== clientId);
-
+        const mapByUser = new Map();
+        for (const p of (window.__lastPresence || [])) {
+          if (!p?.clientId || p.clientId === clientId) continue;
+          const key = (p.user_id != null) ? `u:${p.user_id}` : `n:${p.username || 'Someone'}`;
+          mapByUser.set(key, p.clientId);
+        }
+        const peerIds = Array.from(mapByUser.values());
         console.log('[webrtc/init] initial peers to dial =', peerIds);
         peerIds.forEach(id => startPeer(id).catch(e => console.warn('startPeer failed for', id, e)));
-      }, 100);
+      }, 120);
     }
 
-    // Bind UI
     RTC_bindActions({
       onStart: async () => { await startFanOut(); },
       onEnd: () => {
@@ -172,7 +188,6 @@ export async function RTC__initClient(roomId) {
       }
     });
 
-    // Start/Stop Video button behavior
     const videoBtn = document.getElementById('rtc-video-btn');
     if (videoBtn) {
       videoBtn.onclick = async () => {
