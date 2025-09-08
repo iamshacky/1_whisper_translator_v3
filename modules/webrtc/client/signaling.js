@@ -1,6 +1,6 @@
 // modules/webrtc/client/signaling.js
 // Single WS for both signaling & presence, with safe send and correct server protocol.
-// Flattened webrtc payloads + onOpen helper.
+// Exposes onOpen / onClose / onError to match init.js expectations.
 
 export function RTC_setupSignaling(roomId) {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -19,8 +19,7 @@ export function RTC_setupSignaling(roomId) {
     const base = { kind, room: roomId, from: clientId, ...data };
     const sendNow = () => {
       try { ws.send(JSON.stringify(base)); }
-      catch (e) { console.warn('[webrtc/signaling] send failed:', e);
-      }
+      catch (e) { console.warn('[webrtc/signaling] send failed:', e); }
     };
     if (ws.readyState === WebSocket.OPEN) sendNow();
     else ws.addEventListener('open', sendNow, { once: true });
@@ -70,7 +69,7 @@ export function RTC_setupSignaling(roomId) {
   function requestPresenceSnapshot() { safeSend('presence-request', {}); }
   function onPresence(fn) { presenceHandlers.add(fn); return () => presenceHandlers.delete(fn); }
 
-  // ✅ Helper expected by your current init.js
+  // ✅ Helpers expected by your current init.js
   function onOpen(fn) {
     if (typeof fn !== 'function') return () => {};
     if (ws.readyState === WebSocket.OPEN) { try { fn(); } catch {} return () => {}; }
@@ -78,11 +77,32 @@ export function RTC_setupSignaling(roomId) {
     ws.addEventListener('open', handler, { once: true });
     return () => ws.removeEventListener('open', handler);
   }
+  function onClose(fn) {
+    if (typeof fn !== 'function') return () => {};
+    // If already closing/closed, fire once asynchronously to match expectation.
+    if (ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) {
+      queueMicrotask(() => { try { fn(); } catch {} });
+      return () => {};
+    }
+    const handler = () => { try { fn(); } catch {} };
+    ws.addEventListener('close', handler, { once: true });
+    return () => ws.removeEventListener('close', handler);
+  }
+  function onError(fn) {
+    if (typeof fn !== 'function') return () => {};
+    const handler = (e) => { try { fn(e); } catch {} };
+    ws.addEventListener('error', handler);
+    return () => ws.removeEventListener('error', handler);
+  }
 
   return {
+    // signaling
     sendSignal, onSignal,
+    // presence
     sendPresenceJoin, requestPresenceSnapshot, onPresence,
-    onOpen, // <-- added
+    // lifecycle hooks used by init.js
+    onOpen, onClose, onError,
+    // exposed for debugging
     clientId, ws
   };
 }
