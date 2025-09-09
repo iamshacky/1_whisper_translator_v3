@@ -1,7 +1,7 @@
 // modules/webrtc/client/connection.js
 // Multi-peer WebRTC mesh with stable m-line order and robust perfect negotiation.
 // One RTCPeerConnection per peerId. No late transceiver adds.
-// Fixes: overlapping renegotiations leading to m-line order mismatches.
+// Adds: renegotiation when enabling/disabling camera so remotes actually see video.
 
 import { UI_addVideoTile, UI_removeVideoTile, RTC_setStartActive } from './ui.js';
 
@@ -14,8 +14,8 @@ const pendingICEByPeer   = new Map(); // peerId -> RTCIceCandidateInit[]
 const remoteStreamByPeer = new Map(); // peerId -> MediaStream
 
 // Per-peer negotiation state (perfect negotiation helpers)
-const makingOfferByPeer                = new Map(); // peerId -> boolean
-const isSettingRemoteAnswerPendingByPeer = new Map(); // peerId -> boolean
+const makingOfferByPeer                   = new Map(); // peerId -> boolean
+const isSettingRemoteAnswerPendingByPeer  = new Map(); // peerId -> boolean
 
 // Precreated senders (A/V, order matters: audio first, video second)
 const audioSenderByPeer = new Map(); // peerId -> RTCRtpSender
@@ -91,6 +91,30 @@ async function ensureLocalMic() {
   return localMicTrack;
 }
 
+// Safe renegotiation kicker per peer (respects perfect-negotiation guards)
+async function renegotiatePeer(peerId) {
+  const pc = pcByPeer.get(peerId);
+  if (!pc) return;
+  if (pc.connectionState === 'closed') return;
+  if (pc.signalingState !== 'stable') return;
+  if (makingOfferByPeer.get(peerId)) return;
+
+  try {
+    makingOfferByPeer.set(peerId, true);
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    sendTo(peerId, pc.localDescription);
+  } catch (e) {
+    console.warn('[mesh] renegotiatePeer failed for', peerId, e);
+  } finally {
+    makingOfferByPeer.set(peerId, false);
+  }
+}
+
+async function renegotiateAllPeers() {
+  await Promise.all(Array.from(pcByPeer.keys()).map(renegotiatePeer));
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Peer factory — precreate AUDIO then VIDEO transceivers (sendrecv)
 // Never add transceivers later; only replaceTrack.
@@ -147,7 +171,6 @@ function ensurePeerConnection(peerId) {
   pc.onnegotiationneeded = async () => {
     if (!_started) return;
     if (pc.signalingState !== 'stable') return;
-    // prevent overlapping offers
     if (makingOfferByPeer.get(peerId)) return;
 
     try {
@@ -285,7 +308,6 @@ export async function RTC_handleSignal({ from, payload }) {
       sendTo(peerId, pc.localDescription);
 
     } else if (payload.type === 'answer') {
-      // Might arrive while we are setting remote answer; guard the flag
       isSettingRemoteAnswerPendingByPeer.set(peerId, true);
       try {
         await pc.setRemoteDescription(payload);
@@ -328,7 +350,7 @@ export function RTC_teardownAll() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Camera toggle (no new transceivers; only replaceTrack across all peers)
+// Camera toggle (renegotiate so remotes see the change)
 // ──────────────────────────────────────────────────────────────────────────────
 export async function RTC_setCameraEnabled(enabled) {
   if (!enabled && _cameraOn) {
@@ -346,6 +368,8 @@ export async function RTC_setCameraEnabled(enabled) {
       try { localVideoTrack?.stop?.(); } catch {}
       localVideoTrack = null;
       try { UI_removeVideoTile?.('local'); } catch {}
+      // Renegotiate so remotes drop our video SSRC cleanly
+      await renegotiateAllPeers();
     } finally {
       _cameraOn = false;
     }
@@ -374,6 +398,10 @@ export async function RTC_setCameraEnabled(enabled) {
     }
 
     UI_addVideoTile?.('local', localStream, { label: 'You', muted: true });
+
+    // 🔁 Renegotiate so the new video actually appears on remotes
+    await renegotiateAllPeers();
+
     _cameraOn = true;
     return true;
   }
