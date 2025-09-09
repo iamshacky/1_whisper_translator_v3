@@ -1,8 +1,5 @@
 // modules/webrtc/client/signaling.js
-// Single WS for signaling & presence, with safe send and correct server protocol.
-// Now includes:
-//  - probeRoomValidity(roomId): fetches server validity for a room
-//  - onRoomInvalid(cb): fires when server responds with { error: ... } on this WS
+// Single WS for both signaling & presence, with safe send and correct server protocol.
 
 export function RTC_setupSignaling(roomId) {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -15,7 +12,6 @@ export function RTC_setupSignaling(roomId) {
   // Subscribers
   const signalHandlers = new Set();    // fn({ from, payload })
   const presenceHandlers = new Set();  // fn({ participants })
-  const roomInvalidHandlers = new Set(); // fn({ reason })
 
   // --- safe sender (queues until OPEN once) ---
   function safeSend(kind, data = {}) {
@@ -45,13 +41,6 @@ export function RTC_setupSignaling(roomId) {
     let msg;
     try { msg = JSON.parse(ev.data); } catch { return; }
 
-    // If server emitted an error payload on this WS, let the webrtc module decide UI/redirect.
-    if (msg?.error) {
-      const reason = String(msg.error || 'Room invalid');
-      roomInvalidHandlers.forEach(h => h({ reason }));
-      return;
-    }
-
     // Handle signaling
     if (msg?.kind === 'webrtc-signal' && msg.room === roomId && msg.from !== clientId) {
       // Some senders wrap like {to, payload}; unwrap to the inner SDP/ICE object.
@@ -78,7 +67,7 @@ export function RTC_setupSignaling(roomId) {
   ws.onerror = (e) => console.warn('[webrtc/signaling] WS error', e);
   ws.onclose = (e) => console.log('[webrtc/signaling] WS closed', e.code, e.reason || '');
 
-  // Public API (exact shape used by init.js + a couple additions)
+  // Public API (exact shape used by init.js)
   function sendSignal(payload) {
     // payload is an SDP/ICE or targeted wrapper from connection.js
     safeSend('webrtc-signal', { payload });
@@ -102,25 +91,5 @@ export function RTC_setupSignaling(roomId) {
     return () => presenceHandlers.delete(fn);
   }
 
-  function onRoomInvalid(fn) {
-    roomInvalidHandlers.add(fn);
-    return () => roomInvalidHandlers.delete(fn);
-  }
-
-  return { sendSignal, onSignal, sendPresenceJoin, requestPresenceSnapshot, onPresence, onRoomInvalid, clientId, ws };
-}
-
-/**
- * Probe server room validity without touching other modules.
- * Returns: { valid: boolean }
- */
-export async function probeRoomValidity(roomId) {
-  try {
-    const res = await fetch(`/api/room-manager-qr/is-valid?room=${encodeURIComponent(roomId)}`);
-    if (!res.ok) return { valid: false };
-    const data = await res.json();
-    return { valid: !!data?.valid };
-  } catch {
-    return { valid: false };
-  }
+  return { sendSignal, onSignal, sendPresenceJoin, requestPresenceSnapshot, onPresence, clientId, ws };
 }

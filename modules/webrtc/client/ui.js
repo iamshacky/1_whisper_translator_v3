@@ -1,6 +1,6 @@
 // modules/webrtc/client/ui.js
-// Adds per-peer hidden <audio> elements so multiple remote streams play at once,
-// and volume/mute sliders apply to the correct participant.
+// UI for mesh calling. Each remote tile owns its own hidden <audio> sink,
+// so per-tile volume/mute only affects that peer.
 
 export function RTC_mountUI() {
   if (document.getElementById('webrtc-area')) return;
@@ -50,13 +50,15 @@ export function RTC_mountUI() {
   }
 }
 
-// ── Main buttons
+// ── Main buttons ──────────────────────────────────────────────────────────────
 export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
   const startBtn = document.getElementById('rtc-start-btn');
   const endBtn   = document.getElementById('rtc-end-btn');
   const micBtn   = document.getElementById('rtc-mic-btn');
 
-  console.log('[webrtc/ui] binding actions:', { hasStart: !!startBtn, hasEnd: !!endBtn, hasMic: !!micBtn });
+  console.log('[webrtc/ui] binding actions:', {
+    hasStart: !!startBtn, hasEnd: !!endBtn, hasMic: !!micBtn
+  });
 
   if (startBtn) {
     startBtn.onclick = async () => {
@@ -67,7 +69,7 @@ export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
       } catch (e) {
         console.warn('[webrtc/ui] Start failed:', e);
       } finally {
-        setTimeout(() => { try { startBtn.disabled = false; } catch {} }, 1200);
+        setTimeout(() => { try { startBtn.disabled = false; } catch {} }, 1500);
       }
     };
   }
@@ -87,6 +89,7 @@ export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
     };
   }
 
+  // Fallback delegated listener
   document.addEventListener('click', (ev) => {
     const t = ev.target;
     if (t && t.id === 'rtc-start-btn' && !t.onclick) {
@@ -117,24 +120,27 @@ export function RTC_setStatus(state) {
   el.textContent = state;
 }
 
-// Button visuals for Start (blue/green)
+// ── Start/Video button helpers (kept for init.js compatibility) ───────────────
 function setBtnColor(btn, variant) {
   if (!btn) return;
   btn.style.background = (variant === 'green') ? '#28a745' : '#007bff';
 }
+
 export function RTC_setStartActive(active) {
   const startBtn = document.getElementById('rtc-start-btn');
   setBtnColor(startBtn, active ? 'green' : 'blue');
 }
+
 export function RTC_setStartLabel(text) {
   const startBtn = document.getElementById('rtc-start-btn');
   if (startBtn) startBtn.textContent = text;
 }
 
-// ── Video button (API used by init.js)
+// ✅ Ensure a Start/Stop Video button exists next to Mute
 export function RTC_ensureVideoButton() {
   const micBtn = document.getElementById('rtc-mic-btn');
   if (!micBtn) return;
+
   let vidBtn = document.getElementById('rtc-video-btn');
   if (!vidBtn) {
     vidBtn = document.createElement('button');
@@ -144,6 +150,8 @@ export function RTC_ensureVideoButton() {
     micBtn.parentElement?.insertBefore(vidBtn, micBtn.nextSibling);
   }
 }
+
+// ✅ Control the state/label of the Start/Stop Video button
 export function RTC_setVideoButton({ enabled, on }) {
   const btn = document.getElementById('rtc-video-btn');
   if (!btn) return;
@@ -151,7 +159,7 @@ export function RTC_setVideoButton({ enabled, on }) {
   btn.textContent = on ? 'Stop Video' : 'Start Video';
 }
 
-// ── Participants
+// ── Participants list ─────────────────────────────────────────────────────────
 export function RTC_updateParticipants(list) {
   const countEl = document.getElementById('rtc-part-count');
   const ul = document.getElementById('rtc-part-list');
@@ -180,23 +188,26 @@ function safeReadLocalUser() {
   catch { return null; }
 }
 
-// ── Incoming call prompt
+// ── Incoming call prompt ──────────────────────────────────────────────────────
 export function RTC_showIncomingPrompt({ fromId, onAccept, onDecline }) {
   const box = document.getElementById('rtc-incoming');
   if (!box) return;
+
   box.style.display = 'block';
   const acceptBtn = document.getElementById('rtc-accept-btn');
   const declineBtn = document.getElementById('rtc-decline-btn');
+
   acceptBtn.onclick = () => onAccept?.();
   declineBtn.onclick = () => onDecline?.();
 }
+
 export function RTC_hideIncomingPrompt() {
   const box = document.getElementById('rtc-incoming');
   if (!box) return;
   box.style.display = 'none';
 }
 
-// ── Video grid / peer tiles
+// ── Video grid / tiles ───────────────────────────────────────────────────────
 
 function UI_getOrCreateVideoGrid() {
   const host = document.getElementById('webrtc-area');
@@ -217,12 +228,15 @@ function UI_getOrCreateVideoGrid() {
   return grid;
 }
 
-const _peerAudioState = new Map();  // peerKey -> { volume: 0..1, muted: boolean }
-const _peerAudioEls = new Map();    // peerKey -> HTMLAudioElement
+const _peerAudioState = new Map(); // key -> { volume: 0..1, muted: boolean }
+
+function __getPeerAudioEl(peerKey) {
+  return document.getElementById(`rtc-tile-${peerKey}-audio`) || null;
+}
 
 function __applyPeerAudioState(peerKey) {
   const { volume = 1, muted = false } = _peerAudioState.get(peerKey) || {};
-  const audioEl = _peerAudioEls.get(peerKey);
+  const audioEl = __getPeerAudioEl(peerKey);
   if (audioEl) {
     audioEl.volume = volume;
     audioEl.muted = muted;
@@ -236,7 +250,10 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
 
   const id = `rtc-tile-${peerKey}`;
   let tile = document.getElementById(id);
+  let isNew = false;
+
   if (!tile) {
+    isNew = true;
     tile = document.createElement('div');
     tile.id = id;
     tile.className = 'rtc-tile';
@@ -252,11 +269,23 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     video.id = `${id}-video`;
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = (peerKey === 'local'); // local preview unmuted; remotes muted (audio via <audio>)
+    const wantMuted = opts.muted === true || peerKey !== 'local';
+    video.muted = wantMuted;
     video.style.width = '100%';
     video.style.height = 'auto';
     video.style.flex = '1 1 auto';
     video.style.objectFit = 'cover';
+
+    // 🔈 Per-tile hidden audio sink (remote only)
+    let audio;
+    if (peerKey !== 'local') {
+      audio = document.createElement('audio');
+      audio.id = `${id}-audio`;
+      audio.autoplay = true;
+      audio.playsInline = true;
+      audio.style.display = 'none';
+      tile.appendChild(audio);
+    }
 
     const footer = document.createElement('div');
     footer.style.display = 'flex';
@@ -275,63 +304,6 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     rightControls.style.alignItems = 'center';
     rightControls.style.gap = '6px';
 
-    // Per-remote audio controls
-    if (peerKey !== 'local') {
-      // hidden audio element to actually play the remote audio
-      const audioEl = document.createElement('audio');
-      audioEl.id = `rtc-audio-${peerKey}`;
-      audioEl.autoplay = true;
-      audioEl.playsInline = true;
-      audioEl.style.display = 'none';
-      _peerAudioEls.set(peerKey, audioEl);
-      tile.appendChild(audioEl);
-
-      const controls = document.createElement('div');
-      controls.dataset.role = 'peer-audio-controls';
-      controls.style.display = 'flex';
-      controls.style.alignItems = 'center';
-      controls.style.gap = '6px';
-
-      const vol = document.createElement('input');
-      vol.type = 'range';
-      vol.min = '0';
-      vol.max = '100';
-      vol.value = '100';
-      vol.title = 'Volume';
-      vol.style.width = '100px';
-      vol.id = `${id}-volume`;
-
-      const muteBtn = document.createElement('button');
-      muteBtn.textContent = 'Mute';
-      muteBtn.title = 'Mute this participant';
-      muteBtn.id = `${id}-mute`;
-
-      controls.appendChild(vol);
-      controls.appendChild(muteBtn);
-      rightControls.appendChild(controls);
-
-      const state = _peerAudioState.get(peerKey) || { volume: 1, muted: false };
-      _peerAudioState.set(peerKey, state);
-      vol.value = String(Math.round(state.volume * 100));
-      muteBtn.textContent = state.muted ? 'Unmute' : 'Mute';
-
-      vol.addEventListener('input', () => {
-        const v = Math.max(0, Math.min(1, Number(vol.value) / 100));
-        const curr = _peerAudioState.get(peerKey) || { volume: 1, muted: false };
-        const next = { ...curr, volume: v };
-        _peerAudioState.set(peerKey, next);
-        __applyPeerAudioState(peerKey);
-      });
-
-      muteBtn.addEventListener('click', () => {
-        const curr = _peerAudioState.get(peerKey) || { volume: 1, muted: false };
-        const next = { ...curr, muted: !curr.muted };
-        _peerAudioState.set(peerKey, next);
-        muteBtn.textContent = next.muted ? 'Unmute' : 'Mute';
-        __applyPeerAudioState(peerKey);
-      });
-    }
-
     const fsBtn = document.createElement('button');
     fsBtn.textContent = '⛶';
     fsBtn.title = 'Fullscreen';
@@ -348,42 +320,80 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     tile.appendChild(video);
     tile.appendChild(footer);
     grid.appendChild(tile);
+
+    // Per-remote volume/mute controls bind to this tile's <audio>
+    if (peerKey !== 'local') {
+      let controls = tile.querySelector('[data-role="peer-audio-controls"]');
+      if (!controls) {
+        controls = document.createElement('div');
+        controls.dataset.role = 'peer-audio-controls';
+        controls.style.display = 'flex';
+        controls.style.alignItems = 'center';
+        controls.style.gap = '6px';
+
+        const vol = document.createElement('input');
+        vol.type = 'range';
+        vol.min = '0';
+        vol.max = '100';
+        vol.value = '100';
+        vol.title = 'Volume';
+        vol.style.width = '100px';
+        vol.id = `${id}-volume`;
+
+        const muteBtn = document.createElement('button');
+        muteBtn.textContent = 'Mute';
+        muteBtn.title = 'Mute this participant';
+        muteBtn.id = `${id}-mute`;
+
+        controls.appendChild(vol);
+        controls.appendChild(muteBtn);
+        rightControls.insertBefore(controls, fsBtn);
+
+        const state = _peerAudioState.get(peerKey) || { volume: 1, muted: false };
+        _peerAudioState.set(peerKey, state);
+        vol.value = String(Math.round(state.volume * 100));
+        muteBtn.textContent = state.muted ? 'Unmute' : 'Mute';
+        __applyPeerAudioState(peerKey);
+
+        vol.addEventListener('input', () => {
+          const v = Math.max(0, Math.min(1, Number(vol.value) / 100));
+          const curr = _peerAudioState.get(peerKey) || { volume: 1, muted: false };
+          const next = { ...curr, volume: v };
+          _peerAudioState.set(peerKey, next);
+          __applyPeerAudioState(peerKey);
+        });
+
+        muteBtn.addEventListener('click', () => {
+          const curr = _peerAudioState.get(peerKey) || { volume: 1, muted: false };
+          const next = { ...curr, muted: !curr.muted };
+          _peerAudioState.set(peerKey, next);
+          muteBtn.textContent = next.muted ? 'Unmute' : 'Mute';
+          __applyPeerAudioState(peerKey);
+        });
+      }
+    }
   }
 
-  // Attach (or refresh) video stream to the tile's <video>
+  // (Re)bind streams
   const videoEl = document.getElementById(`${id}-video`);
-  if (videoEl && stream && videoEl.srcObject !== stream) {
+  if (videoEl && videoEl.srcObject !== stream) {
     videoEl.srcObject = stream;
+  }
+  const audioEl = __getPeerAudioEl(peerKey);
+  if (audioEl && audioEl.srcObject !== stream) {
+    audioEl.srcObject = stream;
+    __applyPeerAudioState(peerKey);
   }
 
   if (opts.label) {
     const nameEl = document.getElementById(`${id}-name`);
     if (nameEl) nameEl.textContent = opts.label;
   }
-}
 
-// Attach / refresh the hidden <audio> for a remote peer
-export function UI_attachAudio(peerKey, stream) {
-  let audioEl = _peerAudioEls.get(peerKey);
-  if (!audioEl) {
-    // Ensure tile exists
-    UI_addVideoTile(peerKey, null, { label: 'Remote', muted: true });
-    audioEl = document.getElementById(`rtc-audio-${peerKey}`);
-    if (!audioEl) {
-      // create now if still missing
-      audioEl = document.createElement('audio');
-      audioEl.id = `rtc-audio-${peerKey}`;
-      audioEl.autoplay = true;
-      audioEl.playsInline = true;
-      audioEl.style.display = 'none';
-      const tile = document.getElementById(`rtc-tile-${peerKey}`);
-      tile?.appendChild(audioEl);
-    }
-    _peerAudioEls.set(peerKey, audioEl);
-  }
-  if (audioEl.srcObject !== stream) {
-    audioEl.srcObject = stream;
-    __applyPeerAudioState(peerKey);
+  // Always keep remote video element muted to avoid echo;
+  // per-tile audio comes from the hidden <audio> we control.
+  if (peerKey !== 'local') {
+    if (videoEl) videoEl.muted = true;
   }
 }
 
@@ -391,16 +401,12 @@ export function UI_removeVideoTile(peerKey) {
   const id = `rtc-tile-${peerKey}`;
   const el = document.getElementById(id);
   if (el && el.parentNode) {
-    try {
-      el.querySelectorAll('video,audio').forEach(media => {
-        try { media.srcObject && media.srcObject.getTracks?.().forEach(t => t.stop()); } catch {}
-        try { media.srcObject = null; } catch {}
-      });
-    } catch {}
+    const video = el.querySelector('video');
+    const audio = el.querySelector('audio');
+    try { video?.srcObject?.getTracks?.().forEach(t => t.stop()); } catch {}
+    try { audio?.srcObject?.getTracks?.().forEach(t => t.stop()); } catch {}
     el.parentNode.removeChild(el);
   }
-  _peerAudioEls.delete(peerKey);
-  _peerAudioState.delete(peerKey);
 }
 
 export function UI_updateVideoLabel(peerKey, label) {
