@@ -184,6 +184,12 @@ function ensurePeerConnection(peerId) {
     try {
       await ensurePeerReady(peerId); // 🟨 stabilize m-lines first
 
+      // 🔶 Only create an offer when fully stable to avoid m-line churn
+      if (pc.signalingState !== 'stable') {
+        console.log(`🟡 [mesh] onnegotiationneeded ignored (state=${pc.signalingState}) for ${peerId}`);
+        return;
+      }
+
       if (makingOfferByPeer.get(peerId)) {
         console.log(`🟡 [mesh] onnegotiationneeded re-entrancy ignored for ${peerId}`);
         return;
@@ -278,19 +284,10 @@ export async function RTC_startPeer(peerId, { inboundOffer = null, pendingCandid
         console.warn(`[mesh] failed to apply late video to ${peerId}:`, e);
       }
     }
-  } else {
-    if (!pc.localDescription && pc.signalingState === 'stable') {
-      if (makingOfferByPeer.get(peerId)) return;
-      makingOfferByPeer.set(peerId, true);
-      try {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        sendTo(peerId, pc.localDescription);
-      } finally {
-        makingOfferByPeer.set(peerId, false);
-      }
+    } else {
+      // 🙌 Outbound: do nothing here.
+      // Adding baseline transceivers has already triggered onnegotiationneeded().
     }
-  }
 }
 
 // Incoming signaling
