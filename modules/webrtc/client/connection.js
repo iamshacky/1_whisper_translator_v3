@@ -15,6 +15,10 @@ const politeByPeer = new Map();             // peerId -> boolean
 const audioSenderByPeer = new Map();        // peerId -> RTCRtpSender
 const videoSenderByPeer = new Map();        // peerId -> RTCRtpSender
 
+// 🟨 NEW: readiness + negotiation guards
+//const baseReadyByPeer = new Map();     // peerId -> Promise<void>
+//const makingOfferByPeer = new Map();   // peerId -> boolean
+
 let localStream = null;
 let _localVideoTrack = null;
 let _cameraOn = false;
@@ -127,23 +131,48 @@ function ensurePeerConnection(peerId) {
   };
 
   // --- Negotiation
-  pc.onnegotiationneeded = async () => {
-    try {
-      // 🟩 DEBUG: negotiationneeded
-      console.log(`🟩 [mesh] onnegotiationneeded → createOffer/send to ${peerId}`);
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      sendTo(peerId, pc.localDescription);
-    } catch (e) {
-      console.warn('[mesh] negotiationneeded failed:', e);
-    }
-  };
+    pc.onnegotiationneeded = async () => {
+      try {
+        await ensurePeerReady(peerId); // 🟨 make m-lines stable first
 
-  // --- Pre-add baseline transceivers for stable m-line order
-  (async () => { await ensureBaseTransceiversForPeer(pc, peerId); })().catch(() => {});
+        if (makingOfferByPeer.get(peerId)) {
+          console.log(`🟡 [mesh] onnegotiationneeded re-entrancy ignored for ${peerId}`);
+          return;
+        }
+
+        makingOfferByPeer.set(peerId, true);
+        console.log(`🟩 [mesh] onnegotiationneeded → createOffer/send to ${peerId}`);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        sendTo(peerId, pc.localDescription);
+      } catch (e) {
+        console.warn('[mesh] negotiationneeded failed:', e);
+      } finally {
+        makingOfferByPeer.set(peerId, false);
+      }
+    };
+
+  // 🟨 Pre-add baseline transceivers PROMISE for stable m-line order (awaited elsewhere)
+  if (!baseReadyByPeer.has(peerId)) {
+    baseReadyByPeer.set(peerId, ensureBaseTransceiversForPeer(pc, peerId));
+  }
+
 
   pcByPeer.set(peerId, pc);
   return pc;
+}
+
+// 🟨 Ensure the per-peer baseline is ready before any SDP work
+async function ensurePeerReady(peerId) {
+  const p = baseReadyByPeer.get(peerId);
+  if (p) {
+    await p;
+    return;
+  }
+  const pc = ensurePeerConnection(peerId);
+  const created = ensureBaseTransceiversForPeer(pc, peerId);
+  baseReadyByPeer.set(peerId, created);
+  await created;
 }
 
 function closePeer(peerId) {
@@ -200,6 +229,9 @@ export async function RTC_startPeer(peerId, { inboundOffer = null, pendingCandid
   const pc = ensurePeerConnection(peerId);
   politeByPeer.set(peerId, computePolite(peerId, !!inboundOffer));
 
+  // 🟨 ensure baseline BEFORE touching SDP
+  await ensurePeerReady(peerId);
+
   if (inboundOffer) {
     await pc.setRemoteDescription(inboundOffer);
     const answer = await pc.createAnswer();
@@ -212,7 +244,6 @@ export async function RTC_startPeer(peerId, { inboundOffer = null, pendingCandid
     }
     bucket.length = 0;
 
-    // If our camera was already on, make sure THIS peer gets our track now.
     if (_cameraOn && _localVideoTrack) {
       const vSender = videoSenderByPeer.get(peerId);
       try {
@@ -224,9 +255,16 @@ export async function RTC_startPeer(peerId, { inboundOffer = null, pendingCandid
     }
   } else {
     if (!pc.localDescription && pc.signalingState === 'stable') {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      sendTo(peerId, pc.localDescription);
+      // 🟨 guard against parallel offers
+      if (makingOfferByPeer.get(peerId)) return;
+      makingOfferByPeer.set(peerId, true);
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        sendTo(peerId, pc.localDescription);
+      } finally {
+        makingOfferByPeer.set(peerId, false);
+      }
     }
   }
 }
@@ -238,32 +276,39 @@ export async function RTC_handleSignal({ from, payload }) {
   const pc = ensurePeerConnection(peerId);
   const polite = !!politeByPeer.get(peerId);
 
-  try {
-    if (payload.type === 'offer') {
-      const collision = pc.signalingState !== 'stable';
-      const ignore = !polite && collision;
-      if (ignore) {
-        console.log(`🟡 [mesh] glare: impolite peer ignoring remote offer from ${peerId}`);
-        return;
+    try {
+      if (payload.type === 'offer') {
+        await ensurePeerReady(peerId); // 🟨 make sure transceivers exist
+
+        const collision = pc.signalingState !== 'stable';
+        const ignore = !polite && collision;
+        if (ignore) {
+          console.log(`🟡 [mesh] glare: impolite peer ignoring remote offer from ${peerId}`);
+          return;
+        }
+        if (collision) {
+          await pc.setLocalDescription({ type: 'rollback' });
+        }
+
+        await pc.setRemoteDescription(payload);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        sendTo(peerId, pc.localDescription);
+
+      } else if (payload.type === 'answer') {
+        await ensurePeerReady(peerId); // 🟨 stabilize before SRD
+        await pc.setRemoteDescription(payload);
+
+      } else if (payload.candidate) {
+        try { await pc.addIceCandidate(payload); }
+        catch { ensurePending(peerId).push(payload); }
+
+      } else {
+        console.log('[mesh] unknown signal payload shape from', peerId, payload);
       }
-      if (collision) {
-        await pc.setLocalDescription({ type: 'rollback' });
-      }
-      await pc.setRemoteDescription(payload);
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      sendTo(peerId, pc.localDescription);
-    } else if (payload.type === 'answer') {
-      await pc.setRemoteDescription(payload);
-    } else if (payload.candidate) {
-      try { await pc.addIceCandidate(payload); }
-      catch { ensurePending(peerId).push(payload); }
-    } else {
-      console.log('[mesh] unknown signal payload shape from', peerId, payload);
+    } catch (e) {
+      console.warn('[mesh] handleSignal error for', peerId, e);
     }
-  } catch (e) {
-    console.warn('[mesh] handleSignal error for', peerId, e);
-  }
 }
 
 // -- Hang up
