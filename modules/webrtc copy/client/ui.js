@@ -1,4 +1,6 @@
 // modules/webrtc/client/ui.js
+// UI for mesh calling. Each remote tile owns its own hidden <audio> sink,
+// so per-tile volume/mute only affects that peer.
 
 export function RTC_mountUI() {
   if (document.getElementById('webrtc-area')) return;
@@ -38,8 +40,6 @@ export function RTC_mountUI() {
       </summary>
       <ul id="rtc-part-list" style="margin:8px 0 0 0; padding-left:18px;"></ul>
     </details>
-
-    <audio id="rtc-remote-audio" autoplay playsinline></audio>
   `;
 
   const settingsContainer = document.getElementById('settings-container');
@@ -136,7 +136,7 @@ export function RTC_setStartLabel(text) {
   if (startBtn) startBtn.textContent = text;
 }
 
-// ✅ (Restored) Ensure a Start/Stop Video button exists next to Mute
+// ✅ Ensure a Start/Stop Video button exists next to Mute
 export function RTC_ensureVideoButton() {
   const micBtn = document.getElementById('rtc-mic-btn');
   if (!micBtn) return;
@@ -151,7 +151,7 @@ export function RTC_ensureVideoButton() {
   }
 }
 
-// ✅ (Restored) Control the state/label of the Start/Stop Video button
+// ✅ Control the state/label of the Start/Stop Video button
 export function RTC_setVideoButton({ enabled, on }) {
   const btn = document.getElementById('rtc-video-btn');
   if (!btn) return;
@@ -230,13 +230,13 @@ function UI_getOrCreateVideoGrid() {
 
 const _peerAudioState = new Map(); // key -> { volume: 0..1, muted: boolean }
 
-function __getRemoteAudioEl() {
-  return document.getElementById('rtc-remote-audio') || null;
+function __getPeerAudioEl(peerKey) {
+  return document.getElementById(`rtc-tile-${peerKey}-audio`) || null;
 }
 
 function __applyPeerAudioState(peerKey) {
   const { volume = 1, muted = false } = _peerAudioState.get(peerKey) || {};
-  const audioEl = __getRemoteAudioEl();
+  const audioEl = __getPeerAudioEl(peerKey);
   if (audioEl) {
     audioEl.volume = volume;
     audioEl.muted = muted;
@@ -250,7 +250,10 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
 
   const id = `rtc-tile-${peerKey}`;
   let tile = document.getElementById(id);
+  let isNew = false;
+
   if (!tile) {
+    isNew = true;
     tile = document.createElement('div');
     tile.id = id;
     tile.className = 'rtc-tile';
@@ -272,6 +275,17 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     video.style.height = 'auto';
     video.style.flex = '1 1 auto';
     video.style.objectFit = 'cover';
+
+    // 🔈 Per-tile hidden audio sink (remote only)
+    let audio;
+    if (peerKey !== 'local') {
+      audio = document.createElement('audio');
+      audio.id = `${id}-audio`;
+      audio.autoplay = true;
+      audio.playsInline = true;
+      audio.style.display = 'none';
+      tile.appendChild(audio);
+    }
 
     const footer = document.createElement('div');
     footer.style.display = 'flex';
@@ -307,7 +321,7 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     tile.appendChild(footer);
     grid.appendChild(tile);
 
-    // Per-remote controls
+    // Per-remote volume/mute controls bind to this tile's <audio>
     if (peerKey !== 'local') {
       let controls = tile.querySelector('[data-role="peer-audio-controls"]');
       if (!controls) {
@@ -360,9 +374,15 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     }
   }
 
+  // (Re)bind streams
   const videoEl = document.getElementById(`${id}-video`);
   if (videoEl && videoEl.srcObject !== stream) {
     videoEl.srcObject = stream;
+  }
+  const audioEl = __getPeerAudioEl(peerKey);
+  if (audioEl && audioEl.srcObject !== stream) {
+    audioEl.srcObject = stream;
+    __applyPeerAudioState(peerKey);
   }
 
   if (opts.label) {
@@ -370,9 +390,10 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
     if (nameEl) nameEl.textContent = opts.label;
   }
 
+  // Always keep remote video element muted to avoid echo;
+  // per-tile audio comes from the hidden <audio> we control.
   if (peerKey !== 'local') {
-    const v = document.getElementById(`${id}-video`);
-    if (v) v.muted = true;
+    if (videoEl) videoEl.muted = true;
   }
 }
 
@@ -381,7 +402,9 @@ export function UI_removeVideoTile(peerKey) {
   const el = document.getElementById(id);
   if (el && el.parentNode) {
     const video = el.querySelector('video');
+    const audio = el.querySelector('audio');
     try { video?.srcObject?.getTracks?.().forEach(t => t.stop()); } catch {}
+    try { audio?.srcObject?.getTracks?.().forEach(t => t.stop()); } catch {}
     el.parentNode.removeChild(el);
   }
 }
