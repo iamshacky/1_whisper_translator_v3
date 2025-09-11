@@ -16,11 +16,11 @@ const politeByPeer = new Map();             // peerId -> boolean
 // Per-peer local senders/transceivers (so every peer receives our mic/cam)
 const sendersByPeer = new Map();            // peerId -> { audioTx, videoTx, audioSender, videoSender }
 
-// NEW: per-peer negotiation state & readiness
+// Per-peer negotiation state & readiness
 // peerId -> { makingOffer, needNegotiation, isSettingRemote, ready: Promise<void> }
 const negoStateByPeer = new Map();
 
-let localStream = null;                     // for rendering local preview tile
+let localStream = null;                     // for local preview tile
 let _localAudioTrack = null;
 let _localVideoTrack = null;
 let _cameraOn = false;
@@ -90,7 +90,6 @@ async function ensureLocalAudioTrack() {
 
   if (_localAudioTrack) {
     if (!localStream) localStream = new MediaStream();
-    // avoid duplicates
     localStream.getAudioTracks().forEach(t => localStream.removeTrack(t));
     localStream.addTrack(_localAudioTrack);
   }
@@ -121,7 +120,7 @@ function ensurePeerConnection(peerId) {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
   });
 
-  // NEW: state container for perfect negotiation + "base transceivers ready"
+  // negotiation state & “base transceivers ready”
   if (!negoStateByPeer.has(peerId)) {
     negoStateByPeer.set(peerId, {
       makingOffer: false,
@@ -139,7 +138,7 @@ function ensurePeerConnection(peerId) {
     }
   };
 
-  // --- Track: collect tracks into a per-peer stream and hand to UI (tile owns its <audio>)
+  // --- Track → per-peer MediaStream + tile
   pc.ontrack = (e) => {
     let stream = remoteStreamByPeer.get(peerId);
     if (!stream) {
@@ -147,8 +146,6 @@ function ensurePeerConnection(peerId) {
       remoteStreamByPeer.set(peerId, stream);
     }
     stream.addTrack(e.track);
-
-    // For both audio & video: ensure the tile exists and uses the combined stream
     UI_addVideoTile(peerId, stream, { label: labelForPeer(peerId), muted: true });
   };
 
@@ -176,34 +173,38 @@ function ensurePeerConnection(peerId) {
   };
 
   pcByPeer.set(peerId, pc);
+
   // Precreate baseline transceivers to stabilize m-line order (audio then video).
   st.ready = (async () => { await ensureBaseTransceivers(peerId, pc); })();
+
   return pc;
 }
 
 function closePeer(peerId) {
   const pc = pcByPeer.get(peerId);
+
+  // Stop local senders' tracks (safe if already stopped)
   try { pc?.getSenders?.().forEach(s => s.track && s.track.stop?.()); } catch {}
+
+  // Close PC
   try { pc?.close?.(); } catch {}
+
+  // Clear maps
   pcByPeer.delete(peerId);
   remoteStreamByPeer.delete(peerId);
   pendingICEByPeer.delete(peerId);
   politeByPeer.delete(peerId);
   negoStateByPeer.delete(peerId);
 
-  const snd = sendersByPeer.get(peerId);
-  if (snd) {
-    try { snd.audioTx?.sender?.replaceTrack?.(null); } catch {}
-    try { snd.videoTx?.sender?.replaceTrack?.(null); } catch {}
-  }
+  // Drop sender bundle (do not call replaceTrack on a closed pc)
   sendersByPeer.delete(peerId);
 
+  // Remove tile
   try { UI_removeVideoTile?.(peerId); } catch {}
+
   recomputeStartActive();
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Negotiation helper (perfect negotiation; single-flight per peer)
 // ────────────────────────────────────────────────────────────────────────────
 async function negotiate(peerId) {
   const pc = pcByPeer.get(peerId);
@@ -227,7 +228,6 @@ async function negotiate(peerId) {
     st.makingOffer = false;
     if (st.needNegotiation) {
       st.needNegotiation = false;
-      // re-run once if something queued while we were busy (and now stable)
       if (pc.signalingState === 'stable') {
         negotiate(peerId).catch(() => {});
       }
@@ -238,18 +238,9 @@ async function negotiate(peerId) {
 // ────────────────────────────────────────────────────────────────────────────
 // Public API
 // ────────────────────────────────────────────────────────────────────────────
-export function RTC_setSignalSender(fn) {
-  _sendSignal = typeof fn === 'function' ? fn : null;
-}
-
-export function RTC_setSelfId(id) {
-  _selfId = id || null;
-}
-
-export function RTC_onMeshIdle(cb) {
-  _onMeshIdle = typeof cb === 'function' ? cb : null;
-}
-
+export function RTC_setSignalSender(fn) { _sendSignal = typeof fn === 'function' ? fn : null; }
+export function RTC_setSelfId(id) { _selfId = id || null; }
+export function RTC_onMeshIdle(cb) { _onMeshIdle = typeof cb === 'function' ? cb : null; }
 export function RTC_isStarted() { return _started; }
 export function RTC_isCameraOn() { return _cameraOn; }
 
@@ -263,9 +254,9 @@ export async function RTC_startPeer(peerId, { inboundOffer = null, pendingCandid
   politeByPeer.set(peerId, computePolite(peerId, !!inboundOffer));
 
   if (inboundOffer) {
-    // Callee path: ensure transceivers exist before crafting our answer
-    await pc.setRemoteDescription(inboundOffer);
+    // IMPORTANT: ensure baseline transceivers exist BEFORE setting the remote offer.
     await st?.ready;
+    await pc.setRemoteDescription(inboundOffer);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     sendTo(peerId, pc.localDescription);
@@ -301,10 +292,10 @@ export async function RTC_handleSignal({ from, payload }) {
       if (collision) {
         await pc.setLocalDescription({ type: 'rollback' });
       }
+      // IMPORTANT: ensure baseline transceivers exist BEFORE SLD(offer)
+      await st?.ready;
       st.isSettingRemote = true;
       await pc.setRemoteDescription(payload);
-      // Ensure our m-lines exist before we craft an answer
-      await st?.ready;
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       sendTo(peerId, pc.localDescription);
@@ -343,6 +334,7 @@ export async function RTC_setCameraEnabled(enabled) {
     try { _localVideoTrack?.stop(); } catch {}
     _localVideoTrack = null;
 
+    // Detach from active senders (ignore errors if PCs are closing)
     for (const [, snd] of sendersByPeer) {
       try { await snd.videoSender?.replaceTrack(null); } catch {}
     }
