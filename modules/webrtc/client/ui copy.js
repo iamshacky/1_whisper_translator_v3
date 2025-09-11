@@ -2,8 +2,6 @@
 // UI for mesh calling. Each remote tile owns its own hidden <audio> sink,
 // so per-tile volume/mute only affects that peer.
 
-let _autoplayNudged = false;
-
 export function RTC_mountUI() {
   if (document.getElementById('webrtc-area')) return;
 
@@ -42,7 +40,7 @@ export function RTC_mountUI() {
       </summary>
       <ul id="rtc-part-list" style="margin:8px 0 0 0; padding-left:18px;"></ul>
     </details>
-  ";`
+  `;
 
   const settingsContainer = document.getElementById('settings-container');
   if (settingsContainer) {
@@ -50,22 +48,6 @@ export function RTC_mountUI() {
   } else {
     document.body.appendChild(container);
   }
-
-  // One-time autoplay nudge for mobile (first user gesture → play all <audio>)
-  const nudge = () => {
-    if (_autoplayNudged) return;
-    _autoplayNudged = true;
-    try {
-      const audios = document.querySelectorAll('[id^="rtc-tile-"][id$="-audio"]');
-      audios.forEach(a => a.play?.().catch(() => {}));
-    } catch {}
-    window.removeEventListener('click', nudge, true);
-    window.removeEventListener('touchstart', nudge, true);
-    window.removeEventListener('keydown', nudge, true);
-  };
-  window.addEventListener('click', nudge, true);
-  window.addEventListener('touchstart', nudge, true);
-  window.addEventListener('keydown', nudge, true);
 }
 
 // ── Main buttons ──────────────────────────────────────────────────────────────

@@ -23,6 +23,8 @@ const negoStateByPeer = new Map();
 let localStream = null;                     // for local preview tile
 let _localAudioTrack = null;
 let _localVideoTrack = null;
+let _dummyVideoTrack = null;                // black canvas track to pin the video m-line
+let _dummyCanvasTimer = null;               // keep frames flowing on some browsers
 let _cameraOn = false;
 
 let _sendSignal = null;
@@ -81,9 +83,15 @@ function computePolite(peerId, inboundOffer = false) {
   return String(_selfId) > String(peerId); // deterministic tie-break
 }
 
+function isLive(track) {
+  return !!track && track.readyState === 'live';
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Local tracks
 // ────────────────────────────────────────────────────────────────────────────
 async function ensureLocalAudioTrack() {
-  if (_localAudioTrack && _localAudioTrack.readyState === 'live') return _localAudioTrack;
+  if (isLive(_localAudioTrack)) return _localAudioTrack;
   const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
   const [track] = mic.getAudioTracks();
   _localAudioTrack = track || null;
@@ -97,7 +105,7 @@ async function ensureLocalAudioTrack() {
 }
 
 async function ensureLocalVideoTrack() {
-  if (_localVideoTrack && _localVideoTrack.readyState === 'live') return _localVideoTrack;
+  if (isLive(_localVideoTrack)) return _localVideoTrack;
   const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
   const [track] = camStream.getVideoTracks();
   _localVideoTrack = track || null;
@@ -108,6 +116,37 @@ async function ensureLocalVideoTrack() {
     localStream.addTrack(_localVideoTrack);
   }
   return _localVideoTrack;
+}
+
+// Tiny black canvas → captureStream → live silent video track
+function ensureDummyVideoTrack() {
+  if (isLive(_dummyVideoTrack)) return _dummyVideoTrack;
+
+  const c = document.createElement('canvas');
+  c.width = 320; c.height = 180;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, c.width, c.height);
+
+  // keep a trivial animation so frames flow
+  let frame = 0;
+  _dummyCanvasTimer && clearInterval(_dummyCanvasTimer);
+  _dummyCanvasTimer = setInterval(() => {
+    // draw a stable black frame with a tiny moving pixel off-screen (ensures frame clock)
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(-1, -1, 1, 1 + (frame++ % 1)); // no-op-ish but touches canvas
+  }, 500);
+
+  const stream = c.captureStream?.(5) || c.captureStream?.() || new MediaStream();
+  const [track] = stream.getVideoTracks();
+  _dummyVideoTrack = track || null;
+
+  // We usually keep it enabled=false so receivers don’t render flicker,
+  // but SDP/m-line stays pinned.
+  if (_dummyVideoTrack) _dummyVideoTrack.enabled = false;
+
+  return _dummyVideoTrack;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -165,6 +204,9 @@ function ensurePeerConnection(peerId) {
   // --- Negotiation (serialized; only after base transceivers are present)
   pc.onnegotiationneeded = async () => {
     try {
+      // Suppress spurious re-offers while we are applying a remote offer
+      if (st.isSettingRemote) return;
+
       await st.ready; // ensure audio then video transceivers are present
       await negotiate(peerId);
     } catch (e) {
@@ -219,6 +261,13 @@ async function negotiate(peerId) {
 
   try {
     st.makingOffer = true;
+
+    // Double-check stability just before createOffer, otherwise queue
+    if (pc.signalingState !== 'stable') {
+      st.needNegotiation = true;
+      return;
+    }
+
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     sendTo(peerId, pc.localDescription);
@@ -256,10 +305,12 @@ export async function RTC_startPeer(peerId, { inboundOffer = null, pendingCandid
   if (inboundOffer) {
     // IMPORTANT: ensure baseline transceivers exist BEFORE setting the remote offer.
     await st?.ready;
+    st.isSettingRemote = true;
     await pc.setRemoteDescription(inboundOffer);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     sendTo(peerId, pc.localDescription);
+    st.isSettingRemote = false;
 
     // Drain buffered ICE
     const bucket = ensurePending(peerId);
@@ -323,6 +374,7 @@ export function RTC_teardownAll() {
   localStream = null;
   _localAudioTrack = null;
   _localVideoTrack = null;
+  // keep dummy track for reuse; it's harmless if left alive
   _cameraOn = false;
   _started = false;
   RTC_setStartActive(false);
@@ -334,9 +386,10 @@ export async function RTC_setCameraEnabled(enabled) {
     try { _localVideoTrack?.stop(); } catch {}
     _localVideoTrack = null;
 
-    // Detach from active senders (ignore errors if PCs are closing)
+    const dummy = ensureDummyVideoTrack();
+    // Swap to dummy on all peers to keep m-line/video sender alive
     for (const [, snd] of sendersByPeer) {
-      try { await snd.videoSender?.replaceTrack(null); } catch {}
+      try { await snd.videoSender?.replaceTrack(dummy || null); } catch {}
     }
     try { UI_removeVideoTile?.('local'); } catch {}
     _cameraOn = false;
@@ -387,14 +440,12 @@ async function ensureBaseTransceivers(peerId, pc) {
   const aTrack = await ensureLocalAudioTrack();
   try { await audioSender.replaceTrack(aTrack || null); } catch {}
 
-  // Video (m=1) — baseline transceiver; will carry track only when camera enabled
+  // Video (m=1) — baseline transceiver; always carry some track
   const videoTx = pc.addTransceiver('video', { direction: 'sendrecv' });
   const videoSender = videoTx.sender;
-  if (_localVideoTrack) {
-    try { await videoSender.replaceTrack(_localVideoTrack); } catch {}
-  } else {
-    try { await videoSender.replaceTrack(null); } catch {}
-  }
+
+  const vTrack = isLive(_localVideoTrack) ? _localVideoTrack : ensureDummyVideoTrack();
+  try { await videoSender.replaceTrack(vTrack || null); } catch {}
 
   const bundle = { audioTx, videoTx, audioSender, videoSender };
   sendersByPeer.set(peerId, bundle);
