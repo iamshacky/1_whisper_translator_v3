@@ -1,46 +1,56 @@
 // modules/webrtc/client/connection.js
 // Multi-peer WebRTC mesh with stable m-line order, perfect negotiation,
-// per-peer baseline transceivers, and guarded negotiation.
-// Includes bright log beacons 🟩/🟡 to help you grep in console quickly.
+// per-peer senders/transceivers (no single-PC assumptions), auto-rejoin,
+// and per-tile audio routing. One RTCPeerConnection per peerId.
 
 import { UI_addVideoTile, UI_removeVideoTile, RTC_setStartActive } from './ui.js';
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 // Mesh state
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 const pcByPeer = new Map();                 // peerId -> RTCPeerConnection
 const remoteStreamByPeer = new Map();       // peerId -> MediaStream
 const pendingICEByPeer = new Map();         // peerId -> RTCIceCandidateInit[]
 const politeByPeer = new Map();             // peerId -> boolean
 
-const baseReadyByPeer = new Map();          // 🟨 peerId -> Promise<void> (baseline transceivers ready)
-const makingOfferByPeer = new Map();        // 🟨 peerId -> boolean (concurrent-offer guard)
-const videoSenderByPeer = new Map();        // 🟨 peerId -> RTCRtpSender (video)
+// Per-peer local senders/transceivers (so every peer receives our mic/cam)
+const sendersByPeer = new Map();            // peerId -> { audioTx, videoTx, audioSender, videoSender }
 
-// Local media & flags
-let localMicTrack = null;
-let localVideoTrack = null;
-let localStream = null;
-let cameraOn = false;
+let localStream = null;                     // for rendering local preview tile
+let _localAudioTrack = null;
+let _localVideoTrack = null;
+let _cameraOn = false;
 
-// Signaling plumbing
-let sendSignalFn = null;
-let started = false;
-let selfId = null;
+let _sendSignal = null;
+let _started = false;
+let _selfId = null;                         // deterministic polite selection
 
-// External hooks
-let onMeshIdleCb = null;
+// 🔔 external subscriber for “mesh went idle”
+let _onMeshIdle = null;
 
-// ─────────────────────────────────────────────────────────────────────────────
+
 // Helpers
-// ─────────────────────────────────────────────────────────────────────────────
+
+// NEW: tiny helper to drain buffered ICE for a peer once SRD is set
+async function drainPendingICE(peerId, extra = []) {
+  const bucket = ensurePending(peerId);
+  const all = [...extra, ...bucket];
+  if (all.length === 0) return;
+  const pc = pcByPeer.get(peerId);
+  if (!pc || !pc.remoteDescription) return; // must wait until SRD is set
+  for (const cand of all) {
+    try { await pc.addIceCandidate(cand); } catch {}
+  }
+  bucket.length = 0;
+}
+
 function ensurePending(peerId) {
   if (!pendingICEByPeer.has(peerId)) pendingICEByPeer.set(peerId, []);
   return pendingICEByPeer.get(peerId);
 }
 
 function sendTo(peerId, payload) {
-  sendSignalFn?.({ to: peerId, payload });
+  _sendSignal?.({ to: peerId, payload });
 }
 
 function anyPeerConnected() {
@@ -57,9 +67,10 @@ function recomputeStartActive() {
   const connected = anyPeerConnected();
   RTC_setStartActive(connected);
 
+  // If literally nothing connected/connecting, we’re idle.
   if (!connected && !anyPeerConnecting()) {
-    started = false;
-    onMeshIdleCb?.();
+    _started = false; // ← enables Accept-as-Join on next inbound
+    _onMeshIdle?.();
   }
 }
 
@@ -74,62 +85,161 @@ function labelForPeer(peerId) {
 }
 
 function computePolite(peerId, inboundOffer = false) {
-  if (inboundOffer) return true;            // callee is polite for perfect negotiation
-  if (!selfId) return false;
-  // Deterministic tie-break: the lexicographically larger id is polite
-  return String(selfId) > String(peerId);
+  if (inboundOffer) return true; // callee = polite (perfect negotiation)
+  if (!_selfId) return false;
+  return String(_selfId) > String(peerId); // deterministic tie-break
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Baseline transceivers (per peer)
-// ─────────────────────────────────────────────────────────────────────────────
-async function ensureMicTrack() {
-  if (localMicTrack) return localMicTrack;
+// ────────────────────────────────────────────────────────────────────────────
+async function ensureLocalAudioTrack() {
+  if (_localAudioTrack && _localAudioTrack.readyState === 'live') return _localAudioTrack;
   const mic = await navigator.mediaDevices.getUserMedia({ audio: true });
-  localMicTrack = mic.getAudioTracks()[0] || null;
+  const [track] = mic.getAudioTracks();
+  _localAudioTrack = track || null;
 
-  if (!localStream) localStream = new MediaStream();
-  if (localMicTrack) {
-    try {
-      localStream.addTrack(localMicTrack);
-    } catch {}
+  if (_localAudioTrack) {
+    if (!localStream) localStream = new MediaStream();
+    // avoid duplicates
+    localStream.getAudioTracks().forEach(t => localStream.removeTrack(t));
+    localStream.addTrack(_localAudioTrack);
   }
-  return localMicTrack;
+  return _localAudioTrack;
 }
 
-async function ensureBaseTransceiversForPeer(pc, peerId) {
-  // Audio first (locks m-line 0)
-  const micTrack = await ensureMicTrack();
-  const aTx = pc.addTransceiver('audio', { direction: 'sendrecv' });
-  await aTx.sender.replaceTrack(micTrack || null);
-  console.log(`🟩 [mesh] audio transceiver added for ${peerId}`);
+async function ensureLocalVideoTrack() {
+  if (_localVideoTrack && _localVideoTrack.readyState === 'live') return _localVideoTrack;
+  const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+  const [track] = camStream.getVideoTracks();
+  _localVideoTrack = track || null;
 
-  // Video next (locks m-line 1); track may be missing until user starts camera
-  const vTx = pc.addTransceiver('video', { direction: 'sendrecv' });
-  videoSenderByPeer.set(peerId, vTx.sender);
+  if (_localVideoTrack) {
+    if (!localStream) localStream = new MediaStream();
+    localStream.getVideoTracks().forEach(t => localStream.removeTrack(t));
+    localStream.addTrack(_localVideoTrack);
+  }
+  return _localVideoTrack;
+}
 
-  if (cameraOn && localVideoTrack) {
-    await vTx.sender.replaceTrack(localVideoTrack);
-    console.log(`🟩 [mesh] video transceiver added for ${peerId} (track applied)`);
-  } else {
-    console.log(`🟡 [mesh] video transceiver added for ${peerId} (no track yet)`);
+function closePeer(peerId) {
+  const pc = pcByPeer.get(peerId);
+  try { pc?.getSenders?.().forEach(s => s.track && s.track.stop?.()); } catch {}
+  try { pc?.close?.(); } catch {}
+  pcByPeer.delete(peerId);
+  remoteStreamByPeer.delete(peerId);
+  pendingICEByPeer.delete(peerId);
+  politeByPeer.delete(peerId);
+
+  const snd = sendersByPeer.get(peerId);
+  if (snd) {
+    try { snd.audioTx?.sender?.replaceTrack?.(null); } catch {}
+    try { snd.videoTx?.sender?.replaceTrack?.(null); } catch {}
+  }
+  sendersByPeer.delete(peerId);
+
+  try { UI_removeVideoTile?.(peerId); } catch {}
+  recomputeStartActive();
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Public API
+// ────────────────────────────────────────────────────────────────────────────
+export function RTC_setSignalSender(fn) {
+  _sendSignal = typeof fn === 'function' ? fn : null;
+}
+
+export function RTC_setSelfId(id) {
+  _selfId = id || null;
+}
+
+export function RTC_onMeshIdle(cb) {
+  _onMeshIdle = typeof cb === 'function' ? cb : null;
+}
+
+export function RTC_isStarted() { return _started; }
+export function RTC_isCameraOn() { return _cameraOn; }
+
+// -- Hang up
+export function RTC_hangUpPeer(peerId) { closePeer(peerId); }
+
+export function RTC_teardownAll() {
+  for (const id of Array.from(pcByPeer.keys())) closePeer(id);
+  try { localStream?.getTracks?.().forEach(t => t.stop()); } catch {}
+  localStream = null;
+  _localAudioTrack = null;
+  _localVideoTrack = null;
+  _cameraOn = false;
+  _started = false;
+  RTC_setStartActive(false);
+}
+
+// -- Camera toggle (apply to every peer’s videoSender)
+export async function RTC_setCameraEnabled(enabled) {
+  if (!enabled && _cameraOn) {
+    try { _localVideoTrack?.stop(); } catch {}
+    _localVideoTrack = null;
+
+    for (const [, snd] of sendersByPeer) {
+      try { await snd.videoSender?.replaceTrack(null); } catch {}
+    }
+    try { UI_removeVideoTile?.('local'); } catch {}
+    _cameraOn = false;
+    return false;
+  }
+
+  if (enabled && !_cameraOn) {
+    const vTrack = await ensureLocalVideoTrack();
+    if (!vTrack) return false;
+
+    // Replace track on all peers that already have a video sender
+    for (const [peerId, pc] of pcByPeer) {
+      await ensureBaseTransceivers(peerId, pc); // ensure sender exists
+      const snd = sendersByPeer.get(peerId);
+      try { await snd?.videoSender?.replaceTrack(vTrack); } catch {}
+    }
+
+    // Local preview tile
+    UI_addVideoTile?.('local', localStream, { label: 'You', muted: true });
+    _cameraOn = true;
+    return true;
+  }
+
+  return _cameraOn;
+}
+
+// -- Mic toggle (toggle local track enabled; shared across senders)
+export function RTC_setMicEnabled(enabled) {
+  try {
+    if (_localAudioTrack) _localAudioTrack.enabled = !!enabled;
+    const locals = localStream?.getAudioTracks?.() || [];
+    locals.forEach(a => a.enabled = !!enabled);
+    return _localAudioTrack?.enabled ?? locals[0]?.enabled ?? false;
+  } catch {
+    return false;
   }
 }
 
-// Baseline readiness wrapper (await before any SDP work)
-async function ensurePeerReady(peerId) {
-  let ready = baseReadyByPeer.get(peerId);
-  if (!ready) {
-    const pc = ensurePeerConnection(peerId);
-    ready = ensureBaseTransceiversForPeer(pc, peerId);
-    baseReadyByPeer.set(peerId, ready);
-  }
-  await ready;
+// ────────────────────────────────────────────────────────────────────────────
+// Base transceivers per peer (stabilize m-line and wire senders)
+// NOTE: make this SYNC; no gUM here. We attach tracks later via replaceTrack.
+// ────────────────────────────────────────────────────────────────────────────
+function ensureBaseTransceivers(peerId, pc) {
+  if (sendersByPeer.has(peerId)) return sendersByPeer.get(peerId);
+
+  // Deterministic order: AUDIO first, then VIDEO
+  const audioTx = pc.addTransceiver('audio', { direction: 'sendrecv' });
+  const videoTx = pc.addTransceiver('video', { direction: 'sendrecv' });
+
+  const bundle = {
+    audioTx,
+    videoTx,
+    audioSender: audioTx.sender,
+    videoSender: videoTx.sender
+  };
+  sendersByPeer.set(peerId, bundle);
+  return bundle;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Peer factory & teardown
-// ─────────────────────────────────────────────────────────────────────────────
+// …ensurePeerConnection()…
 function ensurePeerConnection(peerId) {
   if (pcByPeer.has(peerId)) return pcByPeer.get(peerId);
 
@@ -137,14 +247,15 @@ function ensurePeerConnection(peerId) {
     iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
   });
 
-  // ICE
+  // Precreate baseline transceivers immediately/synchronously to lock m-line order.
+  ensureBaseTransceivers(peerId, pc);
+
   pc.onicecandidate = (e) => {
     if (e.candidate) {
       sendTo(peerId, { candidate: e.candidate.toJSON() });
     }
   };
 
-  // Tracks
   pc.ontrack = (e) => {
     let stream = remoteStreamByPeer.get(peerId);
     if (!stream) {
@@ -152,21 +263,9 @@ function ensurePeerConnection(peerId) {
       remoteStreamByPeer.set(peerId, stream);
     }
     stream.addTrack(e.track);
-
-    if (e.track.kind === 'audio') {
-      const audioEl = document.getElementById('rtc-remote-audio');
-      if (audioEl && audioEl.srcObject !== stream) {
-        audioEl.srcObject = stream;
-        audioEl.play?.().catch(() => {});
-      }
-    }
-
-    if (e.track.kind === 'video') {
-      UI_addVideoTile(peerId, stream, { label: labelForPeer(peerId), muted: true });
-    }
+    UI_addVideoTile(peerId, stream, { label: labelForPeer(peerId), muted: true });
   };
 
-  // Connection state
   pc.onconnectionstatechange = () => {
     console.log(`[mesh] ${peerId} state:`, pc.connectionState);
     if (
@@ -179,151 +278,99 @@ function ensurePeerConnection(peerId) {
     recomputeStartActive();
   };
 
-  // Negotiationneeded — guarded & baseline-aware
+  // negotiationneeded is fine now that m-lines exist up front
   pc.onnegotiationneeded = async () => {
     try {
-      await ensurePeerReady(peerId); // 🟨 stabilize m-lines first
-
-      // 🔶 Only create an offer when fully stable to avoid m-line churn
-      if (pc.signalingState !== 'stable') {
-        console.log(`🟡 [mesh] onnegotiationneeded ignored (state=${pc.signalingState}) for ${peerId}`);
-        return;
-      }
-
-      if (makingOfferByPeer.get(peerId)) {
-        console.log(`🟡 [mesh] onnegotiationneeded re-entrancy ignored for ${peerId}`);
-        return;
-      }
-
-      makingOfferByPeer.set(peerId, true);
-      console.log(`🟩 [mesh] onnegotiationneeded → createOffer/send to ${peerId}`);
+      if (pc.signalingState !== 'stable') return;
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       sendTo(peerId, pc.localDescription);
     } catch (e) {
       console.warn('[mesh] negotiationneeded failed:', e);
-    } finally {
-      makingOfferByPeer.set(peerId, false);
     }
   };
-
-  // Prepare baseline readiness PROMISE (awaited elsewhere)
-  if (!baseReadyByPeer.has(peerId)) {
-    baseReadyByPeer.set(peerId, ensureBaseTransceiversForPeer(pc, peerId));
-  }
 
   pcByPeer.set(peerId, pc);
   return pc;
 }
 
-function closePeer(peerId) {
-  console.log(`🟡 [mesh] closePeer(${peerId})`);
-  makingOfferByPeer.delete(peerId);
-  baseReadyByPeer.delete(peerId);
+// …public API…
 
-  const pc = pcByPeer.get(peerId);
-  try { pc?.getSenders?.().forEach(s => s.track && s.track.stop?.()); } catch {}
-  try { pc?.close?.(); } catch {}
-  pcByPeer.delete(peerId);
-  remoteStreamByPeer.delete(peerId);
-  pendingICEByPeer.delete(peerId);
-  politeByPeer.delete(peerId);
-  videoSenderByPeer.delete(peerId);
-  try { UI_removeVideoTile?.(peerId); } catch {}
-  recomputeStartActive();
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Public API
-// ─────────────────────────────────────────────────────────────────────────────
-export function RTC_setSignalSender(fn) {
-  sendSignalFn = typeof fn === 'function' ? fn : null;
-}
-
-export function RTC_setSelfId(id) {
-  selfId = id || null;
-}
-
-export function RTC_onMeshIdle(cb) {
-  onMeshIdleCb = typeof cb === 'function' ? cb : null;
-}
-
-export function RTC_isStarted() { return started; }
-export function RTC_isCameraOn() { return cameraOn; }
-
-// Start (or accept) peer
 export async function RTC_startPeer(peerId, { inboundOffer = null, pendingCandidates = [] } = {}) {
   console.log('[mesh] RTC_startPeer →', peerId, inboundOffer ? '(with inbound offer)' : '');
-  started = true;
+  _started = true;
 
   const pc = ensurePeerConnection(peerId);
+  // Ensure m-lines exist before any O/A
+  const snd = ensureBaseTransceivers(peerId, pc);
+
+  // If camera/mic are already active, attach tracks now (safe; no renegotiation of m-lines)
+  try {
+    if (!_localAudioTrack) { _localAudioTrack = (await ensureLocalAudioTrack()) || null; }
+    await snd.audioSender.replaceTrack(_localAudioTrack || null);
+  } catch {}
+
+  try {
+    await snd.videoSender.replaceTrack(_localVideoTrack || null);
+  } catch {}
+
   politeByPeer.set(peerId, computePolite(peerId, !!inboundOffer));
 
-  // 🟨 ensure baseline BEFORE touching SDP
-  await ensurePeerReady(peerId);
-
   if (inboundOffer) {
+    // Callee path
     await pc.setRemoteDescription(inboundOffer);
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     sendTo(peerId, pc.localDescription);
 
-    const bucket = ensurePending(peerId);
-    for (const cand of [...pendingCandidates, ...bucket]) {
-      try { await pc.addIceCandidate(cand); } catch {}
+    await drainPendingICE(peerId, pendingCandidates);
+  } else {
+    // Caller path
+    if (!pc.localDescription && pc.signalingState === 'stable') {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      sendTo(peerId, pc.localDescription);
     }
-    bucket.length = 0;
-
-    // If camera already on, attach our local video to this late-joined peer
-    if (cameraOn && localVideoTrack) {
-      const vSender = videoSenderByPeer.get(peerId);
-      try {
-        await vSender?.replaceTrack?.(localVideoTrack);
-        console.log(`🟩 [mesh] applied local video to ${peerId}`);
-      } catch (e) {
-        console.warn(`[mesh] failed to apply late video to ${peerId}:`, e);
-      }
-    }
-    } else {
-      // 🙌 Outbound: do nothing here.
-      // Adding baseline transceivers has already triggered onnegotiationneeded().
-    }
+    // If any ICE was queued before SRD, we’ll drain after answer arrives in handleSignal()
+  }
 }
 
-// Incoming signaling
 export async function RTC_handleSignal({ from, payload }) {
   if (!payload) return;
   const peerId = from;
   const pc = ensurePeerConnection(peerId);
+  // Ensure m-lines exist before any O/A
+  ensureBaseTransceivers(peerId, pc);
+
+  // If polite not decided yet and we’re seeing an OFFER, mark this side as polite.
+  if (payload.type === 'offer' && !politeByPeer.has(peerId)) {
+    politeByPeer.set(peerId, true);
+  }
   const polite = !!politeByPeer.get(peerId);
 
   try {
     if (payload.type === 'offer') {
-      await ensurePeerReady(peerId); // 🟨 make sure transceivers exist
-
       const collision = pc.signalingState !== 'stable';
       const ignore = !polite && collision;
-      if (ignore) {
-        console.log(`🟡 [mesh] glare: impolite peer ignoring remote offer from ${peerId}`);
-        return;
-      }
+      if (ignore) return;
       if (collision) {
         await pc.setLocalDescription({ type: 'rollback' });
       }
-
       await pc.setRemoteDescription(payload);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       sendTo(peerId, pc.localDescription);
 
+      await drainPendingICE(peerId);
     } else if (payload.type === 'answer') {
-      await ensurePeerReady(peerId);
       await pc.setRemoteDescription(payload);
-
+      await drainPendingICE(peerId);
     } else if (payload.candidate) {
-      try { await pc.addIceCandidate(payload); }
-      catch { ensurePending(peerId).push(payload); }
-
+      try {
+        await pc.addIceCandidate(payload);
+      } catch {
+        ensurePending(peerId).push(payload);
+      }
     } else {
       console.log('[mesh] unknown signal payload shape from', peerId, payload);
     }
@@ -332,77 +379,3 @@ export async function RTC_handleSignal({ from, payload }) {
   }
 }
 
-// Hang up a single peer
-export function RTC_hangUpPeer(peerId) { closePeer(peerId); }
-
-// Teardown everything
-export function RTC_teardownAll() {
-  for (const id of Array.from(pcByPeer.keys())) closePeer(id);
-  try { localStream?.getTracks?.().forEach(t => t.stop()); } catch {}
-  localStream = null;
-  cameraOn = false;
-  localVideoTrack = null;
-  started = false;
-  RTC_setStartActive(false);
-}
-
-// Camera toggle (fan out local video track to all peers)
-export async function RTC_setCameraEnabled(enabled) {
-  if (!enabled && cameraOn) {
-    // Stop & detach
-    try {
-      for (const [, sender] of videoSenderByPeer) {
-        try { await sender?.replaceTrack?.(null); } catch {}
-      }
-      localVideoTrack?.stop?.();
-    } catch {}
-    localVideoTrack = null;
-    try { UI_removeVideoTile?.('local'); } catch {}
-    cameraOn = false;
-    return false;
-  }
-
-  if (enabled && !cameraOn) {
-    // Acquire camera
-    const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
-    const [track] = camStream.getVideoTracks();
-    if (!track) return false;
-
-    localVideoTrack = track;
-
-    // Ensure local preview stream
-    if (!localStream) localStream = new MediaStream();
-    try { localStream.getVideoTracks().forEach(t => localStream.removeTrack(t)); } catch {}
-    try { localStream.addTrack(track); } catch {}
-
-    // Fan-out to all peers that already have a baseline video sender
-    for (const [peerId, sender] of videoSenderByPeer.entries()) {
-      try {
-        await sender?.replaceTrack?.(track);
-        console.log(`🟩 [mesh] applied local video to ${peerId}`);
-      } catch (e) {
-        console.warn(`[mesh] failed to apply local video to ${peerId}:`, e);
-      }
-    }
-
-    UI_addVideoTile?.('local', localStream, { label: 'You', muted: true });
-    cameraOn = true;
-    console.log('🟩 [mesh] camera ON (track applied to all peers present)');
-    return true;
-  }
-
-  return cameraOn;
-}
-
-// Mic toggle (enable/disable local mic)
-export function RTC_setMicEnabled(enabled) {
-  try {
-    if (localMicTrack) {
-      localMicTrack.enabled = !!enabled;
-      return localMicTrack.enabled;
-    }
-    return false;
-  } catch {
-    return false;
-  }
-}

@@ -331,7 +331,7 @@ export function RTC_setMicEnabled(enabled) {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Base transceivers per peer (stabilize m-line and wire senders)
+// Base transceivers per `      4peer (stabilize m-line and wire senders)
 // ────────────────────────────────────────────────────────────────────────────
 async function ensureBaseTransceivers(peerId, pc) {
   if (sendersByPeer.has(peerId)) return sendersByPeer.get(peerId);
