@@ -225,23 +225,23 @@ function ensurePeerConnection(peerId) {
 function closePeer(peerId) {
   const pc = pcByPeer.get(peerId);
 
-  // Stop local senders' tracks (safe if already stopped)
+  // 1) Stop any local tracks that were being sent through this pc
   try { pc?.getSenders?.().forEach(s => s.track && s.track.stop?.()); } catch {}
 
-  // Close PC
+  // 2) Close safely
   try { pc?.close?.(); } catch {}
 
-  // Clear maps
+  // 3) Cleanup maps (⚠️ do NOT call replaceTrack(null) on a closed pc)
   pcByPeer.delete(peerId);
   remoteStreamByPeer.delete(peerId);
   pendingICEByPeer.delete(peerId);
   politeByPeer.delete(peerId);
   negoStateByPeer.delete(peerId);
 
-  // Drop sender bundle (do not call replaceTrack on a closed pc)
+  // Sender bundle is no longer usable once pc is closed — just drop it.
   sendersByPeer.delete(peerId);
 
-  // Remove tile
+  // 4) Remove UI tile
   try { UI_removeVideoTile?.(peerId); } catch {}
 
   recomputeStartActive();
