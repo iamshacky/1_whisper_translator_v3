@@ -50,7 +50,7 @@ export async function RTC__initClient(roomId) {
       RTC_setVideoButton({ enabled: false, on: false });
       RTC_setStartLabel('Start Call');
       console.warn('[webrtc/init] Room is not registered via QR; disabling call UI.');
-      // Still continue to set up listeners so if room becomes valid later (rare), page refresh will work.
+      // Still set up listeners so if room becomes valid later (rare), page refresh will work.
     } else {
       RTC_setStatus('idle');
     }
@@ -67,10 +67,30 @@ export async function RTC__initClient(roomId) {
     const connectedPeers = new Set();
     let inCallLocal = false; // our own “we consider ourselves in the call” flag
 
+    // NEW: presence snapshot ticker while in-call (keeps Participants fresh if events are missed)
+    let presenceTicker = null;
+    const startPresenceTicker = () => {
+      if (presenceTicker) return;
+      presenceTicker = setInterval(() => {
+        try {
+          requestPresenceSnapshot();
+        } catch (err) {
+          // ignore
+        }
+      }, 5000); // every 5s; cheap, avoids adding reconnect logic now
+    };
+    const stopPresenceTicker = () => {
+      if (presenceTicker) {
+        clearInterval(presenceTicker);
+        presenceTicker = null;
+      }
+    };
+
     // When the MESH becomes idle (remote hung up), reset UI and our state
     RTC_onMeshIdle(() => {
       if (connectedPeers.size === 0) {
         inCallLocal = false;
+        stopPresenceTicker();
         RTC_setStatus(validity.valid ? 'idle' : 'room unavailable (QR only)');
         RTC_setButtons({ canStart: validity.valid, canEnd: false });
         RTC_setMicButton({ enabled: false, muted: false });
@@ -126,18 +146,12 @@ export async function RTC__initClient(roomId) {
     // teardown locally and disable UI — self-contained and independent of other modules.
     onRoomInvalid(({ reason }) => {
       console.warn('[webrtc/init] room invalid signal via WS:', reason);
-      safeTearDownUI({ banner: 'room unavailable (QR only)' });
-    });
-
-    // Listen for QR module’s custom deletion event (without coupling)
-    window.addEventListener('room-deleted', () => {
-      console.warn('[webrtc/init] room-deleted event heard → teardown');
       safeTearDownUI({ banner: 'room deleted' });
     });
 
     // Handle signals
     onSignal(async ({ from, payload }) => {
-      console.log('[webrtc/init] signal:', payload?.type || 'candidate', 'from', from);
+      console.log('[webrtc/init] signal:', (payload && payload.type) || 'candidate', 'from', from);
 
       if (payload?.type === 'offer' && !RTC_isStarted()) {
         // Prompt user (works as Accept=Join if offers arrive any time)
@@ -148,6 +162,7 @@ export async function RTC__initClient(roomId) {
             await RTC_startPeer(from, { inboundOffer: payload });
             connectedPeers.add(from);
             inCallLocal = true;
+            startPresenceTicker();
             RTC_setStatus('connecting');
             RTC_setButtons({ canStart: false, canEnd: true });
             RTC_setMicButton({ enabled: true, muted: false });
@@ -161,6 +176,7 @@ export async function RTC__initClient(roomId) {
         if (payload?.type === 'answer' || payload?.type === 'offer') {
           connectedPeers.add(from);
           inCallLocal = true;
+          startPresenceTicker();
           RTC_setButtons({ canStart: false, canEnd: true });
           RTC_setMicButton({ enabled: true, muted: false });
           RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
@@ -174,6 +190,7 @@ export async function RTC__initClient(roomId) {
       await RTC_startPeer(peerId);
       connectedPeers.add(peerId);
       inCallLocal = true;
+      startPresenceTicker();
       RTC_setStatus('connecting');
       RTC_setButtons({ canStart: false, canEnd: true });
       RTC_setMicButton({ enabled: true, muted: false });
@@ -209,6 +226,8 @@ export async function RTC__initClient(roomId) {
         peerIds.forEach(id => {
           startPeer(id).catch(e => console.warn('startPeer failed for', id, e));
         });
+
+        startPresenceTicker();
       }, 120);
     }
 
@@ -219,6 +238,7 @@ export async function RTC__initClient(roomId) {
         RTC_teardownAll();
         connectedPeers.clear();
         inCallLocal = false;
+        stopPresenceTicker();
         RTC_setStatus(validity.valid ? 'idle' : 'room unavailable (QR only)');
         RTC_setButtons({ canStart: validity.valid, canEnd: false });
         RTC_setMicButton({ enabled: false, muted: false });
@@ -258,7 +278,7 @@ function safeReadLocalUser() {
 }
 
 function safeTearDownUI({ banner = 'idle' } = {}) {
-  try { RTC_teardownAll(); } catch {}
+  try { RTC_teardownAll(); } catch (err) {}
   RTC_setStatus(banner);
   RTC_setButtons({ canStart: false, canEnd: false });
   RTC_setMicButton({ enabled: false, muted: false });

@@ -205,20 +205,44 @@ function ensurePeerConnection(peerId) {
   return pc;
 }
 
+function pcIsClosed(pc) {
+  return !pc || pc.signalingState === 'closed' || pc.connectionState === 'closed';
+}
+
+// (Optional) tiny debug helpers
+try {
+  window.__webrtc_dbg = window.__webrtc_dbg || {};
+  window.__webrtc_dbg.dump = () => {
+    return Array.from(pcByPeer.entries()).map(([peerId, pc]) => ({
+      peerId,
+      state: pc.connectionState,
+      sig: pc.signalingState,
+      mids: pc.getTransceivers().map(t => `${t.mid}:${t.receiver.track?.kind}:${t.direction}`)
+    }));
+  };
+} catch {}
+
+// …ensureBaseTransceivers/ensurePeerConnection unchanged…
 function closePeer(peerId) {
   const pc = pcByPeer.get(peerId);
+  const snd = sendersByPeer.get(peerId);
+
+  // Detach tracks from senders BEFORE closing the PC, and only if not already closed
+  if (!pcIsClosed(pc)) {
+    try { snd?.audioSender?.replaceTrack?.(null); } catch {}
+    try { snd?.videoSender?.replaceTrack?.(null); } catch {}
+  }
+
+  // Stop local tracks that were attached to this PC (safe)
   try { pc?.getSenders?.().forEach(s => s.track && s.track.stop?.()); } catch {}
+
+  // Now it’s safe to close
   try { pc?.close?.(); } catch {}
+
   pcByPeer.delete(peerId);
   remoteStreamByPeer.delete(peerId);
   pendingICEByPeer.delete(peerId);
   politeByPeer.delete(peerId);
-
-  const snd = sendersByPeer.get(peerId);
-  if (snd) {
-    try { snd.audioSender?.replaceTrack?.(null); } catch {}
-    try { snd.videoSender?.replaceTrack?.(null); } catch {}
-  }
   sendersByPeer.delete(peerId);
 
   try { UI_removeVideoTile?.(peerId); } catch {}
