@@ -181,7 +181,7 @@ export async function RTC__initClient(roomId) {
       RTC_setStartLabel('In Call');
     }
 
-    // Fan-out dial (with jitter to reduce synchronized offers)
+    // Fan-out dial
     async function startFanOut() {
       console.log('[webrtc/init] startFanOut() called');
 
@@ -206,12 +206,8 @@ export async function RTC__initClient(roomId) {
           .filter(id => id && id !== clientId);
 
         console.log('[webrtc/init] initial peers to dial =', peerIds);
-        // Small jitter per peer to avoid synchronized offers in multi-party start
-        peerIds.forEach((id, idx) => {
-          const jitter = 40 + Math.floor(Math.random() * 120) + idx * 25;
-          setTimeout(() => {
-            startPeer(id).catch(e => console.warn('startPeer failed for', id, e));
-          }, jitter);
+        peerIds.forEach(id => {
+          startPeer(id).catch(e => console.warn('startPeer failed for', id, e));
         });
       }, 120);
     }
