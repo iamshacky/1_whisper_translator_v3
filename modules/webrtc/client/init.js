@@ -1,4 +1,4 @@
-// modules/webrtc/client/init.js
+// start__bind_video_actions_and_presence_labels
 import {
   RTC_mountUI,
   RTC_setStatus,
@@ -9,238 +9,168 @@ import {
   RTC_showIncomingPrompt,
   RTC_hideIncomingPrompt,
   RTC_ensureVideoButton,
-  RTC_setVideoButton,
-  RTC_setStartLabel,
+  RTC_setVideoButton
 } from './ui.js';
 
 import {
+  RTC_start,
   RTC_teardownAll,
   RTC_setMicEnabled,
   RTC_isStarted,
-  RTC_startPeer,
-  RTC_handleSignal,
-  RTC_hangUpPeer,
-  RTC_setSignalSender,
-  RTC_onMeshIdle,
-  RTC_isCameraOn,
   RTC_setCameraEnabled,
-  RTC_setSelfId
+  RTC_isCameraOn
 } from './connection.js';
 
-import { RTC_setupSignaling, probeRoomValidity } from './signaling.js';
+// start__add_import_setRemoteLabel
+import { RTC_setRemoteLabel } from './connection.js';
+// end__add_import_setRemoteLabel
+
+
+// ✅ Add this import for signaling
+import { RTC_setupSignaling } from './signaling.js';
+// end__fix_import_signaling
 
 export async function RTC__initClient(roomId) {
-  console.log('[webrtc/init] RTC__initClient enter, roomId =', roomId);
   try {
     RTC_mountUI();
     RTC_ensureVideoButton();
-    RTC_setStatus('initializing');
-    // Idle baseline
+    RTC_setStatus('idle');
     RTC_setButtons({ canStart: true, canEnd: false });
     RTC_setMicButton({ enabled: false, muted: false });
     RTC_setVideoButton({ enabled: false, on: false });
-    RTC_setStartLabel('Start Call');
-
-    // ── Self-contained room validity check (no wsHandler changes)
-    const validity = await probeRoomValidity(roomId);
-    if (!validity.valid) {
-      RTC_setStatus('room unavailable (QR only)');
-      RTC_setButtons({ canStart: false, canEnd: false });
-      RTC_setMicButton({ enabled: false, muted: false });
-      RTC_setVideoButton({ enabled: false, on: false });
-      RTC_setStartLabel('Start Call');
-      console.warn('[webrtc/init] Room is not registered via QR; disabling call UI.');
-      // Still continue to set up listeners so if room becomes valid later (rare), page refresh will work.
-    } else {
-      RTC_setStatus('idle');
-    }
 
     const {
       sendSignal, onSignal,
-      sendPresenceJoin, requestPresenceSnapshot,
-      onPresence, onRoomInvalid, clientId
+      sendPresenceJoin, requestPresenceSnapshot, onPresence
     } = RTC_setupSignaling(roomId);
 
-    RTC_setSelfId(clientId);
-    RTC_setSignalSender(sendSignal);
-
-    const connectedPeers = new Set();
-    let inCallLocal = false; // our own “we consider ourselves in the call” flag
-
-    // When the MESH becomes idle (remote hung up), reset UI and our state
-    RTC_onMeshIdle(() => {
-      if (connectedPeers.size === 0) {
-        inCallLocal = false;
-        RTC_setStatus(validity.valid ? 'idle' : 'room unavailable (QR only)');
-        RTC_setButtons({ canStart: validity.valid, canEnd: false });
-        RTC_setMicButton({ enabled: false, muted: false });
-        RTC_setVideoButton({ enabled: false, on: false });
-        RTC_setStartLabel('Start Call');
-      }
-    });
-
-    // Presence → UI update + prune + auto-dial newcomers if we’re in-call
+    // presence → UI list
+    /*
     onPresence(({ participants }) => {
       RTC_updateParticipants(participants || []);
-      window.__lastPresence = participants || [];
-
-      const others = (participants || [])
-        .map(p => p.clientId)
-        .filter(id => id && id !== clientId);
-
-      // Update Start/Join label depending on room state
-      if (!inCallLocal) {
-        RTC_setStartLabel(others.length > 0 ? 'Join Call' : 'Start Call');
-      } else {
-        RTC_setStartLabel('In Call');
-      }
-
-      // Prune peers that left
-      const wanted = new Set(others);
-      for (const id of Array.from(connectedPeers)) {
-        if (!wanted.has(id)) {
-          RTC_hangUpPeer(id);
-          connectedPeers.delete(id);
-        }
-      }
-
-      // Auto-dial any newcomers if we’re already in the call
-      if (inCallLocal) {
-        for (const id of others) {
-          if (!connectedPeers.has(id)) {
-            startPeer(id).catch(e => console.warn('auto startPeer failed for', id, e));
-          }
-        }
-      }
     });
+    */
 
-    // Identify self + snapshot
+    // start__presence → UI list + derive remote video label
+    onPresence(({ participants }) => {
+      RTC_updateParticipants(participants || []);
+
+      // Derive a friendly remote label for the primary remote tile.
+      const me = safeReadLocalUser();
+      const myId = me?.user_id != null ? String(me.user_id) : null;
+      const others = (participants || []).filter(p => !myId || String(p.user_id) !== myId);
+
+      let label = 'Remote';
+      if (others.length === 1) {
+        label = (others[0].username || 'Remote').trim();
+      } else if (others.length > 1) {
+        const first = (others[0].username || 'Remote').trim();
+        label = `${first} +${others.length - 1}`;
+      }
+
+      RTC_setRemoteLabel(label);
+    });
+    // end__presence → UI list + derive remote video label
+
+
     const me = safeReadLocalUser();
-    sendPresenceJoin({
-      user_id: me?.user_id ?? null,
-      username: me?.username || 'Someone'
-    });
+    sendPresenceJoin({ user_id: me?.user_id ?? null, username: me?.username || 'Someone' });
     requestPresenceSnapshot();
 
-    // If server ever emits an error on this WS (e.g., room became invalid),
-    // teardown locally and disable UI — self-contained and independent of other modules.
-    onRoomInvalid(({ reason }) => {
-      console.warn('[webrtc/init] room invalid signal via WS:', reason);
-      safeTearDownUI({ banner: 'room unavailable (QR only)' });
-    });
-
-    // Listen for QR module’s custom deletion event (without coupling)
-    window.addEventListener('room-deleted', () => {
-      console.warn('[webrtc/init] room-deleted event heard → teardown');
-      safeTearDownUI({ banner: 'room deleted' });
-    });
-
-    // Handle signals
-    onSignal(async ({ from, payload }) => {
-      console.log('[webrtc/init] signal:', payload?.type || 'candidate', 'from', from);
-
+    let pendingOffer = null;
+    const pendingCandidates = [];
+    onSignal(({ payload, from }) => {
       if (payload?.type === 'offer' && !RTC_isStarted()) {
-        // Prompt user (works as Accept=Join if offers arrive any time)
+        pendingOffer = payload;
         RTC_showIncomingPrompt({
           fromId: from,
           onAccept: async () => {
             RTC_hideIncomingPrompt();
-            await RTC_startPeer(from, { inboundOffer: payload });
-            connectedPeers.add(from);
-            inCallLocal = true;
-            RTC_setStatus('connecting');
-            RTC_setButtons({ canStart: false, canEnd: true });
-            RTC_setMicButton({ enabled: true, muted: false });
-            RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
-            RTC_setStartLabel('In Call');
+            await startCall({ inboundOffer: pendingOffer, pendingCandidates });
+            pendingOffer = null;
+            pendingCandidates.length = 0;
           },
-          onDecline: () => RTC_hideIncomingPrompt()
+          onDecline: () => {
+            RTC_hideIncomingPrompt();
+            pendingOffer = null;
+            pendingCandidates.length = 0;
+          }
         });
-      } else {
-        await RTC_handleSignal({ from, payload });
-        if (payload?.type === 'answer' || payload?.type === 'offer') {
-          connectedPeers.add(from);
-          inCallLocal = true;
+      } else if (payload?.candidate && !RTC_isStarted()) {
+        pendingCandidates.push(payload);
+      }
+    });
+
+    // start__function startCall replacement (enables End immediately for caller)
+    async function startCall({ inboundOffer = null, pendingCandidates = [] } = {}) {
+      // Immediately reflect “calling” state in UI
+      RTC_setStatus('connecting');
+      RTC_setButtons({ canStart: false, canEnd: true });   // ⬅️ End is active right away
+      RTC_setMicButton({ enabled: false, muted: false });
+      RTC_setVideoButton({ enabled: false, on: false });
+
+      await RTC_start({
+        roomId,
+        sendSignal,
+        onSignal,
+        inboundOffer,
+        pendingCandidates,
+        onConnecting: () => {
+          // already set above; no change needed
+        },
+        onConnected: () => {
+          RTC_setStatus('connected');
+          // End stays enabled; now enable mic/video controls for this peer
           RTC_setButtons({ canStart: false, canEnd: true });
           RTC_setMicButton({ enabled: true, muted: false });
           RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
-          RTC_setStartLabel('In Call');
+
+          // Bind Start/Stop Video after button exists
+          const vidBtn = document.getElementById('rtc-video-btn');
+          if (vidBtn) {
+            vidBtn.onclick = async () => {
+              const next = !RTC_isCameraOn();
+              try {
+                await RTC_setCameraEnabled(next);
+                RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
+              } catch (e) {
+                console.warn('Camera toggle failed:', e);
+              }
+            };
+          }
+        },
+        onTeardown: () => {
+          RTC_setStatus('idle');
+          RTC_setButtons({ canStart: true, canEnd: false });
+          RTC_setMicButton({ enabled: false, muted: false });
+          RTC_setVideoButton({ enabled: false, on: false });
         }
-      }
-    });
-
-    // Start helper
-    async function startPeer(peerId) {
-      await RTC_startPeer(peerId);
-      connectedPeers.add(peerId);
-      inCallLocal = true;
-      RTC_setStatus('connecting');
-      RTC_setButtons({ canStart: false, canEnd: true });
-      RTC_setMicButton({ enabled: true, muted: false });
-      RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
-      RTC_setStartLabel('In Call');
+      });
     }
+    // end__function startCall replacement
 
-    // Fan-out dial
-    async function startFanOut() {
-      console.log('[webrtc/init] startFanOut() called');
-
-      // Block start if room invalid; keeps module self-contained.
-      const check = await probeRoomValidity(roomId);
-      if (!check.valid) {
-        RTC_setStatus('room unavailable (QR only)');
-        RTC_setButtons({ canStart: false, canEnd: false });
-        return;
-      }
-
-      RTC_setStatus('connecting');
-      RTC_setButtons({ canStart: false, canEnd: true });
-      RTC_setMicButton({ enabled: true, muted: false });
-      RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
-
-      requestPresenceSnapshot();
-
-      setTimeout(() => {
-        const peerIds = (window.__lastPresence || [])
-          .map(p => p.clientId)
-          .filter(id => id && id !== clientId);
-
-        console.log('[webrtc/init] initial peers to dial =', peerIds);
-        peerIds.forEach(id => {
-          startPeer(id).catch(e => console.warn('startPeer failed for', id, e));
-        });
-      }, 120);
-    }
-
-    // Bind UI actions
     RTC_bindActions({
-      onStart: async () => { await startFanOut(); },
+      onStart: async () => { await startCall(); },
       onEnd: () => {
         RTC_teardownAll();
-        connectedPeers.clear();
-        inCallLocal = false;
-        RTC_setStatus(validity.valid ? 'idle' : 'room unavailable (QR only)');
-        RTC_setButtons({ canStart: validity.valid, canEnd: false });
+        RTC_setStatus('idle');
+        RTC_setButtons({ canStart: true, canEnd: false });
         RTC_setMicButton({ enabled: false, muted: false });
         RTC_setVideoButton({ enabled: false, on: false });
-        // Label will switch to Join/Start on next presence tick
       },
       onToggleMic: (currentlyMuted) => {
+        // If currently muted, we want to enable. If not muted, we want to disable.
         const targetEnabled = currentlyMuted ? true : false;
+
         const isEnabledNow = RTC_setMicEnabled(targetEnabled);
-        RTC_setMicButton({ enabled: true, muted: !isEnabledNow });
+        console.log(`🎛️ Toggling mic: currentlyMuted=${currentlyMuted}, targetEnabled=${targetEnabled}, isEnabledNow=${isEnabledNow}`);
+
+        RTC_setMicButton({
+          enabled: true,
+          muted: !isEnabledNow // muted if the track is disabled
+        });
       }
     });
-
-    // Wire up Start/Stop Video button
-    const videoBtn = document.getElementById('rtc-video-btn');
-    if (videoBtn) {
-      videoBtn.onclick = async () => {
-        const wantOn = videoBtn.textContent.includes('Start');
-        const ok = await RTC_setCameraEnabled(wantOn);
-        RTC_setVideoButton({ enabled: true, on: ok });
-      };
-    }
 
   } catch (err) {
     console.warn('RTC init failed:', err);
@@ -248,22 +178,13 @@ export async function RTC__initClient(roomId) {
     RTC_setButtons({ canStart: true, canEnd: false });
     RTC_setMicButton({ enabled: false, muted: false });
     RTC_setVideoButton({ enabled: false, on: false });
-    RTC_setStartLabel('Start Call');
   }
 }
+// end__bind_video_actions_and_presence_labels
 
 function safeReadLocalUser() {
   try { return JSON.parse(localStorage.getItem('whisper-user') || 'null'); }
   catch { return null; }
-}
-
-function safeTearDownUI({ banner = 'idle' } = {}) {
-  try { RTC_teardownAll(); } catch {}
-  RTC_setStatus(banner);
-  RTC_setButtons({ canStart: false, canEnd: false });
-  RTC_setMicButton({ enabled: false, muted: false });
-  RTC_setVideoButton({ enabled: false, on: false });
-  RTC_setStartLabel('Start Call');
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -277,6 +198,4 @@ export function RTC__teardown() {
   RTC_setStatus('idle');
   RTC_setButtons({ canStart: true, canEnd: false });
   RTC_setMicButton({ enabled: false, muted: false });
-  RTC_setVideoButton({ enabled: false, on: false });
-  RTC_setStartLabel('Start Call');
 }

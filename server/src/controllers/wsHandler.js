@@ -126,17 +126,14 @@ export function setupWebSocket(wss) {
 
           /* Start wsHandler.js__insert_after_parsed_JSON */
           // ⛑️ Harden WebRTC signaling (deleted or unregistered rooms get no relay)
-          // ✅ Also: support targeted relay via payload.to
           if (parsed?.kind === 'webrtc-signal') {
-            // Guard: deleted or never-registered rooms do not relay signaling
+            // If the room is deleted or was never registered, drop the signal.
             if (deletedRooms.has(ws.roomId) || !(await isRoomValid(ws.roomId))) {
               console.warn(`🔒 Blocked signaling in room "${ws.roomId}" (deleted/unregistered)`);
               return; // stop here; don't relay
             }
 
-            // 🎯 If payload has "to", relay only to that clientId; else broadcast to all others
-            const targetId = parsed?.payload?.to || null;
-
+            // Relay only to other clients in the same room
             const payload = {
               kind: 'webrtc-signal',
               room: ws.roomId,
@@ -144,22 +141,18 @@ export function setupWebSocket(wss) {
               payload: parsed.payload
             };
 
-            const roomSet = rooms.get(ws.roomId || 'default') || new Set();
-            for (const client of roomSet) {
-              if (client === ws || client.readyState !== WebSocket.OPEN) continue;
-              if (targetId && client.clientId !== targetId) continue; // selective
-              client.send(JSON.stringify(payload));
+            for (const client of rooms.get(ws.roomId || 'default') || []) {
+              if (client !== ws && client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(payload));
+              }
             }
-
             return; // important: don't treat this as a chat message
           }
           /* End wsHandler.js__insert_after_parsed_JSON */
 
-          // ⬇️ Pass-through for WebRTC signaling (scoped by ws.roomId)
-          // ✅ Also supports targeted relay via payload.to (kept for robustness)
-          if (parsed?.kind === 'webrtc-signal') {
-            const targetId = parsed?.payload?.to || null;
 
+          // ⬇️ Pass-through for WebRTC signaling (scoped by ws.roomId)
+          if (parsed?.kind === 'webrtc-signal') {
             const payload = {
               kind: 'webrtc-signal',
               room: ws.roomId,
@@ -167,13 +160,11 @@ export function setupWebSocket(wss) {
               payload: parsed.payload
             };
 
-            const roomSet = rooms.get(ws.roomId || 'default') || new Set();
-            for (const client of roomSet) {
-              if (client === ws || client.readyState !== WebSocket.OPEN) continue;
-              if (targetId && client.clientId !== targetId) continue; // selective
-              client.send(JSON.stringify(payload));
+            for (const client of rooms.get(ws.roomId || 'default') || []) {
+              if (client !== ws && client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify(payload));
+              }
             }
-
             return; // do not treat as chat message
           }
 
