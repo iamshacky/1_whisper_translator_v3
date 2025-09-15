@@ -1,34 +1,6 @@
-# 1_whisper_translator_v9.04__07-25
 
-1_whisper_translator_v9.04__07-25_at_1116pm__time_to_start_deletion_module_refinement
+- 1_whisper_translator_v5.01__with_video__09-14_at_304am__webrtc_contained_in_own_folder
 
-### Updates
-
-- Option to save a room url they visit to localStorage. A room needs atleast 1 message in it before it can be shared.
-
-- QR codes get generated when saving a shared room.
-
-### Next 
-
-- Refine modules/persistence_sqlite/delete
-- Per-message expiration. Automatically delete at a set time from when the timestamp says they were created.
-```
-// modules\persistence_sqlite\delete\server\model.js
-
-export async function deleteExpiredMessagesForAllRooms() {
-  ...
-localStorage["room-owners"] = {
-  "room-xyz": "user_abc"
-}
-...
-}
-```
-
-### Notes and considerations
-
-#### Restrict who can delete rooms or all messages. 
-1. The room creater could be determined by localStorage. 
-  - What if they cleared their localStorage? Logging in and sending a message populates localStorage again.
-  - What if they forget their login after deleting a room? Then they or noone else can delete that room. 
-    - Maybe that's it may be worth considering a feature where if a room isn't used by anyone for a certain amount of time, the room automatically gets deleted.
- 
+- Moved webrtc stuff mostly into the modules/webrtc directory.
+- Everything still works.
+- Next, add Livekit webrtc and a way to toggle between the vanilla webrtc and Livekit webrtc.

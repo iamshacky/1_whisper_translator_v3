@@ -25,13 +25,19 @@ import {
 import { RTC_setRemoteLabel } from './connection.js';
 // end__add_import_setRemoteLabel
 
-
-// ✅ Add this import for signaling
-import { RTC_setupSignaling } from './signaling.js';
-// end__fix_import_signaling
-
+// start__bind_video_actions_and_presence_labels
 export async function RTC__initClient(roomId) {
+  // ✅ Robust idempotency guard (self-initializing)
+  const g = globalThis;
+  g.__WEBRTC_INIT_FLAG__ = g.__WEBRTC_INIT_FLAG__ || { done: false };
+  if (g.__WEBRTC_INIT_FLAG__.done) {
+    console.log('ℹ️ WebRTC init already done — skipping.');
+    return;
+  }
+  g.__WEBRTC_INIT_FLAG__.done = true;
+
   try {
+    // Mount UI at top of settings container and set initial control states
     RTC_mountUI();
     RTC_ensureVideoButton();
     RTC_setStatus('idle');
@@ -39,23 +45,18 @@ export async function RTC__initClient(roomId) {
     RTC_setMicButton({ enabled: false, muted: false });
     RTC_setVideoButton({ enabled: false, on: false });
 
+    // ⬇️ Dynamically import signaling so RTC_setupSignaling is definitely defined
+    const { RTC_setupSignaling } = await import('./signaling.js');
+
     const {
       sendSignal, onSignal,
       sendPresenceJoin, requestPresenceSnapshot, onPresence
     } = RTC_setupSignaling(roomId);
 
-    // presence → UI list
-    /*
-    onPresence(({ participants }) => {
-      RTC_updateParticipants(participants || []);
-    });
-    */
-
-    // start__presence → UI list + derive remote video label
+    // Presence → UI list + derive remote label
     onPresence(({ participants }) => {
       RTC_updateParticipants(participants || []);
 
-      // Derive a friendly remote label for the primary remote tile.
       const me = safeReadLocalUser();
       const myId = me?.user_id != null ? String(me.user_id) : null;
       const others = (participants || []).filter(p => !myId || String(p.user_id) !== myId);
@@ -67,16 +68,15 @@ export async function RTC__initClient(roomId) {
         const first = (others[0].username || 'Remote').trim();
         label = `${first} +${others.length - 1}`;
       }
-
       RTC_setRemoteLabel(label);
     });
-    // end__presence → UI list + derive remote video label
 
-
+    // Announce presence + request snapshot
     const me = safeReadLocalUser();
     sendPresenceJoin({ user_id: me?.user_id ?? null, username: me?.username || 'Someone' });
     requestPresenceSnapshot();
 
+    // Handle inbound offers before call is started
     let pendingOffer = null;
     const pendingCandidates = [];
     onSignal(({ payload, from }) => {
@@ -101,11 +101,27 @@ export async function RTC__initClient(roomId) {
       }
     });
 
-    // start__function startCall replacement (enables End immediately for caller)
+    // Start/End/Mic handlers
+    RTC_bindActions({
+      onStart: async () => { await startCall(); },
+      onEnd: () => {
+        RTC_teardownAll();
+        RTC_setStatus('idle');
+        RTC_setButtons({ canStart: true, canEnd: false });
+        RTC_setMicButton({ enabled: false, muted: false });
+        RTC_setVideoButton({ enabled: false, on: false });
+      },
+      onToggleMic: (currentlyMuted) => {
+        const targetEnabled = currentlyMuted ? true : false;
+        const isEnabledNow = RTC_setMicEnabled(targetEnabled);
+        RTC_setMicButton({ enabled: true, muted: !isEnabledNow });
+      }
+    });
+
+    // ---- startCall helper (enables End immediately for caller)
     async function startCall({ inboundOffer = null, pendingCandidates = [] } = {}) {
-      // Immediately reflect “calling” state in UI
       RTC_setStatus('connecting');
-      RTC_setButtons({ canStart: false, canEnd: true });   // ⬅️ End is active right away
+      RTC_setButtons({ canStart: false, canEnd: true });
       RTC_setMicButton({ enabled: false, muted: false });
       RTC_setVideoButton({ enabled: false, on: false });
 
@@ -115,17 +131,14 @@ export async function RTC__initClient(roomId) {
         onSignal,
         inboundOffer,
         pendingCandidates,
-        onConnecting: () => {
-          // already set above; no change needed
-        },
+        onConnecting: () => {},
         onConnected: () => {
           RTC_setStatus('connected');
-          // End stays enabled; now enable mic/video controls for this peer
           RTC_setButtons({ canStart: false, canEnd: true });
           RTC_setMicButton({ enabled: true, muted: false });
           RTC_setVideoButton({ enabled: true, on: RTC_isCameraOn() });
 
-          // Bind Start/Stop Video after button exists
+          // Bind Start/Stop Video
           const vidBtn = document.getElementById('rtc-video-btn');
           if (vidBtn) {
             vidBtn.onclick = async () => {
@@ -147,30 +160,7 @@ export async function RTC__initClient(roomId) {
         }
       });
     }
-    // end__function startCall replacement
-
-    RTC_bindActions({
-      onStart: async () => { await startCall(); },
-      onEnd: () => {
-        RTC_teardownAll();
-        RTC_setStatus('idle');
-        RTC_setButtons({ canStart: true, canEnd: false });
-        RTC_setMicButton({ enabled: false, muted: false });
-        RTC_setVideoButton({ enabled: false, on: false });
-      },
-      onToggleMic: (currentlyMuted) => {
-        // If currently muted, we want to enable. If not muted, we want to disable.
-        const targetEnabled = currentlyMuted ? true : false;
-
-        const isEnabledNow = RTC_setMicEnabled(targetEnabled);
-        console.log(`🎛️ Toggling mic: currentlyMuted=${currentlyMuted}, targetEnabled=${targetEnabled}, isEnabledNow=${isEnabledNow}`);
-
-        RTC_setMicButton({
-          enabled: true,
-          muted: !isEnabledNow // muted if the track is disabled
-        });
-      }
-    });
+    // ---- end startCall
 
   } catch (err) {
     console.warn('RTC init failed:', err);

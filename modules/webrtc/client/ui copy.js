@@ -44,8 +44,7 @@ export function RTC_mountUI() {
 
   const settingsContainer = document.getElementById('settings-container');
   if (settingsContainer) {
-    // ✅ Put the panel at the TOP of the settings container
-    settingsContainer.insertBefore(container, settingsContainer.firstChild || null);
+    settingsContainer.appendChild(container);
   } else {
     document.body.appendChild(container);
   }
@@ -201,7 +200,6 @@ export function UI_addVideoTile(peerKey, stream, opts = {}) {
   if (!tile) {
     tile = document.createElement('div');
     tile.id = id;
-    tile.dataset.tileId = peerKey;  // new 9/14
     tile.className = 'rtc-tile';
     tile.style.position = 'relative';
     tile.style.background = '#000';

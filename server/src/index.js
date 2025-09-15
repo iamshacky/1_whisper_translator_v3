@@ -107,9 +107,21 @@ app.use('/modules/webrtc', express.static(
   path.join(rootDir, 'modules', 'webrtc', 'client')
 ));
 
+// webrtc_livekit (client static)
+app.use('/modules/webrtc_livekit/client', express.static(
+  path.join(rootDir, 'modules', 'webrtc_livekit', 'client')
+));
+app.use('/modules/webrtc_livekit', express.static(
+  path.join(rootDir, 'modules', 'webrtc_livekit', 'client')
+));
+
+
 // webrtc server (optional)
-import { WEBRTC__initServer } from '../../modules/webrtc/server/init.js';
+// import { WEBRTC__initServer } from '../../modules/webrtc/server/init.js';
+// WEBRTC__initServer(app);
+import { WEBRTC__initServer } from '../../modules/webrtc/server/selector.js';
 WEBRTC__initServer(app);
+
 
 
 

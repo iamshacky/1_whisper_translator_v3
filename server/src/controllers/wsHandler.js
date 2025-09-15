@@ -10,6 +10,8 @@ import { fileURLToPath } from 'url';
 import { deletedRooms } from '../lib/deletedRoomCache.js';
 import { isRoomValid } from '../../../modules/room_manager_qr/server/model.js';
 
+import { WEB__handleSignalMessage, WEB__handlePresenceMessage } from '../../../modules/webrtc/server/handlers.js';
+
 
 
 const rooms = new Map(); // roomId → Set<WebSocket>
@@ -26,20 +28,20 @@ export function setupWebSocket(wss) {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
     const roomId   = url.searchParams.get('room') || 'default';
-      const clientId = url.searchParams.get('clientId') || randomUUID();
+    const clientId = url.searchParams.get('clientId') || randomUUID();
 
-      // 🛠 Dynamically load targetLang from settings config
-      let targetLang = 'es'; // fallback
-      try {
-        const __dirname = path.dirname(fileURLToPath(import.meta.url));
-        const rootDir = path.resolve(__dirname, '../../../');
-        const configPath = path.join(rootDir, 'modules', 'settings_panel', 'server', 'config.json');
-        const raw = await fs.readFile(configPath, 'utf-8');
-        const cfg = JSON.parse(raw);
-        targetLang = cfg.targetLang || 'es';
-      } catch (err) {
-        console.warn("⚠️ Could not read targetLang from settings. Defaulting to 'es'");
-      }
+    // 🛠 Dynamically load targetLang from settings config
+    let targetLang = 'es'; // fallback
+    try {
+      const __dirname = path.dirname(fileURLToPath(import.meta.url));
+      const rootDir = path.resolve(__dirname, '../../../');
+      const configPath = path.join(rootDir, 'modules', 'settings_panel', 'server', 'config.json');
+      const raw = await fs.readFile(configPath, 'utf-8');
+      const cfg = JSON.parse(raw);
+      targetLang = cfg.targetLang || 'es';
+    } catch (err) {
+      console.warn("⚠️ Could not read targetLang from settings. Defaulting to 'es'");
+    }
 
     ws.clientId = clientId;
 
@@ -53,9 +55,8 @@ export function setupWebSocket(wss) {
 
       try {
         if (isBinary) {
-          
-          const urlParams = new URLSearchParams(ws.url?.split('?')[1] || '');
-          const roomId = urlParams.get('room') || 'default';
+          // ✅ Use the canonical room id we already stored
+          const roomId = ws.roomId || 'default';
 
           if (deletedRooms.has(roomId)) {
             console.warn(`❌ Preview rejected — deleted room: "${roomId}"`);
@@ -121,83 +122,46 @@ export function setupWebSocket(wss) {
           console.log('🟨 End of preview log\n');
 
         } else {
-
           const parsed = JSON.parse(message);
 
-          /* Start wsHandler.js__insert_after_parsed_JSON */
-          // ⛑️ Harden WebRTC signaling (deleted or unregistered rooms get no relay)
+          /* Start wsHandler.js__insert_after_parsed_JSON (delegated) */
           if (parsed?.kind === 'webrtc-signal') {
-            // If the room is deleted or was never registered, drop the signal.
-            if (deletedRooms.has(ws.roomId) || !(await isRoomValid(ws.roomId))) {
-              console.warn(`🔒 Blocked signaling in room "${ws.roomId}" (deleted/unregistered)`);
-              return; // stop here; don't relay
-            }
-
-            // Relay only to other clients in the same room
-            const payload = {
-              kind: 'webrtc-signal',
-              room: ws.roomId,
-              from: ws.clientId,
-              payload: parsed.payload
-            };
-
-            for (const client of rooms.get(ws.roomId || 'default') || []) {
-              if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(payload));
-              }
-            }
+            await WEB__handleSignalMessage({
+              ws,
+              rooms,
+              msg: parsed,
+              isRoomValid,
+              deletedRooms
+            });
             return; // important: don't treat this as a chat message
           }
           /* End wsHandler.js__insert_after_parsed_JSON */
 
-
-          // ⬇️ Pass-through for WebRTC signaling (scoped by ws.roomId)
+          // ⬇️ Your original duplicate block — kept; it also delegates now
           if (parsed?.kind === 'webrtc-signal') {
-            const payload = {
-              kind: 'webrtc-signal',
-              room: ws.roomId,
-              from: ws.clientId,
-              payload: parsed.payload
-            };
-
-            for (const client of rooms.get(ws.roomId || 'default') || []) {
-              if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(payload));
-              }
-            }
+            await WEB__handleSignalMessage({
+              ws,
+              rooms,
+              msg: parsed,
+              isRoomValid,
+              deletedRooms
+            });
             return; // do not treat as chat message
           }
 
-          /* Start wsHandler.js__presence_after_parsed */
-          // 🧭 Presence: join/leave/snapshot (blocked for deleted/unregistered rooms)
-          if (parsed?.kind === 'presence-join') {
-            if (deletedRooms.has(ws.roomId) || !(await isRoomValid(ws.roomId))) {
-              console.warn(`🔒 Blocked presence join in room "${ws.roomId}" (deleted/unregistered)`);
-              return;
-            }
-            const { user_id = null, username = 'Someone' } = parsed;
-            const roomParts = getRoomParticipants(ws.roomId);
-            roomParts.set(ws.clientId, { user_id, username });
-            broadcastPresence(ws.roomId);
-            return;
-          }
-
-          if (parsed?.kind === 'presence-request') {
-            if (deletedRooms.has(ws.roomId) || !(await isRoomValid(ws.roomId))) return;
-            // send snapshot only to requester
-            const list = Array.from(getRoomParticipants(ws.roomId).entries()).map(([clientId, info]) => ({
-              clientId,
-              user_id: info.user_id || null,
-              username: info.username || 'Someone'
-            }));
-            ws.send(JSON.stringify({ kind: 'presence-sync', room: ws.roomId, participants: list }));
+          /* Start wsHandler.js__presence_after_parsed (delegated) */
+          if (parsed?.kind === 'presence-join' || parsed?.kind === 'presence-request') {
+            await WEB__handlePresenceMessage({
+              ws,
+              msg: parsed,
+              isRoomValid,
+              deletedRooms,
+              getRoomParticipants,
+              broadcastPresence
+            });
             return;
           }
           /* End wsHandler.js__presence_after_parsed */
-
-
-
-
 
           if (parsed.room && deletedRooms.has(parsed.room)) {
             console.warn(`❌ Final message rejected — deleted room: "${parsed.room}"`);
@@ -273,15 +237,6 @@ export function setupWebSocket(wss) {
       }
     });
 
-    /*
-    ws.on('close', () => {
-      const room = rooms.get(roomId);
-      if (room) {
-        room.delete(ws);
-        if (room.size === 0) rooms.delete(roomId);
-      }
-    });
-    */
     ws.on('close', () => {
       const room = rooms.get(roomId);
       if (room) {
