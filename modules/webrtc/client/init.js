@@ -9,7 +9,8 @@ import {
   RTC_showIncomingPrompt,
   RTC_hideIncomingPrompt,
   RTC_ensureVideoButton,
-  RTC_setVideoButton
+  RTC_setVideoButton,
+  RTC_wireImplToggle // ⬅️ added
 } from './ui.js';
 
 import {
@@ -27,18 +28,15 @@ import { RTC_setRemoteLabel } from './connection.js';
 
 // start__bind_video_actions_and_presence_labels
 export async function RTC__initClient(roomId) {
-  // ✅ Robust idempotency guard (self-initializing)
   const g = globalThis;
   g.__WEBRTC_INIT_FLAG__ = g.__WEBRTC_INIT_FLAG__ || { done: false };
-  if (g.__WEBRTC_INIT_FLAG__.done) {
-    console.log('ℹ️ WebRTC init already done — skipping.');
-    return;
-  }
+  if (g.__WEBRTC_INIT_FLAG__.done) { console.log('ℹ️ WebRTC init already done — skipping.'); return; }
   g.__WEBRTC_INIT_FLAG__.done = true;
 
   try {
     // Mount UI at top of settings container and set initial control states
     RTC_mountUI();
+    RTC_wireImplToggle(); // ⬅️ wire toggle in the WebRTC panel
     RTC_ensureVideoButton();
     RTC_setStatus('idle');
     RTC_setButtons({ canStart: true, canEnd: false });

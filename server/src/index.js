@@ -28,6 +28,9 @@ const rootDir = path.resolve(__dirname, '../../');
 app.use(express.json());
 app.use(express.static(path.join(rootDir, 'client')));
 
+app.use('/node_modules', express.static(path.join(rootDir, 'node_modules')));
+
+
 // Serve flag-icons flags from node_modules
 // Serve the whole flag-icons package
 app.use(
@@ -121,6 +124,10 @@ app.use('/modules/webrtc_livekit', express.static(
 // WEBRTC__initServer(app);
 import { WEBRTC__initServer } from '../../modules/webrtc/server/selector.js';
 WEBRTC__initServer(app);
+
+// livekit (server)
+import { LIVEKIT__initServer } from '../../modules/webrtc_livekit/server/init.js';
+LIVEKIT__initServer(app);
 
 
 

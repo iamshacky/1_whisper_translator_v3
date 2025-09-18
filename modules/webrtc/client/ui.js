@@ -8,8 +8,20 @@ export function RTC_mountUI() {
   container.className = 'panel-wrapper';
   container.style.marginTop = '10px';
 
+  // ⬇️ Added the implementation toggle block at the top of the panel
   container.innerHTML = `
     <h3>WebRTC</h3>
+
+    <div id="webrtc-impl-controls" style="display:flex;gap:8px;align-items:center;margin:6px 0 12px 0;flex-wrap:wrap;">
+      <label for="webrtc-impl-select" style="font-weight:600;">🔀 Implementation:</label>
+      <select id="webrtc-impl-select">
+        <option value="vanilla">Vanilla</option>
+        <option value="livekit">LiveKit (stub)</option>
+      </select>
+      <button id="webrtc-impl-apply" disabled>Apply & Reload</button>
+      <span id="webrtc-impl-note" style="font-size:0.9rem;color:#666;"></span>
+    </div>
+
     <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
       <strong>Status:</strong> <span id="rtc-status">initializing</span>
     </div>
@@ -33,9 +45,7 @@ export function RTC_mountUI() {
     </div>
 
     <details id="rtc-participants" style="margin-top:10px;">
-      <summary>
-        Participants: <span id="rtc-part-count">0</span>
-      </summary>
+      <summary>Participants: <span id="rtc-part-count">0</span></summary>
       <ul id="rtc-part-list" style="margin:8px 0 0 0; padding-left:18px;"></ul>
     </details>
 
@@ -44,10 +54,44 @@ export function RTC_mountUI() {
 
   const settingsContainer = document.getElementById('settings-container');
   if (settingsContainer) {
-    // ✅ Put the panel at the TOP of the settings container
+    // keep WebRTC panel at the top
     settingsContainer.insertBefore(container, settingsContainer.firstChild || null);
   } else {
     document.body.appendChild(container);
+  }
+}
+
+/** Wire the implementation toggle (localStorage-backed) */
+export function RTC_wireImplToggle() {
+  try {
+    const select = document.getElementById('webrtc-impl-select');
+    const apply  = document.getElementById('webrtc-impl-apply');
+    const note   = document.getElementById('webrtc-impl-note');
+
+    if (!select || !apply) return;
+
+    const current = (localStorage.getItem('webrtc_impl') || 'vanilla').toLowerCase();
+    select.value = current;
+    apply.disabled = true;
+
+    const updateNote = () => {
+      note.textContent = (select.value === 'livekit')
+        ? 'Requires LiveKit server config; shows a stub note if not configured.'
+        : '';
+    };
+    updateNote();
+
+    select.addEventListener('change', () => {
+      apply.disabled = (select.value === current);
+      updateNote();
+    });
+
+    apply.addEventListener('click', () => {
+      try { localStorage.setItem('webrtc_impl', select.value); } catch {}
+      location.reload();
+    });
+  } catch (e) {
+    console.warn('⚠️ Failed to wire WebRTC impl toggle:', e);
   }
 }
 
@@ -85,8 +129,38 @@ export function RTC_bindActions({ onStart, onEnd, onToggleMic }) {
 export function RTC_setButtons({ canStart, canEnd }) {
   const startBtn = document.getElementById('rtc-start-btn');
   const endBtn   = document.getElementById('rtc-end-btn');
-  if (startBtn) startBtn.disabled = !canStart;
-  if (endBtn)   endBtn.disabled   = !canEnd;
+
+  if (startBtn) {
+    startBtn.disabled = !canStart;
+
+    // When connected (start disabled & end enabled), tint Start green
+    if (!canStart && canEnd) {
+      startBtn.dataset.connected = 'true';
+      startBtn.style.backgroundColor = '#2e7d32'; // green
+      startBtn.style.color = '#fff';
+      startBtn.style.borderColor = '#1b5e20';
+    } else {
+      startBtn.dataset.connected = 'false';
+      startBtn.style.backgroundColor = '';
+      startBtn.style.color = '';
+      startBtn.style.borderColor = '';
+    }
+  }
+
+  if (endBtn) {
+    endBtn.disabled = !canEnd;
+
+    // Make End red only when it’s active
+    if (canEnd) {
+      endBtn.style.backgroundColor = '#c62828'; // red
+      endBtn.style.color = '#fff';
+      endBtn.style.borderColor = '#8e0000';
+    } else {
+      endBtn.style.backgroundColor = '';
+      endBtn.style.color = '';
+      endBtn.style.borderColor = '';
+    }
+  }
 }
 
 export function RTC_setMicButton({ enabled, muted }) {
@@ -175,6 +249,7 @@ function UI_getOrCreateVideoGrid() {
 // Simple in-memory state per peer (1:1 for now → key 'remote')
 const _peerAudioState = new Map(); // key -> { volume: 0..1, muted: boolean }
 
+/*
 function __getRemoteAudioEl() {
   return document.getElementById('rtc-remote-audio') || null;
 }
@@ -185,6 +260,25 @@ function __applyPeerAudioState(peerKey) {
   if (audioEl) {
     audioEl.volume = volume;
     audioEl.muted = muted;
+    audioEl.play?.().catch(() => {});
+  }
+}
+*/
+function __getRemoteAudioEl(peerKey) {
+  // Prefer per-peer element created by LiveKit path, fallback to the legacy global one.
+  return (
+    document.getElementById(`rtc-remote-audio-${peerKey}`) ||
+    document.getElementById('rtc-remote-audio') ||
+    null
+  );
+}
+
+function __applyPeerAudioState(peerKey) {
+  const { volume = 1, muted = false } = _peerAudioState.get(peerKey) || {};
+  const audioEl = __getRemoteAudioEl(peerKey);
+  if (audioEl) {
+    audioEl.volume = volume;
+    audioEl.muted  = muted;
     audioEl.play?.().catch(() => {});
   }
 }

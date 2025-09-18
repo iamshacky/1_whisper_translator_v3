@@ -1,3 +1,6 @@
+// 🧩 selector.js v2 (minimal loader)
+console.log('🧩 selector.js v2 (minimal loader)');
+
 (async () => {
   const impl = (localStorage.getItem('webrtc_impl') || 'vanilla').toLowerCase();
   const params = new URLSearchParams(window.location.search);
@@ -10,6 +13,6 @@
   } else {
     console.log('🎛️ WebRTC selector → Vanilla');
     const mod = await import('/modules/webrtc/client/init.js');
-    await mod.RTC__initClient?.(roomId);  // ← direct call is correct
+    await mod.RTC__initClient?.(roomId);
   }
 })();

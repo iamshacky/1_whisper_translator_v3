@@ -123,7 +123,15 @@
   <!-- QR Codes -->
   <script type="module" src="/modules/room_manager_qr/init.js"></script>
   <!-- webrtc -->
-  <!--<script type="module" src="/modules/webrtc/client/init.js"></script>-->
+  <script type="importmap">
+  {
+    "imports": {
+      "livekit-client": "/node_modules/livekit-client/dist/livekit-client.esm.mjs"
+    }
+  }
+  </script>
+
+
   <script type="module" src="/modules/webrtc/client/selector.js"></script>
 
 
