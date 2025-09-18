@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 रूम सहेजें",
 
   your_rooms_header: "आपके रूम",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'इम्प्लीमेंटेशन:',
-  webrtc_impl_vanilla: 'वैनिला',
-  webrtc_impl_livekit_stub: 'LiveKit (स्टब)',
-  webrtc_impl_apply_reload: 'लागू करें और रीलोड करें',
-  webrtc_status_label: 'स्थिति:',
-  webrtc_status_idle: 'निष्क्रिय',
-  webrtc_start_call_btn: 'कॉल शुरू करें',
-  webrtc_end_call_btn: 'कॉल समाप्त करें',
-  webrtc_mute_btn: 'म्यूट',
-  webrtc_unmute_btn: 'अनम्यूट',
-  webrtc_video_start_btn: 'वीडियो शुरू करें',
-  webrtc_video_stop_btn: 'वीडियो बंद करें',
-  webrtc_incoming_call: 'इनकमिंग कॉल…',
-  webrtc_accept_btn: 'स्वीकार करें',
-  webrtc_decline_btn: 'अस्वीकार करें',
-  webrtc_mic_level_label: 'माइक्रोफ़ोन स्तर:',
-  webrtc_participants_label: 'प्रतिभागी:',
-  webrtc_you_tag: '(आप)',
 };

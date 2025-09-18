@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 保存房间",
 
   your_rooms_header: "你的房间",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: '实现：',
-  webrtc_impl_vanilla: '原生',
-  webrtc_impl_livekit_stub: 'LiveKit（存根）',
-  webrtc_impl_apply_reload: '应用并重新加载',
-  webrtc_status_label: '状态：',
-  webrtc_status_idle: '空闲',
-  webrtc_start_call_btn: '开始通话',
-  webrtc_end_call_btn: '结束通话',
-  webrtc_mute_btn: '静音',
-  webrtc_unmute_btn: '取消静音',
-  webrtc_video_start_btn: '开启视频',
-  webrtc_video_stop_btn: '停止视频',
-  webrtc_incoming_call: '来电中…',
-  webrtc_accept_btn: '接受',
-  webrtc_decline_btn: '拒接',
-  webrtc_mic_level_label: '麦克风音量：',
-  webrtc_participants_label: '参与者：',
-  webrtc_you_tag: '（你）',
 };

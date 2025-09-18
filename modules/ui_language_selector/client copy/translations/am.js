@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 ክፍል አስቀምጥ",
 
   your_rooms_header: "የእርስዎ ክፍሎች",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'አፈፃፀም:',
-  webrtc_impl_vanilla: 'ቫኒላ',
-  webrtc_impl_livekit_stub: 'LiveKit (ስታብ)',
-  webrtc_impl_apply_reload: 'ተግባር አካትት እና እንደገና ጫን',
-  webrtc_status_label: 'ሁኔታ:',
-  webrtc_status_idle: 'እረፍት',
-  webrtc_start_call_btn: 'ጥሪ ጀምር',
-  webrtc_end_call_btn: 'ጥሪ አቁም',
-  webrtc_mute_btn: 'ዝም አድርግ',
-  webrtc_unmute_btn: 'ዝም አቋርጥ',
-  webrtc_video_start_btn: 'ቪዲዮ ጀምር',
-  webrtc_video_stop_btn: 'ቪዲዮ አቁም',
-  webrtc_incoming_call: 'ጥሪ እየገባ ነው…',
-  webrtc_accept_btn: 'ተቀበል',
-  webrtc_decline_btn: 'እምቢ',
-  webrtc_mic_level_label: 'የማይክሮፎን ደረጃ:',
-  webrtc_participants_label: 'ተሳታፊዎች:',
-  webrtc_you_tag: '(እርስዎ)',
 };

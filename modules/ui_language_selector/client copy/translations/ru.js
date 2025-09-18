@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 Сохранить комнату",
 
   your_rooms_header: "Ваши комнаты",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'Реализация:',
-  webrtc_impl_vanilla: 'Vanilla',
-  webrtc_impl_livekit_stub: 'LiveKit (stub)',
-  webrtc_impl_apply_reload: 'Применить и перезагрузить',
-  webrtc_status_label: 'Статус:',
-  webrtc_status_idle: 'простой',
-  webrtc_start_call_btn: 'Начать звонок',
-  webrtc_end_call_btn: 'Завершить звонок',
-  webrtc_mute_btn: 'Выключить микрофон',
-  webrtc_unmute_btn: 'Включить микрофон',
-  webrtc_video_start_btn: 'Включить видео',
-  webrtc_video_stop_btn: 'Остановить видео',
-  webrtc_incoming_call: 'Входящий вызов…',
-  webrtc_accept_btn: 'Принять',
-  webrtc_decline_btn: 'Отклонить',
-  webrtc_mic_level_label: 'Уровень микрофона:',
-  webrtc_participants_label: 'Участники:',
-  webrtc_you_tag: '(вы)',
 };

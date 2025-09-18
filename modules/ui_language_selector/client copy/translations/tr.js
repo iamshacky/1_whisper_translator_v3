@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 Odayı kaydet",
 
   your_rooms_header: "Odalarınız",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'Uygulama:',
-  webrtc_impl_vanilla: 'Vanilla',
-  webrtc_impl_livekit_stub: 'LiveKit (taslak)',
-  webrtc_impl_apply_reload: 'Uygula ve Yeniden Yükle',
-  webrtc_status_label: 'Durum:',
-  webrtc_status_idle: 'boşta',
-  webrtc_start_call_btn: 'Aramayı Başlat',
-  webrtc_end_call_btn: 'Aramayı Bitir',
-  webrtc_mute_btn: 'Sesi Kapat',
-  webrtc_unmute_btn: 'Sesi Aç',
-  webrtc_video_start_btn: 'Videoyu Başlat',
-  webrtc_video_stop_btn: 'Videoyu Durdur',
-  webrtc_incoming_call: 'Gelen arama…',
-  webrtc_accept_btn: 'Kabul Et',
-  webrtc_decline_btn: 'Reddet',
-  webrtc_mic_level_label: 'Mikrofon seviyesi:',
-  webrtc_participants_label: 'Katılımcılar:',
-  webrtc_you_tag: '(siz)',
 };

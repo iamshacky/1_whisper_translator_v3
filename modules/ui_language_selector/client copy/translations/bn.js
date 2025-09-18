@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 রুম সংরক্ষণ করুন",
 
   your_rooms_header: "আপনার রুমসমূহ",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'ইমপ্লিমেন্টেশন:',
-  webrtc_impl_vanilla: 'ভ্যানিলা',
-  webrtc_impl_livekit_stub: 'LiveKit (স্টাব)',
-  webrtc_impl_apply_reload: 'প্রয়োগ ও রিলোড',
-  webrtc_status_label: 'অবস্থা:',
-  webrtc_status_idle: 'নিষ্ক্রিয়',
-  webrtc_start_call_btn: 'কল শুরু করুন',
-  webrtc_end_call_btn: 'কল শেষ করুন',
-  webrtc_mute_btn: 'মিউট',
-  webrtc_unmute_btn: 'আনমিউট',
-  webrtc_video_start_btn: 'ভিডিও শুরু করুন',
-  webrtc_video_stop_btn: 'ভিডিও বন্ধ করুন',
-  webrtc_incoming_call: 'ইনকামিং কল…',
-  webrtc_accept_btn: 'গ্রহণ করুন',
-  webrtc_decline_btn: 'প্রত্যাখ্যান',
-  webrtc_mic_level_label: 'মাইক্রোফোনের স্তর:',
-  webrtc_participants_label: 'অংশগ্রহণকারীরা:',
-  webrtc_you_tag: '(আপনি)',
 };

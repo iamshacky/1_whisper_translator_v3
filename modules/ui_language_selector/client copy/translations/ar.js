@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 حفظ الغرفة",
 
   your_rooms_header: "غرفك",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'التنفيذ:',
-  webrtc_impl_vanilla: 'Vanilla',
-  webrtc_impl_livekit_stub: 'LiveKit (stub)',
-  webrtc_impl_apply_reload: 'تطبيق وإعادة التحميل',
-  webrtc_status_label: 'الحالة:',
-  webrtc_status_idle: 'خامل',
-  webrtc_start_call_btn: 'بدء المكالمة',
-  webrtc_end_call_btn: 'إنهاء المكالمة',
-  webrtc_mute_btn: 'كتم الصوت',
-  webrtc_unmute_btn: 'إلغاء الكتم',
-  webrtc_video_start_btn: 'بدء الفيديو',
-  webrtc_video_stop_btn: 'إيقاف الفيديو',
-  webrtc_incoming_call: 'مكالمة واردة…',
-  webrtc_accept_btn: 'قبول',
-  webrtc_decline_btn: 'رفض',
-  webrtc_mic_level_label: 'مستوى الميكروفون:',
-  webrtc_participants_label: 'المشاركون:',
-  webrtc_you_tag: '(أنت)',
 };

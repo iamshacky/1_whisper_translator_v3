@@ -116,26 +116,4 @@ export default {
   save_room_btn: "💾 Save Room",
 
   your_rooms_header: "Your Rooms",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'Implementation:',
-  webrtc_impl_vanilla: 'Vanilla',
-  webrtc_impl_livekit_stub: 'LiveKit (stub)',
-  webrtc_impl_apply_reload: 'Apply & Reload',
-  webrtc_status_label: 'Status:',
-  webrtc_status_idle: 'idle',
-  webrtc_start_call_btn: 'Start Call',
-  webrtc_end_call_btn: 'End Call',
-  webrtc_mute_btn: 'Mute',
-  webrtc_unmute_btn: 'Unmute',
-  webrtc_video_start_btn: 'Start Video',
-  webrtc_video_stop_btn: 'Stop Video',
-  webrtc_incoming_call: 'Incoming call…',
-  webrtc_accept_btn: 'Accept',
-  webrtc_decline_btn: 'Decline',
-  webrtc_mic_level_label: 'Mic level:',
-  webrtc_participants_label: 'Participants:',
-  webrtc_you_tag: '(you)',
-
 };

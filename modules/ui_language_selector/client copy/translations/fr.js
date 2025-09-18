@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 Enregistrer la salle",
 
   your_rooms_header: "Vos salles",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'Implémentation :',
-  webrtc_impl_vanilla: 'Vanilla',
-  webrtc_impl_livekit_stub: 'LiveKit (stub)',
-  webrtc_impl_apply_reload: 'Appliquer et recharger',
-  webrtc_status_label: 'État :',
-  webrtc_status_idle: 'inactif',
-  webrtc_start_call_btn: 'Démarrer l’appel',
-  webrtc_end_call_btn: 'Terminer l’appel',
-  webrtc_mute_btn: 'Couper le micro',
-  webrtc_unmute_btn: 'Rétablir le micro',
-  webrtc_video_start_btn: 'Démarrer la vidéo',
-  webrtc_video_stop_btn: 'Arrêter la vidéo',
-  webrtc_incoming_call: 'Appel entrant…',
-  webrtc_accept_btn: 'Accepter',
-  webrtc_decline_btn: 'Refuser',
-  webrtc_mic_level_label: 'Niveau du micro :',
-  webrtc_participants_label: 'Participants :',
-  webrtc_you_tag: '(vous)',
 };

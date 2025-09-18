@@ -10,51 +10,46 @@ export function RTC_mountUI() {
 
   // ⬇️ Added the implementation toggle block at the top of the panel
   container.innerHTML = `
-    <div id="webrtc-area" class="panel-wrapper" style="margin-top: 10px;">
-      <h3 id="webrtc-header">WebRTC</h3>
+    <h3>WebRTC</h3>
 
-      <div id="webrtc-impl-controls" style="display:flex;gap:8px;align-items:center;margin:6px 0 12px 0;flex-wrap:wrap;">
-        <label for="webrtc-impl-select" id="webrtc-impl-label" style="font-weight:600;">🔀 Implementation:</label>
-        <select id="webrtc-impl-select">
-          <option value="vanilla" data-i18n-key="webrtc_impl_vanilla">Vanilla</option>
-          <option value="livekit" data-i18n-key="webrtc_impl_livekit_stub">LiveKit (stub)</option>
-        </select>
-        <button id="webrtc-impl-apply" disabled>Apply &amp; Reload</button>
-        <span id="webrtc-impl-note" style="font-size:0.9rem;color:#666;"></span>
-      </div>
-
-      <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-        <strong id="webrtc-status-label">Status:</strong>
-        <span id="rtc-status">idle</span>
-      </div>
-
-      <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
-        <button id="rtc-start-btn" data-connected="false">Start Call</button>
-        <button id="rtc-end-btn" disabled>End Call</button>
-        <button id="rtc-mic-btn" data-muted="false" disabled>Mute</button>
-        <button id="rtc-video-btn" data-video="off" disabled>Start Video</button>
-      </div>
-
-      <div id="rtc-incoming" style="display:none; background:#fff8e1; border-left:4px solid #ffcc00; padding:8px; border-radius:4px; margin-bottom:8px;">
-        <div id="rtc-incoming-text" style="margin-bottom:6px;">Incoming call…</div>
-        <div style="display:flex; gap:8px;">
-          <button id="rtc-accept-btn">Accept</button>
-          <button id="rtc-decline-btn">Decline</button>
-        </div>
-      </div>
-
-      <div style="display:flex; align-items:center; gap:8px; margin:6px 0;">
-        <span id="rtc-mic-level-label" style="font-size:0.9rem; color:#555;">Mic level:</span>
-        <canvas id="rtc-level-canvas" width="220" height="12" style="border:1px solid #ddd; border-radius:3px;"></canvas>
-      </div>
-
-      <details id="rtc-participants" style="margin-top:10px;" open>
-        <summary><span id="rtc-participants-label">Participants:</span> <span id="rtc-part-count">1</span></summary>
-        <ul id="rtc-part-list" style="margin:8px 0 0 0; padding-left:18px;"><li>me_1 (you)</li></ul>
-      </details>
-
-      <audio id="rtc-remote-audio" autoplay playsinline></audio>
+    <div id="webrtc-impl-controls" style="display:flex;gap:8px;align-items:center;margin:6px 0 12px 0;flex-wrap:wrap;">
+      <label for="webrtc-impl-select" style="font-weight:600;">🔀 Implementation:</label>
+      <select id="webrtc-impl-select">
+        <option value="vanilla">Vanilla</option>
+        <option value="livekit">LiveKit (stub)</option>
+      </select>
+      <button id="webrtc-impl-apply" disabled>Apply & Reload</button>
+      <span id="webrtc-impl-note" style="font-size:0.9rem;color:#666;"></span>
     </div>
+
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+      <strong>Status:</strong> <span id="rtc-status">initializing</span>
+    </div>
+    <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+      <button id="rtc-start-btn">Start Call</button>
+      <button id="rtc-end-btn" disabled>End Call</button>
+      <button id="rtc-mic-btn" disabled>Mute</button>
+    </div>
+
+    <div id="rtc-incoming" style="display:none; background:#fff8e1; border-left:4px solid #ffcc00; padding:8px; border-radius:4px; margin-bottom:8px;">
+      <div style="margin-bottom:6px;">Incoming call…</div>
+      <div style="display:flex; gap:8px;">
+        <button id="rtc-accept-btn">Accept</button>
+        <button id="rtc-decline-btn">Decline</button>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px; margin:6px 0;">
+      <span style="font-size:0.9rem; color:#555;">Mic level:</span>
+      <canvas id="rtc-level-canvas" width="220" height="12" style="border:1px solid #ddd; border-radius:3px;"></canvas>
+    </div>
+
+    <details id="rtc-participants" style="margin-top:10px;">
+      <summary>Participants: <span id="rtc-part-count">0</span></summary>
+      <ul id="rtc-part-list" style="margin:8px 0 0 0; padding-left:18px;"></ul>
+    </details>
+
+    <audio id="rtc-remote-audio" autoplay playsinline></audio>
   `;
 
   const settingsContainer = document.getElementById('settings-container');

@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 அறையை சேமி",
 
   your_rooms_header: "உங்கள் அறைகள்",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'செயலாக்கம்:',
-  webrtc_impl_vanilla: 'வனில்லா',
-  webrtc_impl_livekit_stub: 'LiveKit (ஸ்டப்)',
-  webrtc_impl_apply_reload: 'பயன்படுத்தி மீளேற்று',
-  webrtc_status_label: 'நிலை:',
-  webrtc_status_idle: 'செயலற்றது',
-  webrtc_start_call_btn: 'அழைப்பை தொடங்கு',
-  webrtc_end_call_btn: 'அழைப்பை முடி',
-  webrtc_mute_btn: 'ம்யூட்',
-  webrtc_unmute_btn: 'ம்யூட் நீக்கு',
-  webrtc_video_start_btn: 'வீடியோ தொடங்கு',
-  webrtc_video_stop_btn: 'வீடியோ நிறுத்து',
-  webrtc_incoming_call: 'வரும் அழைப்பு…',
-  webrtc_accept_btn: 'ஏற்கவும்',
-  webrtc_decline_btn: 'நிராகரி',
-  webrtc_mic_level_label: 'மைக்ரோஃபோன் நிலை:',
-  webrtc_participants_label: 'பங்கேற்பாளர்கள்:',
-  webrtc_you_tag: '(நீங்கள்)',
 };

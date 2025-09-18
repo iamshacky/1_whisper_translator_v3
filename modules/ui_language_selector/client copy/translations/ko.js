@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 룸 저장",
 
   your_rooms_header: "내 룸",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: '구현:',
-  webrtc_impl_vanilla: '바닐라',
-  webrtc_impl_livekit_stub: 'LiveKit(스텁)',
-  webrtc_impl_apply_reload: '적용 및 새로고침',
-  webrtc_status_label: '상태:',
-  webrtc_status_idle: '유휴',
-  webrtc_start_call_btn: '통화 시작',
-  webrtc_end_call_btn: '통화 종료',
-  webrtc_mute_btn: '음소거',
-  webrtc_unmute_btn: '음소거 해제',
-  webrtc_video_start_btn: '비디오 시작',
-  webrtc_video_stop_btn: '비디오 중지',
-  webrtc_incoming_call: '수신 전화…',
-  webrtc_accept_btn: '수락',
-  webrtc_decline_btn: '거절',
-  webrtc_mic_level_label: '마이크 레벨:',
-  webrtc_participants_label: '참가자:',
-  webrtc_you_tag: '(당신)',
 };

@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 ルームを保存",
 
   your_rooms_header: "あなたのルーム",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: '実装：',
-  webrtc_impl_vanilla: 'バニラ',
-  webrtc_impl_livekit_stub: 'LiveKit（スタブ）',
-  webrtc_impl_apply_reload: '適用して再読み込み',
-  webrtc_status_label: 'ステータス：',
-  webrtc_status_idle: 'アイドル',
-  webrtc_start_call_btn: '通話を開始',
-  webrtc_end_call_btn: '通話を終了',
-  webrtc_mute_btn: 'ミュート',
-  webrtc_unmute_btn: 'ミュート解除',
-  webrtc_video_start_btn: 'ビデオ開始',
-  webrtc_video_stop_btn: 'ビデオ停止',
-  webrtc_incoming_call: '着信中…',
-  webrtc_accept_btn: '承諾',
-  webrtc_decline_btn: '拒否',
-  webrtc_mic_level_label: 'マイクレベル：',
-  webrtc_participants_label: '参加者：',
-  webrtc_you_tag: '（あなた）',
 };

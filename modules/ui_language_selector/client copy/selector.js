@@ -117,51 +117,6 @@ function updateUIStrings(lang) {
     const key = opt.getAttribute('data-i18n-key');
     if (strings[key]) opt.textContent = strings[key];
   });
-
-  // ---------------------------
-  // Modules: webrtc
-  // ---------------------------
-  if (el('webrtc-header')) el('webrtc-header').innerText = strings.webrtc_header;
-  if (el('webrtc-impl-label')) el('webrtc-impl-label').innerText = `🔀 ${strings.webrtc_impl_label}`;
-  if (el('webrtc-impl-apply')) el('webrtc-impl-apply').innerText = strings.webrtc_impl_apply_reload;
-
-  if (el('webrtc-status-label')) el('webrtc-status-label').innerText = strings.webrtc_status_label;
-  if (el('rtc-status')) {
-    // Set a friendly default; your RTC logic can overwrite dynamically.
-    if (el('rtc-status').innerText.trim().toLowerCase() === 'idle') {
-      el('rtc-status').innerText = strings.webrtc_status_idle;
-    }
-  }
-
-  if (el('rtc-start-btn')) el('rtc-start-btn').innerText = strings.webrtc_start_call_btn;
-  if (el('rtc-end-btn')) el('rtc-end-btn').innerText = strings.webrtc_end_call_btn;
-
-  // Mic button label depends on data-muted
-  const micBtn = el('rtc-mic-btn');
-  if (micBtn) {
-    const muted = String(micBtn.dataset.muted || '').toLowerCase() === 'true';
-    micBtn.innerText = muted ? strings.webrtc_unmute_btn : strings.webrtc_mute_btn;
-  }
-
-  // Video button label depends on data-video ("on"/"off")
-  const vidBtn = el('rtc-video-btn');
-  if (vidBtn) {
-    const videoOn = String(vidBtn.dataset.video || '').toLowerCase() === 'on';
-    vidBtn.innerText = videoOn ? strings.webrtc_video_stop_btn : strings.webrtc_video_start_btn;
-  }
-
-  if (el('rtc-incoming-text')) el('rtc-incoming-text').innerText = strings.webrtc_incoming_call;
-  if (el('rtc-accept-btn')) el('rtc-accept-btn').innerText = strings.webrtc_accept_btn;
-  if (el('rtc-decline-btn')) el('rtc-decline-btn').innerText = strings.webrtc_decline_btn;
-
-  if (el('rtc-mic-level-label')) el('rtc-mic-level-label').innerText = strings.webrtc_mic_level_label;
-  if (el('rtc-participants-label')) el('rtc-participants-label').innerText = strings.webrtc_participants_label;
-
-  // Translate any <option data-i18n-key> (e.g., implementation choices)
-  document.querySelectorAll('[data-i18n-key]').forEach(opt => {
-    const key = opt.getAttribute('data-i18n-key');
-    if (strings[key]) opt.textContent = strings[key];
-  });
 }
 
 // --------------------------------------------------

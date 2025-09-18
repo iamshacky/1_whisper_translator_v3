@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 Salva stanza",
 
   your_rooms_header: "Le tue stanze",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'Implementazione:',
-  webrtc_impl_vanilla: 'Vanilla',
-  webrtc_impl_livekit_stub: 'LiveKit (stub)',
-  webrtc_impl_apply_reload: 'Applica e ricarica',
-  webrtc_status_label: 'Stato:',
-  webrtc_status_idle: 'inattivo',
-  webrtc_start_call_btn: 'Avvia chiamata',
-  webrtc_end_call_btn: 'Termina chiamata',
-  webrtc_mute_btn: 'Disattiva microfono',
-  webrtc_unmute_btn: 'Attiva microfono',
-  webrtc_video_start_btn: 'Avvia video',
-  webrtc_video_stop_btn: 'Interrompi video',
-  webrtc_incoming_call: 'Chiamata in arrivo…',
-  webrtc_accept_btn: 'Accetta',
-  webrtc_decline_btn: 'Rifiuta',
-  webrtc_mic_level_label: 'Livello microfono:',
-  webrtc_participants_label: 'Partecipanti:',
-  webrtc_you_tag: '(tu)',
 };

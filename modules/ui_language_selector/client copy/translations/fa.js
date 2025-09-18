@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 ذخیره اتاق",
 
   your_rooms_header: "اتاق‌های شما",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'پیاده‌سازی:',
-  webrtc_impl_vanilla: 'Vanilla',
-  webrtc_impl_livekit_stub: 'LiveKit (stub)',
-  webrtc_impl_apply_reload: 'اعمال و بارگذاری مجدد',
-  webrtc_status_label: 'وضعیت:',
-  webrtc_status_idle: 'بیکار',
-  webrtc_start_call_btn: 'شروع تماس',
-  webrtc_end_call_btn: 'پایان تماس',
-  webrtc_mute_btn: 'بی‌صدا',
-  webrtc_unmute_btn: 'لغو بی‌صدا',
-  webrtc_video_start_btn: 'شروع ویدئو',
-  webrtc_video_stop_btn: 'توقف ویدئو',
-  webrtc_incoming_call: 'تماس ورودی…',
-  webrtc_accept_btn: 'پذیرفتن',
-  webrtc_decline_btn: 'رد کردن',
-  webrtc_mic_level_label: 'سطح میکروفن:',
-  webrtc_participants_label: 'شرکت‌کنندگان:',
-  webrtc_you_tag: '(شما)',
 };

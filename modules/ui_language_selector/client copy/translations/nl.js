@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 Kamer opslaan",
 
   your_rooms_header: "Jouw kamers",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'Implementatie:',
-  webrtc_impl_vanilla: 'Vanilla',
-  webrtc_impl_livekit_stub: 'LiveKit (stub)',
-  webrtc_impl_apply_reload: 'Toepassen en herladen',
-  webrtc_status_label: 'Status:',
-  webrtc_status_idle: 'inactief',
-  webrtc_start_call_btn: 'Oproep starten',
-  webrtc_end_call_btn: 'Oproep beëindigen',
-  webrtc_mute_btn: 'Dempen',
-  webrtc_unmute_btn: 'Dempen opheffen',
-  webrtc_video_start_btn: 'Video starten',
-  webrtc_video_stop_btn: 'Video stoppen',
-  webrtc_incoming_call: 'Inkomende oproep…',
-  webrtc_accept_btn: 'Accepteren',
-  webrtc_decline_btn: 'Weigeren',
-  webrtc_mic_level_label: 'Microfoonniveau:',
-  webrtc_participants_label: 'Deelnemers:',
-  webrtc_you_tag: '(jij)',
 };

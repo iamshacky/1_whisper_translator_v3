@@ -116,25 +116,4 @@ export default {
   save_room_btn: "💾 Hifadhi chumba",
 
   your_rooms_header: "Vyumba vyako",
-
-  // Modules: webrtc
-  webrtc_header: 'WebRTC',
-  webrtc_impl_label: 'Utekelezaji:',
-  webrtc_impl_vanilla: 'Vanilla',
-  webrtc_impl_livekit_stub: 'LiveKit (stub)',
-  webrtc_impl_apply_reload: 'Tumia na upakie upya',
-  webrtc_status_label: 'Hali:',
-  webrtc_status_idle: 'bila shughuli',
-  webrtc_start_call_btn: 'Anza simu',
-  webrtc_end_call_btn: 'Maliza simu',
-  webrtc_mute_btn: 'Nyamazisha',
-  webrtc_unmute_btn: 'Ondoa unyamazishaji',
-  webrtc_video_start_btn: 'Anza video',
-  webrtc_video_stop_btn: 'Sitisha video',
-  webrtc_incoming_call: 'Simu inaingia…',
-  webrtc_accept_btn: 'Kubali',
-  webrtc_decline_btn: 'Kataa',
-  webrtc_mic_level_label: 'Kiwango cha kipaza sauti:',
-  webrtc_participants_label: 'Washiriki:',
-  webrtc_you_tag: '(wewe)',
 };
